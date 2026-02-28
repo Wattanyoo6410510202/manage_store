@@ -1,0 +1,77 @@
+/* Google Font: Sarabun */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+
+body {
+    font-family: 'Sarabun', sans-serif;
+}
+
+/* การจัดการหน้า (Tabs) */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Custom Scrollbar */
+nav::-webkit-scrollbar {
+    width: 5px;
+}
+
+nav::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+nav::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+}
+
+/* Sidebar สำหรับมือถือ */
+@media (max-width: 768px) {
+    #sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        transition: all 0.3s ease;
+    }
+
+    #sidebar.open {
+        left: 0;
+    }
+
+    #sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+    }
+
+    body.sidebar-open #sidebar-overlay {
+        display: block;
+    }
+}
+
+/* อนิเมชันไอคอนเมนูย่อย */
+#doc-sub-icon {
+    transition: transform 0.3s;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+/* สไตล์ตารางและการคำนวณ */
+.total-row {
+    font-family: 'monospace';
+    font-weight: bold;
+}
+
+input:focus {
+    outline: none;
+    border-color: #4f46e5;
+}
