@@ -9,15 +9,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 
 // กลุ่มที่ 2: รายการเอกสาร และหน้าแก้ไข/ตั้งค่า (รวม quotation_settings.php ไว้ที่นี่)
-$doc_list_pages = ['view_quotation.php', 'doc_list.php'];
+$doc_list_pages = ['view_quotation.php', 'doc_list.php', 'pr_list.php', 'view_pr.php', 'edit_pr.php', 'add_pr.php', ];
 $is_list_active = in_array($current_page, $doc_list_pages);
 
-$doc_setup_pages = ['index.php', 'quotation_settings.php',];
+// กลุ่ม Settings: เพิ่ม settings_api.php (ถ้ามีเมนูย่อยในอนาคต)
+$doc_setup_pages = ['index.php', 'quotation_settings.php', 'pr_settings.php'];
 $is_setup_active = in_array($current_page, $doc_setup_pages);
+// กำหนดกลุ่มหน้าของใบเสนอราคา
+$quotation_group = ['doc_list.php', 'view_quotation.php', 'edit_quotation.php', 'add_quotation.php'];
+$is_quotation_active = in_array($current_page, $quotation_group);
 
- // กำหนดกลุ่มหน้าของใบเสนอราคา
-  $quotation_group = ['doc_list.php', 'view_quotation.php', 'edit_quotation.php', 'add_quotation.php'];
-  $is_quotation_active = in_array($current_page, $quotation_group);
+$pr_group = ['doc_list.php', 'view_pr.php', 'edit_pr.php', 'add_pr.php'];
+$is_pr_active = in_array($current_page, $pr_group);
 
 ?>
 
@@ -140,11 +143,12 @@ $is_setup_active = in_array($current_page, $doc_setup_pages);
                         <span class="text-sm font-medium">ใบเสนอราคา</span>
                     </a>
 
-                    <a href="pr_list.php" class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 
+                    <a href="pr_list.php"
+                        class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 
         <?php echo ($current_page == 'pr_list.php') ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
 
                         <span
-                            class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity duration-300 <?php echo ($current_page == 'pr_list.php') ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity duration-300 <?php echo $is_pr_active ? 'opacity-100' : 'opacity-70'; ?>"></span>
 
                         <i
                             class="fas fa-cart-plus text-[12px] opacity-70 group-hover:scale-110 transition-transform"></i>
@@ -180,7 +184,7 @@ $is_setup_active = in_array($current_page, $doc_setup_pages);
                 <span class="font-medium">ตั้งค่าผู้ใช้งาน</span>
             </a>
 
-             <a href="settings_api.php"
+            <a href="settings_api.php"
                 class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings_api.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
                 <i class="fas fa-users w-5 text-indigo-400"></i>
                 <span class="font-medium">ตั้งค่าapi</span>
