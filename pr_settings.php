@@ -21,10 +21,10 @@ if (!$customer) {
 }
 ?>
 
-<form action="api/save_purchase_order.php" method="POST">
+<form action="api/save_pr.php" method="POST">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
-    <div class="bg-slate-50 min-h-screen pb-20">
+    <div class="bg-slate-50 ">
         <div class="max-w-[1400px] mx-auto px-4 py-6">
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -52,6 +52,7 @@ if (!$customer) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
+
 
                         <div
                             class="p-5 bg-gradient-to-br from-indigo-50/50 to-slate-50 rounded-2xl border border-indigo-100/50 space-y-4">
@@ -86,7 +87,7 @@ if (!$customer) {
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-xl">
+                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 ">
                         <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
                             <h3
                                 class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
@@ -96,9 +97,11 @@ if (!$customer) {
                         <div class="p-6 space-y-4">
                             <div>
                                 <div class="text-white font-black text-lg">
-                                    <?= htmlspecialchars($customer['customer_name']) ?></div>
+                                    <?= htmlspecialchars($customer['customer_name']) ?>
+                                </div>
                                 <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
-                                    <?= $customer['tax_id'] ?: '-' ?></div>
+                                    <?= $customer['tax_id'] ?: '-' ?>
+                                </div>
                             </div>
                             <div class="text-slate-400 text-xs leading-relaxed">
                                 <?= nl2br(htmlspecialchars($customer['address'])) ?>
@@ -108,19 +111,18 @@ if (!$customer) {
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
-                    <div
-                        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                            <label
-                                class="text-[10px] font-black text-slate-400 uppercase block mb-1">วันที่สั่งซื้อ</label>
-                            <input type="date" name="doc_date" value="<?= date('Y-m-d') ?>"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
-                        </div>
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <label
                                 class="text-[10px] font-black text-slate-400 uppercase block mb-1">วันที่ต้องการสินค้า</label>
                             <input type="date" name="due_date"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 text-indigo-600">
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">อ้างอิงเอกสาร
+                                (Ref.)</label>
+                            <input type="text" name="reference_no" placeholder="เช่น เลขที่ใบเสนอราคา"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                         </div>
                         <div>
                             <label
@@ -132,19 +134,27 @@ if (!$customer) {
                                 <option value="cash">เงินสด / โอนจ่าย</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">ส่งโดย</label>
-                            <input type="text" name="shipping_method" placeholder="เช่น Kerry, รถบริษัท"
+
+                        <div class="col-span-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">ผู้ต้องการ /
+                                แผนก</label>
+                            <input type="text" name="requested_by" placeholder="ชื่อผู้ขอซื้อ / แผนก"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="col-span-1">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase block mb-1">เบอร์โทรผู้ติดต่อ</label>
+                            <input type="text" name="contact_tel" placeholder="เบอร์โทรภายใน/มือถือ"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
                         <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                             <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
                                     class="fas fa-shopping-cart mr-2 text-indigo-500"></i> Order Items</span>
                             <button type="button" onclick="addItemRow()"
-                                class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                                class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all ">
                                 <i class="fas fa-plus mr-1"></i> เพิ่มรายการสินค้า
                             </button>
                         </div>
@@ -191,7 +201,7 @@ if (!$customer) {
                                         <td class="px-4 py-4 text-center">
                                             <button type="button" onclick="removeRow(this)"
                                                 class="text-slate-200 hover:text-red-500 transition-colors"><i
-                                                    class="fas fa-trash-alt"></i></button>
+                                                    class="fas fa-times-circle"></i></button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -199,34 +209,31 @@ if (!$customer) {
                         </div>
 
                         <div
-                            class="p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-10">
+                            class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                             <div class="w-full md:flex-grow">
                                 <label
-                                    class="text-[10px] font-black text-slate-400 uppercase block mb-3 tracking-widest">ข้อความแจ้งผู้ขาย
-                                    / หมายเหตุ</label>
-                                <textarea name="notes" rows="4"
-                                    class="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none shadow-inner"
-                                    placeholder="เช่น กรุณาส่งสินค้าก่อนเวลา 16.00 น. ..."></textarea>
+                                    class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
+                                <textarea name="notes" rows="3"
+                                    class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                    placeholder="เช่น เงื่อนไขการรับประกัน..."></textarea>
                             </div>
-
-                            <div class="w-full md:w-80 space-y-3">
+                            <div class="w-full md:w-72 space-y-2">
                                 <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>Sub Total</span>
-                                    <span id="subtotal_display" class="font-mono">0.00</span>
+                                    <span>รวมเป็นเงิน</span>
+                                    <span id="subtotal_display">0.00</span>
                                 </div>
                                 <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>VAT (7%)</span>
-                                    <span id="vat_display" class="font-mono">0.00</span>
+                                    <span>ภาษีมูลค่าเพิ่ม (7%)</span>
+                                    <span id="vat_display">0.00</span>
                                 </div>
                                 <div
-                                    class="flex justify-between text-xl font-black text-slate-900 pt-4 border-t-2 border-dashed border-slate-200">
-                                    <span class="uppercase tracking-tighter">Total Amount</span>
-                                    <span id="grandtotal_display" class="text-indigo-600 font-mono">0.00</span>
+                                    class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
+                                    <span>รวม</span>
+                                    <span id="grandtotal_display">0.00</span>
                                 </div>
-
-                                <button type="submit"
-                                    class="w-full mt-6 py-4 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200">
-                                    <i class="fas fa-check-circle text-lg"></i> ยืนยันสั่งซื้อสินค้า
+                                <button
+                                    class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl  hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                                    <i class="fas fa-save"></i> บันทึกและออกเอกสาร
                                 </button>
                             </div>
                         </div>
@@ -237,37 +244,47 @@ if (!$customer) {
     </div>
 </form>
 
+
 <script>
-    // JS เดิมของคุณทำงานได้ดีอยู่แล้ว ผมเพิ่มช่อง Unit เข้าไปใน addItemRow
     function addItemRow() {
         const tbody = document.querySelector('#itemsTable tbody');
         const rowCount = tbody.rows.length + 1;
         const newRow = `
-        <tr class="item-row group border-t border-slate-50">
-            <td class="px-6 py-4 text-center text-xs font-bold text-slate-300">${rowCount}</td>
-            <td class="px-2 py-4">
-                <textarea name="item_desc[]" placeholder="รายละเอียด..." rows="1" oninput="autoResize(this)" class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
-            </td>
-            <td class="px-2 py-4">
-                <input type="number" name="item_qty[]" value="1" min="1" oninput="calculateTotal()" class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50">
-            </td>
-            <td class="px-2 py-4">
-                <input type="text" name="item_unit[]" placeholder="หน่วย" class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400">
-            </td>
-            <td class="px-2 py-4">
-                <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
-            </td>
-            <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
-            <td class="px-4 py-4 text-center">
-                <button type="button" onclick="removeRow(this)" class="text-slate-200 hover:text-red-500 transition-colors"><i class="fas fa-trash-alt"></i></button>
-            </td>
-        </tr>`;
+    <tr class="item-row group border-t border-slate-100">
+        <td class="px-4 py-3 text-center text-xs font-bold text-slate-400">${rowCount}</td>
+        <td class="px-4 py-3">
+            <textarea name="item_desc[]" 
+                      placeholder="ระบุรายละเอียด..." 
+                      rows="1"
+                      oninput="autoResize(this)"
+                      class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-medium resize-none block overflow-hidden"></textarea>
+        </td>
+        <td class="px-4 py-3">
+            <input type="text" name="item_unit[]" placeholder="เช่น ตัว, ชุด" 
+                   class="w-full bg-slate-50 border-none rounded-md px-2 py-1 text-center text-sm font-bold focus:bg-indigo-50">
+        </td>
+        <td class="px-4 py-3">
+            <input type="number" name="item_qty[]" value="1" min="1" oninput="calculateTotal()" 
+                   class="w-full bg-slate-50 border-none rounded-md px-2 py-1 text-center text-sm font-bold focus:bg-indigo-50">
+        </td>
+        <td class="px-4 py-3">
+            <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" 
+                   class="w-full bg-transparent border-none text-right text-sm font-mono font-bold focus:ring-0">
+        </td>
+        <td class="px-4 py-3 text-right text-sm font-mono font-bold text-slate-700 row-total">0.00</td>
+        <td class="px-4 py-3 text-center">
+            <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-colors">
+                <i class="fas fa-times-circle"></i>
+            </button>
+        </td>
+    </tr>`;
         tbody.insertAdjacentHTML('beforeend', newRow);
+
+        // ปรับความสูง textarea ทันทีที่เพิ่ม
+        const lastRow = tbody.lastElementChild;
+        autoResize(lastRow.querySelector('textarea'));
     }
-
-    // ฟังก์ชันอื่นๆ (removeRow, calculateTotal, updateSupplierInfo, autoResize) 
-    // ใช้ของเดิมที่คุณมีได้เลยครับ (ตรวจสอบชื่อ ID ให้ตรงกัน)
-
+    // ลบแถว
     function removeRow(btn) {
         const tbody = document.querySelector('#itemsTable tbody');
         if (tbody.rows.length > 1) {
@@ -276,6 +293,7 @@ if (!$customer) {
         }
     }
 
+    // คำนวณเงิน
     function calculateTotal() {
         let subtotal = 0;
         document.querySelectorAll('.item-row').forEach(row => {
@@ -294,27 +312,40 @@ if (!$customer) {
         document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
 
+    // อัปเดตข้อมูลผู้ขาย
     function updateSupplierInfo() {
         const select = document.getElementById('supplier_select');
         const selectedOption = select.options[select.selectedIndex];
-        if (!selectedOption.getAttribute('data-info')) return;
-
         const data = JSON.parse(selectedOption.getAttribute('data-info'));
 
         document.getElementById('comp_name').innerText = data.company_name;
-        document.getElementById('comp_tax').innerText = 'Tax ID: ' + (data.tax_id || '-');
+        document.getElementById('comp_tax').innerText = data.tax_id || '-';
         document.getElementById('comp_phone').innerText = data.phone || '-';
-        document.getElementById('comp_email').innerText = data.email || '-';
+        document.getElementById('comp_email').innerText = data.email || '-'; // บรรทัดนี้ที่ขาดไป
         document.getElementById('comp_addr').innerText = data.address || '-';
-    }
 
-    function autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = (textarea.scrollHeight) + 'px';
+        const logoImg = document.getElementById('comp_logo_preview');
+        logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'uploads/default-logo.png';
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         updateSupplierInfo();
         calculateTotal();
     });
+
+    // ฟังก์ชันปรับความสูงอัตโนมัติ
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
+
+    // สั่งให้คำนวณความสูงใหม่ทุกครั้งที่เพิ่มแถว หรือโหลดหน้าเสร็จ
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => {
+            autoResize(el);
+        });
+    });
+
+
 </script>
+<script src="assets/js/demo-data.js"></script>

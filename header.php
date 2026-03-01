@@ -140,15 +140,15 @@ $is_setup_active = in_array($current_page, $doc_setup_pages);
                         <span class="text-sm font-medium">ใบเสนอราคา</span>
                     </a>
 
-                    <a href="po_list.php" class="group flex items-center gap-3 py-2 px-4 transition-all duration-200 
-        <?php echo ($current_page == 'po_list.php') ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-200'; ?>">
+                    <a href="pr_list.php" class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 
+        <?php echo ($current_page == 'pr_list.php') ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
 
                         <span
-                            class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity duration-300 <?php echo ($current_page == 'po_list.php') ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity duration-300 <?php echo ($current_page == 'pr_list.php') ? 'opacity-100' : 'opacity-0'; ?>"></span>
 
                         <i
                             class="fas fa-cart-plus text-[12px] opacity-70 group-hover:scale-110 transition-transform"></i>
-                        <span class="text-sm font-medium tracking-wide">ใบสั่งซื้อ</span>
+                        <span class="text-sm font-medium tracking-wide">ใบขอซื้อ</span>
                     </a>
                 </div>
             </div>
