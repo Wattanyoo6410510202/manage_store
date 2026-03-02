@@ -129,9 +129,9 @@ if (!$customer) {
                                 class="text-[10px] font-black text-slate-400 uppercase block mb-1">การชำระเงิน</label>
                             <select name="payment_term"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <option value="cash">เงินสด / โอนจ่าย</option>
                                 <option value="30">เครดิต 30 วัน</option>
                                 <option value="60">เครดิต 60 วัน</option>
-                                <option value="cash">เงินสด / โอนจ่าย</option>
                             </select>
                         </div>
 
@@ -349,3 +349,4 @@ if (!$customer) {
 
 </script>
 <script src="assets/js/demo-data.js"></script>
+<?php include 'footer.php'; ?>

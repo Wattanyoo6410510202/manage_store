@@ -261,7 +261,7 @@ function createDoc(type) {
     switch (type) {
         case 'quotation': targetPage = 'quotation_settings.php'; break;
         case 'pr': targetPage = 'pr_settings.php'; break;
-        case 'po': targetPage = 'po.php'; break;
+        case 'po': targetPage = 'po_settings.php'; break;
         default: targetPage = 'other.php';
     }
     window.location.href = `${targetPage}?customer_id=${customerId}`;
