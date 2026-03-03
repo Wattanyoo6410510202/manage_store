@@ -11,10 +11,14 @@ if (empty($id)) {
 $sql = "SELECT q.*, 
                c.customer_name, c.address as cust_address, c.tax_id as cust_tax, c.contact_person, c.phone as cust_phone, c.email as cust_email,
                s.company_name as my_company, s.tax_id as my_tax, s.phone as my_phone, 
-               s.email as my_email, s.address as my_address, s.logo_path
+               s.email as my_email, s.address as my_address, s.logo_path,
+               -- ดึงชื่อพนักงานจากตาราง users
+               u.name as creator_name 
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN suppliers s ON q.supplier_id = s.id 
+        -- เชื่อมกับตาราง users โดยใช้ ID ของคนสร้าง
+        LEFT JOIN users u ON q.created_by = u.id 
         WHERE q.id = '$id' LIMIT 1";
 
 $result = mysqli_query($conn, $sql);
@@ -22,6 +26,39 @@ $data = mysqli_fetch_assoc($result);
 $sql_items = "SELECT * FROM quotation_items WHERE quotation_id = '$id' ORDER BY id ASC";
 $res_items = mysqli_query($conn, $sql_items);
 $logo_path = !empty($data['logo_path']) ? 'uploads/' . $data['logo_path'] : '';
+
+
+
+$prepared_by_id = $data['created_by'];
+$sig_sql = "SELECT path FROM signatures WHERE users_id = '$prepared_by_id' LIMIT 1";
+$sig_res = mysqli_query($conn, $sig_sql);
+$sig_data = mysqli_fetch_assoc($sig_res);
+
+// 1. กำหนด Path เต็มของไฟล์เพื่อเอาไว้เช็คในเครื่อง (Server Path)
+$real_path = !empty($sig_data['path']) ? 'uploads/signatures/' . $sig_data['path'] : '';
+
+// 2. เช็คทั้ง "มีชื่อใน DB" และ "มีไฟล์อยู่จริงในโฟลเดอร์"
+if (!empty($real_path) && file_exists($real_path)) {
+    $prepared_sig = $real_path;
+} else {
+    $prepared_sig = ''; // ถ้าไม่เข้าเงื่อนไข ให้เป็นค่าว่าง (จะไปโชว์ข้อความ "ไม่มีลายเซ็น")
+}
+
+// --- ดึงลายเซ็นผู้อนุมัติ (ถ้ามี) ---
+$approved_sig = ''; // ตั้งค่าเริ่มต้นเป็นว่าง
+if ($data['status'] === 'approved' && !empty($data['approved_by'])) {
+    $approver_id = $data['approved_by'];
+    $sig_app_sql = "SELECT path FROM signatures WHERE users_id = '$approver_id' LIMIT 1";
+    $sig_app_res = mysqli_query($conn, $sig_app_sql);
+    $sig_app_data = mysqli_fetch_assoc($sig_app_res);
+
+    $real_app_path = !empty($sig_app_data['path']) ? 'uploads/signatures/' . $sig_app_data['path'] : '';
+
+    // เช็คว่ามีไฟล์อยู่จริงไหม
+    if (!empty($real_app_path) && file_exists($real_app_path)) {
+        $approved_sig = $real_app_path;
+    }
+}
 ?>
 <?php
 $num_rows = mysqli_num_rows($res_items);
@@ -312,17 +349,60 @@ function ReadNumber($number)
             </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; text-align: center; font-size: 12px;">
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
-                <p style="margin: 0; font-weight: bold;">ผู้รับบริการ / Customer</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
+        <div
+            style="display: flex; justify-content: space-between; text-align: center; font-size: 12px; margin-top: 30px;">
+
+            <div style="width: 30%;">
+                <div class="sig-box"
+                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
+
+                    <?php if ($prepared_sig): ?>
+                        <img src="<?= $prepared_sig ?>?v=<?= time() ?>"
+                            style="max-height: 50px; max-width: 100%; object-fit: contain;">
+
+                    <?php else: ?>
+
+                    <?php endif; ?>
+
+                </div>
+                <p style="margin: 0; font-weight: bold;">ผู้จัดทำ / Prepared by</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">(
+                    <?= $data['creator_name'] ?? $data['created_by'] ?> )
+                </p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
+                    <?= date('d/m/Y', strtotime($data['created_at'])) ?>
+                </p>
             </div>
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
+
+            <div style="width: 30%;">
+                <div class="sig-box"
+                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
+
+                    <?php if ($approved_sig): ?>
+                        <img src="<?= $approved_sig ?>?v=<?= time() ?>"
+                            style="max-height: 50px; max-width: 100%; object-fit: contain;">
+                    <?php elseif ($data['status'] === 'approved'): ?>
+                        <span style="font-size: 10px; color: #94a3b8; font-style: italic;">( ลายเซ็นสูญหาย )</span>
+                    <?php else: ?>
+                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;">( รออนุมัติ )</span>
+                    <?php endif; ?>
+
+                </div>
                 <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม / Authorized Signature</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['my_company'] ?> )</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
+                    วันที่
+                    <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : '......../......../........' ?>
+                </p>
             </div>
+
+            <div style="width: 30%;">
+                <div class="sig-box" style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
+                <p style="margin: 0; font-weight: bold;">ลูกค้า / Customer</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['customer_name'] ?> )</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
+            </div>
+
         </div>
     </div>
 
@@ -368,24 +448,13 @@ function ReadNumber($number)
     }
 </script>
 <script>
-    // 1. ลูกเล่นเปิด-ปิดลายเซ็น
     function toggleSignature() {
-        const sigBox = document.querySelectorAll('.sig-box');
-        const btn = document.getElementById('sigBtn');
+        // 1. ถ้าจารต้องการให้กดแล้วเด้งไปหน้าสร้างเลย
+        window.location.href = 'create_signature.php';
 
-        sigBox.forEach(el => {
-            el.style.opacity = (el.style.opacity === '0') ? '1' : '0';
-        });
-
-        btn.classList.toggle('active');
-
-        // แจ้งเตือนเล็กน้อย
-        if (typeof renderAlert === 'function') {
-            const status = btn.classList.contains('active') ? 'แสดงลายเซ็น' : 'ซ่อนลายเซ็น';
-            renderAlert('success', status);
-        }
+        // หรือถ้าอยากให้เปิด Tab ใหม่ (จะได้ไม่หลุดจากหน้า PR)
+        // window.open('create_signature.php', '_blank');
     }
-
     // 2. ส่งออกเป็น Word (.doc)
     function exportWord() {
         const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +

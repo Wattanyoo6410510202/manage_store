@@ -174,7 +174,7 @@ $is_setup_active = in_array($current_page, $doc_setup_pages);
 
             <a href="compare.php"
                 class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'compare.php' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
-                <i class="fas fa-boxes w-5 text-indigo-400"></i>
+                <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
                 <span class="font-medium">เปรียบเทียบราคา</span>
             </a>
 
@@ -191,6 +191,12 @@ $is_setup_active = in_array($current_page, $doc_setup_pages);
                 class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
                 <i class="fas fa-cog w-5 text-indigo-400"></i>
                 <span class="font-medium">ตั้งค่าระบบ</span>
+            </a>
+
+            <a href="all_trash.php"
+                class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'all_trash.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                <i class="fas fa-trash-alt w-5 text-indigo-400"></i>
+                <span class="font-medium">ถังขยะ</span>
             </a>
 
             <a href="user_settings.php"

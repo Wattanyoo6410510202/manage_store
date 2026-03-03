@@ -2,23 +2,46 @@
 require_once 'config.php';
 include 'header.php';
 
-$customer_id = $_GET['customer_id'] ?? 0;
+// 1. รับค่า customer_id (ถ้ามี)
+$customer_id = $_GET['customer_id'] ?? null;
 
-// 1. ดึงข้อมูลลูกค้า (ในบริบท PO คือผู้สั่งซื้อ/บริษัทเราเอง หรือสาขาปลายทาง)
-$cust_query = mysqli_query($conn, "SELECT * FROM customers WHERE id = '" . mysqli_real_escape_string($conn, $customer_id) . "'");
-$customer = mysqli_fetch_assoc($cust_query);
+// 2. เตรียมตัวแปร $customer ไว้ล่วงหน้า
+$customer = null;
 
-// 2. ดึงข้อมูลผู้ขาย (Suppliers)
+if ($customer_id) {
+    // --- กรณีที่ 1: มี ID ส่งมา (ผูกกับลูกค้า/โปรเจกต์) ---
+    $clean_id = mysqli_real_escape_string($conn, $customer_id);
+    $cust_query = mysqli_query($conn, "SELECT * FROM customers WHERE id = '$clean_id'");
+    $customer = mysqli_fetch_assoc($cust_query);
+
+    // ถ้าส่ง ID มาแต่หาไม่เจอใน DB ให้ดีดกลับ
+    if (!$customer) {
+        echo "<script>alert('ไม่พบข้อมูลลูกค้าในระบบ'); window.location.href='customers.php';</script>";
+        exit;
+    }
+} else {
+    // --- กรณีที่ 2: ไม่เลือกใครมา (ใช้ข้อมูลคน Login / ภายในองค์กร) ---
+    // เรา "จำลอง" array ให้หน้าตาเหมือน table customers เพื่อให้ส่วนแสดงผลไม่พัง
+    // --- กรณีที่ 2: ไม่เลือกใครมา (ใช้ข้อมูลคน Login / ภายในองค์กร) ---
+    $customer = [
+        'id' => 0,
+        'customer_name' => $_SESSION['user_name'] ?? 'ผู้ใช้งานทั่วไป', // แก้ให้ตรงกับ login.php
+        'name' => $_SESSION['user_name'] ?? 'ผู้ใช้งานทั่วไป', // ใส่เผื่อไว้ทั้ง 2 key กันพัง
+        'tax_id' => '-',
+        'address' => 'สั่งซื้อภายในองค์กร (สำนักงานใหญ่)',
+        'phone' => '-', // ถ้าใน login.php ไม่ได้เก็บเบอร์โทรไว้ ให้ใส่ขีดไว้ก่อน
+        'is_internal' => true
+    ];
+}
+
+// 3. ดึงข้อมูลผู้ขาย (Suppliers) - เอาไว้เลือกตอนทำ PR ว่าจะซื้อจากเจ้าไหน
 $suppliers_query = mysqli_query($conn, "SELECT * FROM suppliers ORDER BY id ASC");
 $suppliers = [];
 while ($s = mysqli_fetch_assoc($suppliers_query)) {
     $suppliers[] = $s;
 }
 
-if (!$customer) {
-    echo "<script>alert('ไม่พบข้อมูลลูกค้า'); window.location.href='customers.php';</script>";
-    exit;
-}
+// ไม่ต้องมี if (!$customer) exit; แล้ว เพราะเราจำลองค่าไว้ให้แล้วด้านบนครับจาร
 ?>
 
 <form action="api/save_pr.php" method="POST">
@@ -88,23 +111,40 @@ if (!$customer) {
                     </div>
 
                     <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 ">
-                        <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
+                        <div
+                            class="bg-slate-800/50 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
                             <h3
                                 class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
                                 <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
                             </h3>
+
+                            <?php if (isset($customer['is_internal'])): ?>
+                                <span
+                                    class="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/30">INTERNAL</span>
+                            <?php else: ?>
+                                <span
+                                    class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-500/30">PROJECT</span>
+                            <?php endif; ?>
                         </div>
+
                         <div class="p-6 space-y-4">
                             <div>
                                 <div class="text-white font-black text-lg">
-                                    <?= htmlspecialchars($customer['customer_name']) ?>
+                                    <?php
+                                    // ตรวจสอบว่าใช้ Key ไหน (customer_name จาก DB หรือ name จาก Session)
+                                    echo htmlspecialchars($customer['customer_name'] ?? $customer['name'] ?? 'ไม่ระบุชื่อ');
+                                    ?>
                                 </div>
-                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
-                                    <?= $customer['tax_id'] ?: '-' ?>
+                                <div
+                                    class="text-indigo-300 text-xs font-mono font-bold mt-1 uppercase tracking-tighter">
+                                    Tax ID: <?= htmlspecialchars($customer['tax_id'] ?? '-') ?>
                                 </div>
                             </div>
-                            <div class="text-slate-400 text-xs leading-relaxed">
-                                <?= nl2br(htmlspecialchars($customer['address'])) ?>
+
+                            <div
+                                class="text-slate-400 text-xs leading-relaxed italic bg-slate-800/30 p-3 rounded-xl border border-slate-700/50">
+                                <i class="fas fa-info-circle mr-1 text-slate-500"></i>
+                                <?= nl2br(htmlspecialchars($customer['address'] ?? 'ไม่มีข้อมูลที่อยู่')) ?>
                             </div>
                         </div>
                     </div>

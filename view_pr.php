@@ -8,25 +8,29 @@ if (empty($id)) {
     die("ไม่พบรหัสเอกสาร");
 }
 
-// SQL สำหรับดึงข้อมูล PR (ดึงข้อมูล Supplier และข้อมูลบริษัทเรามาโชว์)
 $sql = "SELECT p.*, 
                s.company_name as supplier_name, s.address as sup_address, s.tax_id as sup_tax, s.phone as sup_phone,
-               -- ข้อมูลลูกค้าที่เพิ่มเข้ามา
-               c.customer_name, c.address as cust_address, c.tax_id as cust_tax, c.phone as cust_phone, c.email as cust_email,
-               -- ข้อมูลบริษัทเรา (กรณีเก็บไว้ในตาราง suppliers หรือตารางตั้งค่า)
+               
+               -- เช็คเงื่อนไขตรงนี้เลย ถ้า is_internal เป็น 1 ให้ไปดึงชื่อจาก users
+               IF(p.is_internal = 1, 
+                  (SELECT name FROM users WHERE id = p.created_by), 
+                  c.customer_name
+               ) as customer_name,
+               
+               -- ส่วนที่เหลือก็ใช้ logic เดียวกัน หรือปล่อยว่างถ้าเป็นคนใน
+               IF(p.is_internal = 1, 'ภายในองค์กร', c.address) as cust_address,
+               IF(p.is_internal = 1, '-', c.tax_id) as cust_tax,
+               
                own.company_name as my_company, own.tax_id as my_tax, own.phone as my_phone, 
                own.email as my_email, own.address as my_address, own.logo_path
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
-        LEFT JOIN customers c ON p.customer_id = c.id -- ดึงข้อมูลลูกค้าผ่าน customer_id ในตาราง pr
-        LEFT JOIN suppliers own ON p.supplier_id = own.id -- หรือเปลี่ยนเป็น ID ของบริษัทคุณเอง
+        LEFT JOIN customers c ON p.customer_id = c.id 
+        LEFT JOIN suppliers own ON p.supplier_id = own.id 
         WHERE p.id = '$id' LIMIT 1";
+
 $result = mysqli_query($conn, $sql);
 $data = mysqli_fetch_assoc($result);
-
-if (!$data) {
-    die("ไม่พบข้อมูลเอกสารในระบบ");
-}
 
 // ดึงรายการสินค้าของ PR
 $sql_items = "SELECT * FROM pr_items WHERE pr_id = '$id' ORDER BY id ASC";
@@ -256,7 +260,8 @@ function ReadNumber($number)
             <div
                 style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b;">วันที่ต้องการสินค้า</span>
-                <span style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
+                <span
+                    style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding: 6px 0;">

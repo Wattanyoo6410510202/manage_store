@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         vat = '$vat',
                         grand_total = '$grand_total',
                         notes = '$notes'
-                       WHERE id = '$quotation_id'";
+                       WHERE id = '$quotation_id' AND deleted_at IS NULL";
         
         if (!mysqli_query($conn, $sql_update)) {
             throw new Exception("ไม่สามารถอัปเดตข้อมูลใบเสนอราคาได้");

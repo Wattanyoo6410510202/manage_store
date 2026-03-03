@@ -41,7 +41,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200 ">
                         <div class="flex justify-between items-start mb-4">
                             <h3
                                 class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
@@ -93,7 +93,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-lg">
+                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 ">
                         <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
                             <h3
                                 class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
@@ -118,7 +118,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
                 <div class="lg:col-span-2 space-y-6">
                     <div
-                        class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4">
+                        class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
                             <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">เลขที่เอกสาร
                                 PO</label>
@@ -155,12 +155,12 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
                         <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                             <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
                                     class="fas fa-shopping-cart mr-2 text-indigo-500"></i> PO Items</span>
                             <button type="button" onclick="addItemRow()"
-                                class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
+                                class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all  ">
                                 <i class="fas fa-plus mr-1"></i> เพิ่มรายการ
                             </button>
                         </div>
@@ -246,7 +246,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="grandtotal_display">0.00</span>
                                 </div>
                                 <button type="submit"
-                                    class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                                    class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 ">
                                     <i class="fas fa-save"></i> อัปเดตข้อมูล PO
                                 </button>
                             </div>
