@@ -187,6 +187,16 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             <input type="text" name="contact_tel" placeholder="เบอร์โทรภายใน/มือถือ"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                         </div>
+                        <div>
+                            <label class="text-[10px] font-black text-indigo-500 uppercase block mb-1">ภาษี (VAT
+                                %)</label>
+                            <select name="vat_percent" id="vat_percent" onchange="calculateTotal()"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <option value="7">7%</option>
+                                <option value="0">0% </option>
+                                <option value="10">10%</option>s
+                            </select>
+                        </div>
                     </div>
 
                     <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
@@ -209,20 +219,22 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                         <th class="px-2 py-4 w-24 text-center">จำนวน</th>
                                         <th class="px-2 py-4 w-24 text-center">หน่วย</th>
                                         <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
+                                        <th class="px-2 py-4 w-32 text-right">ส่วนลด (บาท)</th>
                                         <th class="px-6 py-4 w-32 text-right">รวมเงิน</th>
                                         <th class="px-4 py-4 w-10"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-50">
                                     <tr class="item-row group">
-                                        <td class="px-6 py-4 text-center text-xs font-bold text-slate-300">1</td>
+                                        <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">1
+                                        </td>
                                         <td class="px-2 py-4">
                                             <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รหัสสินค้า..."
                                                 rows="1" oninput="autoResize(this)"
                                                 class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
                                         </td>
                                         <td class="px-2 py-4">
-                                            <input type="number" name="item_qty[]" value="1" min="1"
+                                            <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
                                                 oninput="calculateTotal()"
                                                 class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50">
                                         </td>
@@ -235,13 +247,19 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                                 oninput="calculateTotal()"
                                                 class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
                                         </td>
+                                        <td class="px-2 py-4">
+                                            <input type="number" name="item_discount[]" value="0.00" step="0.01"
+                                                oninput="calculateTotal()"
+                                                class="w-full bg-amber-50/50 border-none rounded-lg px-2 py-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-50">
+                                        </td>
                                         <td
                                             class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
                                             0.00</td>
                                         <td class="px-4 py-4 text-center">
                                             <button type="button" onclick="removeRow(this)"
-                                                class="text-slate-200 hover:text-red-500 transition-colors"><i
-                                                    class="fas fa-times-circle"></i></button>
+                                                class="text-slate-200 hover:text-red-500 transition-colors">
+                                                <i class="fas fa-times-circle"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -263,9 +281,9 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="subtotal_display">0.00</span>
                                 </div>
                                 <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>ภาษีมูลค่าเพิ่ม (7%)</span>
-                                    <span id="vat_display">0.00</span>
-                                </div>
+                                <span>ภาษีมูลค่าเพิ่ม (<span id="vat_percent_label">7</span>%)</span>
+                                <span id="vat_display">0.00</span>
+                            </div>
                                 <div
                                     class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
                                     <span>รวม</span>
@@ -286,107 +304,152 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
 
 <script>
+    // 1. ฟังก์ชันเพิ่มแถวรายการใหม่
     function addItemRow() {
         const tbody = document.querySelector('#itemsTable tbody');
-        const rowCount = tbody.rows.length + 1;
-        const newRow = `
-    <tr class="item-row group border-t border-slate-100">
-        <td class="px-4 py-3 text-center text-xs font-bold text-slate-400">${rowCount}</td>
-        <td class="px-4 py-3">
-            <textarea name="item_desc[]" 
-                      placeholder="ระบุรายละเอียด..." 
-                      rows="1"
-                      oninput="autoResize(this)"
-                      class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-medium resize-none block overflow-hidden"></textarea>
+
+        // สร้าง Element แถวใหม่ (tr)
+        const newRow = document.createElement('tr');
+        newRow.className = "item-row group border-t border-slate-100 hover:bg-slate-50/50 transition-colors";
+
+        // ไส้ในของแถว (เพิ่มช่องส่วนลด และ หน่วยสินค้า)
+        newRow.innerHTML = `
+        <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number"></td>
+        <td class="px-2 py-4">
+            <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รายละเอียด..."
+                rows="1" oninput="autoResize(this)"
+                class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
         </td>
-        <td class="px-4 py-3">
-            <input type="text" name="item_unit[]" placeholder="เช่น ตัว, ชุด" 
-                   class="w-full bg-slate-50 border-none rounded-md px-2 py-1 text-center text-sm font-bold focus:bg-indigo-50">
+        <td class="px-2 py-4">
+            <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
+                oninput="calculateTotal()"
+                class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50 outline-none">
         </td>
-        <td class="px-4 py-3">
-            <input type="number" name="item_qty[]" value="1" min="1" oninput="calculateTotal()" 
-                   class="w-full bg-slate-50 border-none rounded-md px-2 py-1 text-center text-sm font-bold focus:bg-indigo-50">
+        <td class="px-2 py-4">
+            <input type="text" name="item_unit[]" placeholder="ชิ้น/หน่วย"
+                class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400">
         </td>
-        <td class="px-4 py-3">
-            <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" 
-                   class="w-full bg-transparent border-none text-right text-sm font-mono font-bold focus:ring-0">
+        <td class="px-2 py-4">
+            <input type="number" name="item_price[]" value="0.00" step="0.01"
+                oninput="calculateTotal()"
+                class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0 outline-none">
         </td>
-        <td class="px-4 py-3 text-right text-sm font-mono font-bold text-slate-700 row-total">0.00</td>
-        <td class="px-4 py-3 text-center">
-            <button type="button" onclick="removeRow(this)" class="text-slate-300 hover:text-red-500 transition-colors">
+        <td class="px-2 py-4">
+            <input type="number" name="item_discount[]" value="0.00" step="0.01"
+                oninput="calculateTotal()"
+                class="w-full bg-amber-50/50 border-none rounded-lg px-2 py-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
+        </td>
+        <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
+        <td class="px-4 py-4 text-center">
+            <button type="button" onclick="removeRow(this)"
+                class="text-slate-200 hover:text-red-500 transition-colors">
                 <i class="fas fa-times-circle"></i>
             </button>
         </td>
-    </tr>`;
-        tbody.insertAdjacentHTML('beforeend', newRow);
+    `;
 
-        // ปรับความสูง textarea ทันทีที่เพิ่ม
-        const lastRow = tbody.lastElementChild;
-        autoResize(lastRow.querySelector('textarea'));
+        // เพิ่มแถวลงใน Table
+        tbody.appendChild(newRow);
+
+        // สั่งรันเลขแถวใหม่
+        updateRowNumbers();
+
+        // ปรับขนาด Textarea อัตโนมัติสำหรับแถวใหม่
+        autoResize(newRow.querySelector('textarea'));
     }
-    // ลบแถว
+
+    // 2. ฟังก์ชันลบแถว
     function removeRow(btn) {
         const tbody = document.querySelector('#itemsTable tbody');
+        // ป้องกันไม่ให้ลบจนหมด (เหลือไว้อย่างน้อย 1 แถว)
         if (tbody.rows.length > 1) {
             btn.closest('tr').remove();
-            calculateTotal();
+            updateRowNumbers(); // รันเลขใหม่
+            calculateTotal();   // คำนวณเงินใหม่
+        } else {
+            alert("ต้องมีอย่างน้อย 1 รายการครับจาร!");
         }
     }
 
-    // คำนวณเงิน
+    // 3. ฟังก์ชันรันเลขลำดับแถวใหม่ (1, 2, 3...)
+    function updateRowNumbers() {
+        document.querySelectorAll('.row-number').forEach((td, index) => {
+            td.innerText = index + 1;
+        });
+    }
+
+    // 3. ฟังก์ชันคำนวณเงิน (รองรับส่วนลดและ VAT % จาก Select)
     function calculateTotal() {
         let subtotal = 0;
+
+        // ดึงค่า VAT % จาก Select (id="vat_percent")
+        const vatElement = document.getElementById('vat_percent');
+        const vatPercent = vatElement ? parseFloat(vatElement.value) : 7;
+
         document.querySelectorAll('.item-row').forEach(row => {
             const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
             const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
-            const total = qty * price;
-            row.querySelector('.row-total').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            const discount = parseFloat(row.querySelector('[name="item_discount[]"]').value) || 0;
+
+            // ยอดต่อบรรทัด = (จำนวน * ราคา) - ส่วนลด
+            const total = (qty * price) - discount;
+
+            row.querySelector('.row-total').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             subtotal += total;
         });
 
-        const vat = subtotal * 0.07;
+        const vat = subtotal * (vatPercent / 100);
         const grandtotal = subtotal + vat;
 
-        document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        // อัปเดตการแสดงผลสรุปยอด
+        document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // อัปเดตตัวเลขในวงเล็บของภาษี (Label)
+        const vatLabel = document.getElementById('vat_percent_label');
+        if (vatLabel) vatLabel.innerText = vatPercent;
     }
 
-    // อัปเดตข้อมูลผู้ขาย
+    // 4. อัปเดตข้อมูลผู้ขาย (Supplier)
     function updateSupplierInfo() {
         const select = document.getElementById('supplier_select');
+        if (!select || select.selectedIndex === -1) return;
+
         const selectedOption = select.options[select.selectedIndex];
+        if (!selectedOption.hasAttribute('data-info')) return;
+
         const data = JSON.parse(selectedOption.getAttribute('data-info'));
 
-        document.getElementById('comp_name').innerText = data.company_name;
+        document.getElementById('comp_name').innerText = data.company_name || '-';
         document.getElementById('comp_tax').innerText = data.tax_id || '-';
         document.getElementById('comp_phone').innerText = data.phone || '-';
-        document.getElementById('comp_email').innerText = data.email || '-'; // บรรทัดนี้ที่ขาดไป
+        document.getElementById('comp_email').innerText = data.email || '-';
         document.getElementById('comp_addr').innerText = data.address || '-';
 
         const logoImg = document.getElementById('comp_logo_preview');
-        logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'uploads/default-logo.png';
+        if (logoImg) {
+            logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'uploads/default-logo.png';
+        }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        updateSupplierInfo();
-        calculateTotal();
-    });
-
-    // ฟังก์ชันปรับความสูงอัตโนมัติ
+    // 5. ฟังก์ชันปรับความสูง Textarea
     function autoResize(textarea) {
+        if (!textarea) return;
         textarea.style.height = 'auto';
         textarea.style.height = (textarea.scrollHeight) + 'px';
     }
 
-    // สั่งให้คำนวณความสูงใหม่ทุกครั้งที่เพิ่มแถว หรือโหลดหน้าเสร็จ
+    // สั่งรันเมื่อโหลดหน้าเสร็จ
     document.addEventListener('DOMContentLoaded', () => {
+        updateSupplierInfo();
+        calculateTotal();
+
+        // ปรับความสูง textarea ทุกตัวที่มีอยู่ตอนเริ่มต้น
         document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => {
             autoResize(el);
         });
     });
-
-
 </script>
 <script src="assets/js/demo-data.js"></script>
 <?php include 'footer.php'; ?>

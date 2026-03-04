@@ -52,6 +52,10 @@ $sig_sql = "SELECT path FROM signatures WHERE users_id = '$prepared_by_id' LIMIT
 $sig_res = mysqli_query($conn, $sig_sql);
 $sig_data = mysqli_fetch_assoc($sig_res);
 
+$sum_discount_res = mysqli_query($conn, "SELECT SUM(item_discount) as total_discount FROM pr_items WHERE pr_id = '" . $data['id'] . "'");
+$row_discount = mysqli_fetch_assoc($sum_discount_res);
+$total_discount = $row_discount['total_discount'] ?? 0;
+
 // คำนวณความแน่นของตารางตามจำนวนรายการ
 if ($num_rows <= 5) {
     $dynamic_padding = '20px 15px';
@@ -333,9 +337,22 @@ function ReadNumber($number)
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['subtotal'], 2) ?>
                             </td>
                         </tr>
+                        <?php if ($total_discount > 0): ?>
+                            <tr>
+                                <td style="padding-bottom: 8px; color: #f59e0b; font-weight: 700;">ส่วนลดรวม</td>
+                                <td align="right" style="padding-bottom: 8px; font-weight: 700; color: #d97706;">
+                                    -
+                                    <?= number_format($total_discount, 2) ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                         <tr>
-                            <td style="padding-bottom: 5px;">ภาษีมูลค่าเพิ่ม 7%</td>
-                            <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat'], 2) ?></td>
+                            <td style="padding-bottom: 5px; color: #64748b;">
+                                ภาษีมูลค่าเพิ่ม <?= (float) ($data['vat_percent'] ?? 7) ?>%
+                            </td>
+                            <td align="right" style="padding-bottom: 5px; font-weight: 600;">
+                                <?= number_format($data['vat'], 2) ?>
+                            </td>
                         </tr>
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
                             <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">รวมทั้งสิ้น</td>

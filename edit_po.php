@@ -117,8 +117,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
-                    <div
-                        class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
                             <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">เลขที่เอกสาร
                                 PO</label>
@@ -153,6 +152,16 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     โอนจ่าย</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">ภาษี (VAT
+                                %)</label>
+                            <select name="vat_percent" id="vat_percent" onchange="calculateTotal()"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <option value="7" <?= $po_data['vat_percent'] == 7 ? 'selected' : '' ?>>7%</option>
+                                <option value="0" <?= $po_data['vat_percent'] == 0 ? 'selected' : '' ?>>0%</option>
+                                <option value="10" <?= $po_data['vat_percent'] == 10 ? 'selected' : '' ?>>10%</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
@@ -171,10 +180,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     class="bg-slate-50/80 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
                                     <tr>
                                         <th class="px-6 py-4 w-12 text-center">#</th>
-                                        <th class="px-2 py-4">รายละเอียด</th>
+                                        <th class="px-2 py-4">รายละเอียดสินค้า</th>
                                         <th class="px-2 py-4 w-24 text-center">จำนวน</th>
                                         <th class="px-2 py-4 w-24 text-center">หน่วย</th>
                                         <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
+                                        <th class="px-2 py-4 w-32 text-right">ส่วนลด (บาท)</th>
                                         <th class="px-6 py-4 w-32 text-right">รวมเงิน</th>
                                         <th class="px-4 py-4 w-10"></th>
                                     </tr>
@@ -182,40 +192,50 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <tbody class="divide-y divide-slate-50">
                                     <?php
                                     $count = 1;
+                                    // อย่าลืมเช็คชื่อคอลัมน์ในตาราง pr_items ของจารนะครับ
                                     while ($item = mysqli_fetch_assoc($items_query)):
+                                        // คำนวณราคารายบรรทัดเบื้องต้น: (ราคา * จำนวน) - ส่วนลด
+                                        $row_total = ($item['item_qty'] * $item['item_price']) - ($item['item_discount'] ?? 0);
                                         ?>
                                         <tr class="item-row group">
-                                            <td class="px-6 py-4 text-center text-xs font-bold text-slate-300">
+                                            <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">
                                                 <?= $count++ ?>
                                             </td>
                                             <td class="px-2 py-4">
                                                 <textarea name="item_desc[]" rows="1" oninput="autoResize(this)"
-                                                    class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"><?= htmlspecialchars($item['item_desc'] ?? $item['product_name']) ?></textarea>
+                                                    class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"><?= htmlspecialchars($item['item_desc']) ?></textarea>
                                             </td>
                                             <td class="px-2 py-4">
-                                                <input type="number" name="item_qty[]"
-                                                    value="<?= $item['item_qty'] ?? $item['qty'] ?>" min="1"
-                                                    oninput="calculateTotal()"
+                                                <input type="number" name="item_qty[]" value="<?= $item['item_qty'] ?>"
+                                                    min="0" step="0.01" oninput="calculateTotal()"
                                                     class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50">
                                             </td>
                                             <td class="px-2 py-4">
                                                 <input type="text" name="item_unit[]"
-                                                    value="<?= htmlspecialchars($item['item_unit'] ?? $item['unit']) ?>"
+                                                    value="<?= htmlspecialchars($item['item_unit']) ?>"
                                                     class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400">
                                             </td>
                                             <td class="px-2 py-4">
                                                 <input type="number" name="item_price[]"
-                                                    value="<?= $item['item_price'] ?? $item['price'] ?>" step="0.01"
-                                                    oninput="calculateTotal()"
+                                                    value="<?= number_format($item['item_price'], 2, '.', '') ?>"
+                                                    step="0.01" oninput="calculateTotal()"
                                                     class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
+                                            </td>
+                                            <td class="px-2 py-4">
+                                                <input type="number" name="item_discount[]"
+                                                    value="<?= number_format($item['item_discount'] ?? 0, 2, '.', '') ?>"
+                                                    step="0.01" oninput="calculateTotal()"
+                                                    class="w-full bg-amber-50/50 border-none rounded-lg px-2 py-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
                                             </td>
                                             <td
                                                 class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
-                                                0.00</td>
+                                                <?= number_format($row_total, 2) ?>
+                                            </td>
                                             <td class="px-4 py-4 text-center">
                                                 <button type="button" onclick="removeRow(this)"
-                                                    class="text-slate-200 hover:text-red-500 transition-colors"><i
-                                                        class="fas fa-times-circle"></i></button>
+                                                    class="text-slate-200 hover:text-red-500 transition-colors">
+                                                    <i class="fas fa-times-circle"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
@@ -237,8 +257,14 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="subtotal_display">0.00</span>
                                 </div>
                                 <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>VAT (7%)</span>
-                                    <span id="vat_display">0.00</span>
+                                    <span>VAT (<span
+                                            id="vat_percent_label"><?= number_format($po_data['vat_percent'] ?? 7, 0) ?></span>%)</span>
+
+                                    <div class="flex items-center gap-1">
+                                        <span
+                                            id="vat_display"><?= number_format($po_data['vat_amount'] ?? 0, 2) ?></span>
+                                        <span class="text-[10px] text-slate-400">THB</span>
+                                    </div>
                                 </div>
                                 <div
                                     class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
@@ -259,7 +285,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 </form>
 
 <script>
-    // สคริปต์คำนวณราคาและจัดการแถว (เหมือนเดิมแต่ปรับแก้ ID ตาราง)
+    // 1. เพิ่มแถวรายการสินค้า
     function addItemRow() {
         const tbody = document.querySelector('#itemsTable tbody');
         const rowCount = tbody.rows.length + 1;
@@ -278,24 +304,31 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             <td class="px-2 py-4">
                 <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
             </td>
+            <td class="px-2 py-4">
+                <input type="number" name="item_discount[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-transparent border-none text-right text-sm font-mono text-red-500 focus:ring-0" placeholder="0.00">
+            </td>
             <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
             <td class="px-4 py-4 text-center">
-                <button type="button" onclick="removeRow(this)" class="text-slate-200 hover:text-red-500 transition-colors"><i class="fas fa-times-circle"></i></button>
+                <button type="button" onclick="removeRow(this)" class="text-slate-200 hover:text-red-500 transition-colors">
+                    <i class="fas fa-times-circle"></i>
+                </button>
             </td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', newRow);
         calculateTotal();
     }
 
+    // 2. ลบแถวรายการ
     function removeRow(btn) {
         const tbody = document.querySelector('#itemsTable tbody');
         if (tbody.rows.length > 1) {
             btn.closest('tr').remove();
-            calculateTotal();
             reindexRows();
+            calculateTotal();
         }
     }
 
+    // 3. รันเลขลำดับใหม่
     function reindexRows() {
         document.querySelectorAll('.item-row').forEach((row, index) => {
             row.querySelector('td:first-child').innerText = index + 1;
@@ -304,22 +337,36 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
     function calculateTotal() {
         let subtotal = 0;
+
+        // 1. ดึงค่า % VAT จาก Select box มาใช้ (ถ้าไม่มีให้ default เป็น 7)
+        const vatSelect = document.getElementById('vat_percent');
+        const vatRate = vatSelect ? (parseFloat(vatSelect.value) / 100) : 0.07;
+
         document.querySelectorAll('.item-row').forEach(row => {
             const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
             const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
-            const total = qty * price;
+            const discount = parseFloat(row.querySelector('[name="item_discount[]"]')?.value) || 0;
+
+            const total = (qty * price) - discount;
             row.querySelector('.row-total').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
             subtotal += total;
         });
 
-        const vat = subtotal * 0.07;
+        // 2. คำนวณ VAT ตาม Rate ที่ดึงมาได้จริง
+        const vat = subtotal * vatRate;
         const grandtotal = subtotal + vat;
 
-        document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-    }
+        // 3. อัปเดต Label แสดงผล % (เช่น VAT (0%))
+        if (document.getElementById('vat_percent_label')) {
+            document.getElementById('vat_percent_label').innerText = (vatRate * 100).toFixed(0);
+        }
 
+        // อัปเดตค่าที่หน้าจอ
+        if (document.getElementById('subtotal_display')) document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        if (document.getElementById('vat_display')) document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        if (document.getElementById('grandtotal_display')) document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    }
+    // 5. จัดการข้อมูล Supplier
     function updateSupplierInfo() {
         try {
             const select = document.getElementById('supplier_select');
@@ -327,11 +374,9 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
             const selectedOption = select.options[select.selectedIndex];
             const dataAttr = selectedOption.getAttribute('data-info');
-
             if (!dataAttr) return;
 
             const data = JSON.parse(dataAttr);
-
             document.getElementById('comp_name').innerText = data.company_name || '-';
             document.getElementById('comp_tax').innerText = data.tax_id || '-';
             document.getElementById('comp_phone').innerText = data.phone || '-';
@@ -339,20 +384,27 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             document.getElementById('comp_addr').innerText = data.address || '-';
 
             const logoImg = document.getElementById('comp_logo_preview');
-            logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'assets/img/default-logo.png';
+            if (logoImg) logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'assets/img/default-logo.png';
         } catch (e) {
             console.error("Error parsing supplier info:", e);
         }
     }
+
+    // 6. ขยาย Textarea อัตโนมัติ
     function autoResize(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = (textarea.scrollHeight) + 'px';
     }
 
+    // เมื่อหน้าโหลดเสร็จ
     document.addEventListener('DOMContentLoaded', () => {
         updateSupplierInfo();
         calculateTotal();
-        document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => autoResize(el));
+
+        // สั่งขยาย textarea ทุกตัวที่อาจจะมีข้อมูลอยู่แล้ว
+        setTimeout(() => {
+            document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => autoResize(el));
+        }, 100);
     });
 </script>
 <?php include 'footer.php'; ?>

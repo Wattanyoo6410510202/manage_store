@@ -1,71 +1,78 @@
 <?php
 session_start();
 require_once '../config.php';
+date_default_timezone_set('Asia/Bangkok');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 1. รับค่า (ป้องกัน SQL Injection)
-    $po_id = mysqli_real_escape_string($conn, $_POST['po_id']);
-    $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
-    $customer_id = mysqli_real_escape_string($conn, $_POST['customer_id']);
+    // 1. รับค่าและทำความสะอาดข้อมูลพื้นฐาน
+    $po_id        = mysqli_real_escape_string($conn, $_POST['po_id']);
+    $supplier_id  = mysqli_real_escape_string($conn, $_POST['supplier_id']);
+    $customer_id  = mysqli_real_escape_string($conn, $_POST['customer_id']);
     $reference_no = mysqli_real_escape_string($conn, $_POST['reference_no']);
     $payment_term = mysqli_real_escape_string($conn, $_POST['payment_term']);
-    $notes = mysqli_real_escape_string($conn, $_POST['notes']);
-    $po_date = mysqli_real_escape_string($conn, $_POST['po_date']);
+    $notes        = mysqli_real_escape_string($conn, $_POST['notes']);
+    
+    // รับค่า VAT Percent จากฟอร์ม (ถ้าไม่มีให้ใช้ 7 เป็นค่าเริ่มต้น)
+    $vat_percent  = isset($_POST['vat_percent']) ? floatval($_POST['vat_percent']) : 7.00;
 
-    $item_descs = $_POST['item_desc'] ?? [];
-    $item_qtys = $_POST['item_qty'] ?? [];
-    $item_units = $_POST['item_unit'] ?? [];
-    $item_prices = $_POST['item_price'] ?? [];
+    $item_descs     = $_POST['item_desc'] ?? [];
+    $item_qtys      = $_POST['item_qty'] ?? [];
+    $item_units     = $_POST['item_unit'] ?? [];
+    $item_prices    = $_POST['item_price'] ?? [];
+    $item_discounts = $_POST['item_discount'] ?? [];
 
     mysqli_begin_transaction($conn);
 
     try {
-        // 2. คำนวณยอด
+        // 2. คำนวณยอดรวมใหม่ทั้งหมด (ฝั่ง Server เพื่อความแม่นยำ)
         $calc_subtotal = 0;
         foreach ($item_qtys as $index => $qty) {
-            $price = $item_prices[$index] ?? 0;
-            $calc_subtotal += ($qty * $price);
+            $price    = floatval($item_prices[$index] ?? 0);
+            $discount = floatval($item_discounts[$index] ?? 0);
+            $qty_val  = floatval($qty);
+            $calc_subtotal += (($qty_val * $price) - $discount);
         }
-        $vat = $calc_subtotal * 0.07;
-        $grand_total = $calc_subtotal + $vat;
+        
+        $vat_amount  = $calc_subtotal * ($vat_percent / 100);
+        $grand_total = $calc_subtotal + $vat_amount;
 
-        // 3. UPDATE ตาราง po (แก้ชื่อคอลัมน์ให้ตรง DB)
+        // 3. UPDATE ตาราง po (เพิ่มคอลัมน์ vat_percent เข้าไปด้วย)
         $sql_update_po = "UPDATE po SET 
-                            supplier_id = '$supplier_id',
-                            customer_id = '$customer_id',
+                            supplier_id  = '$supplier_id',
+                            customer_id  = '$customer_id',
                             reference_no = '$reference_no',
                             payment_term = '$payment_term',
-                            notes = '$notes',
-                            subtotal = '$calc_subtotal',  -- แก้จาก total_amount เป็น subtotal
-                            vat_amount = '$vat',
-                            grand_total = '$grand_total',
-                            created_at = '$po_date' 
+                            notes        = '$notes',
+                            subtotal     = '$calc_subtotal',
+                            vat_percent  = '$vat_percent', 
+                            vat_amount   = '$vat_amount',
+                            grand_total  = '$grand_total',
+                            updated_at   = NOW() 
                           WHERE id = '$po_id'";
 
         if (!mysqli_query($conn, $sql_update_po)) {
             throw new Exception("Error Update PO: " . mysqli_error($conn));
         }
 
-        // 4. จัดการ po_items
-        // 5. จัดการรายการสินค้า (ลบของเก่าทิ้ง แล้วเพิ่มของใหม่)
+        // 4. ลบรายการสินค้าเดิมทิ้งก่อน (เพื่อจัดการกรณีมีการลบแถวออก)
         $sql_delete_items = "DELETE FROM po_items WHERE po_id = '$po_id'";
         mysqli_query($conn, $sql_delete_items);
 
+        // 5. Insert รายการสินค้าใหม่เข้าไป
         foreach ($item_descs as $index => $desc) {
-            if (empty(trim($desc)))
-                continue;
+            if (empty(trim($desc))) continue;
 
-            $desc = mysqli_real_escape_string($conn, $desc);
-            $qty = mysqli_real_escape_string($conn, $item_qtys[$index]);
-            $unit = mysqli_real_escape_string($conn, $item_units[$index]);
-            $price = mysqli_real_escape_string($conn, $item_prices[$index]);
+            $d    = mysqli_real_escape_string($conn, $desc);
+            $q    = floatval($item_qtys[$index]);
+            $u    = mysqli_real_escape_string($conn, $item_units[$index]);
+            $p    = floatval($item_prices[$index]);
+            $disc = floatval($item_discounts[$index] ?? 0);
+            
+            // ยอดสุทธิต่อบรรทัด
+            $line_total = ($q * $p) - $disc;
 
-            // คำนวณยอดรวมต่อบรรทัด
-            $line_total = $qty * $price;
-
-            // แก้ไขชื่อคอลัมน์จาก item_total เป็น total_price ให้ตรงกับ DB ของคุณ
-            $sql_item = "INSERT INTO po_items (po_id, item_desc, item_qty, item_unit, item_price, total_price) 
-                 VALUES ('$po_id', '$desc', '$qty', '$unit', '$price', '$line_total')";
+            $sql_item = "INSERT INTO po_items (po_id, item_desc, item_qty, item_unit, item_price, item_discount, total_price) 
+                         VALUES ('$po_id', '$d', '$q', '$u', '$p', '$disc', '$line_total')";
 
             if (!mysqli_query($conn, $sql_item)) {
                 throw new Exception("ไม่สามารถเพิ่มรายการสินค้าได้: " . mysqli_error($conn));
@@ -79,7 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     } catch (Exception $e) {
         mysqli_rollback($conn);
-        // แสดง Error ออกมาดูแบบชัดๆ
         die("Database Error: " . $e->getMessage());
     }
 }

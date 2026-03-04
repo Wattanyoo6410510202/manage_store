@@ -1,113 +1,127 @@
 <?php
 require_once '../config.php';
-// เริ่ม session เพื่อเอา user_id คนที่ login
+date_default_timezone_set('Asia/Bangkok');
+
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-header('Content-Type: application/json');
+// --- ฟังก์ชันเขียน Log เพื่อการ Debug ---
+function write_log($message) {
+    $log_file = 'debug.log';
+    $timestamp = date("Y-m-d H:i:s");
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+}
+
+header('Content-Type: text/html; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-    exit;
+    write_log("Error: Invalid Method");
+    die("Method not allowed");
 }
 
 // 1. รับค่าจากฟอร์ม
 $customer_id  = (int)($_POST['customer_id'] ?? 0);
 $supplier_id  = (int)($_POST['supplier_id'] ?? 0);
 $doc_date     = $_POST['doc_date'] ?? date('Y-m-d');
-$due_date     = $_POST['due_date'] ?? null;
+$due_date     = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
 $reference_no = $_POST['reference_no'] ?? '';
 $payment_term = $_POST['payment_term'] ?? '';
 $requested_by = $_POST['requested_by'] ?? '';
 $contact_tel  = $_POST['contact_tel'] ?? '';
 $notes        = $_POST['notes'] ?? '';
+$vat_percent  = floatval($_POST['vat_percent'] ?? 7);
+$is_internal  = ($customer_id === 0) ? 1 : 0; 
+$user_id      = $_SESSION['user_id'] ?? 0;
 
-// --- จุดสำคัญ: ตรวจสอบว่าเป็นภายในหรือไม่ ---
-$is_internal = ($customer_id === 0) ? 1 : 0; 
-$user_id     = $_SESSION['user_id'] ?? 0; // ID พนักงานที่ Login
-
-// รายการสินค้า
-$items_desc  = $_POST['item_desc'] ?? [];
-$items_qty   = $_POST['item_qty'] ?? [];
-$items_unit  = $_POST['item_unit'] ?? [];
-$items_price = $_POST['item_price'] ?? [];
+$items_desc     = $_POST['item_desc'] ?? [];
+$items_qty      = $_POST['item_qty'] ?? [];
+$items_unit     = $_POST['item_unit'] ?? [];
+$items_price    = $_POST['item_price'] ?? [];
+$items_discount = $_POST['item_discount'] ?? [];
 
 mysqli_begin_transaction($conn);
 
 try {
-    // 2. สร้างเลขที่เอกสาร (เหมือนเดิม)
-    $prefix = "PR";
-    $sql_count = "SELECT COUNT(id) as total FROM pr WHERE doc_no LIKE '$prefix-%'";
-    $res_count = mysqli_query($conn, $sql_count);
-    $row_count = mysqli_fetch_assoc($res_count);
-    $next_id = str_pad($row_count['total'] + 1, 6, '0', STR_PAD_LEFT);
-    $doc_no = $prefix . "-" . $next_id;
+    write_log("Starting PR Save Process...");
 
-    // 3. คำนวณราคารวม
-    $subtotal = 0;
+    // 2. คำนวณยอด
+    $total_subtotal = 0;
     foreach ($items_desc as $key => $val) {
-        $qty = floatval($items_qty[$key]);
-        $price = floatval($items_price[$key]);
-        $subtotal += ($qty * $price);
+        if (trim($val) == "") continue;
+        $qty      = floatval($items_qty[$key]);
+        $price    = floatval($items_price[$key]);
+        $discount = floatval($items_discount[$key] ?? 0);
+        $total_subtotal += ($qty * $price) - $discount;
     }
-    $vat = $subtotal * 0.07;
-    $grand_total = $subtotal + $vat;
+    $total_vat = $total_subtotal * ($vat_percent / 100);
+    $grand_total = $total_subtotal + $total_vat;
 
-    // 4. บันทึกลงตาราง pr (เพิ่ม is_internal และ created_by)
-    // SQL เพิ่ม: is_internal, created_by
-    $stmt = $conn->prepare("INSERT INTO pr (doc_no, doc_date, due_date, supplier_id, customer_id, is_internal, reference_no, payment_term, requested_by, contact_tel, notes, subtotal, vat, grand_total, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // 3. บันทึกตารางหลัก
+    // มีเครื่องหมาย ? ทั้งหมด 16 จุด (ตัวสุดท้ายคือ status เป็นค่าคงที่ 'pending')
+    $sql_main = "INSERT INTO pr (
+                    doc_no, doc_date, due_date, supplier_id, customer_id, is_internal, 
+                    reference_no, payment_term, requested_by, contact_tel, notes, 
+                    subtotal, vat, grand_total, vat_percent, created_by, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')";
 
-    // bind_param: เพิ่ม i (is_internal) และ i (created_by) 
-    // รูปแบบ: sssii i sssss ddd i
+    $stmt = $conn->prepare($sql_main);
+    if (!$stmt) {
+        throw new Exception("Prepare Statement Failed (Main): " . $conn->error);
+    }
+
+    $temp_no = "TEMP-" . time();
+    // bind_param ต้องมี 16 ตัว (ตรงตามจำนวน ? ในวงเล็บ VALUES)
     $stmt->bind_param(
-        "sssiisssssdddii",
-        $doc_no,
-        $doc_date,
-        $due_date,
-        $supplier_id,
-        $customer_id,
-        $is_internal,  // เพิ่มค่านี้
-        $reference_no,
-        $payment_term,
-        $requested_by,
-        $contact_tel,
-        $notes,
-        $subtotal,
-        $vat,
-        $grand_total,
-        $user_id      // เพิ่มค่านี้
+        "sssiissssssddddi", 
+        $temp_no, $doc_date, $due_date, $supplier_id, $customer_id, $is_internal,
+        $reference_no, $payment_term, $requested_by, $contact_tel, $notes,
+        $total_subtotal, $total_vat, $grand_total, $vat_percent, $user_id
     );
 
-    if (!$stmt->execute())
-        throw new Exception("Error saving PR header: " . $stmt->error);
+    if (!$stmt->execute()) {
+        throw new Exception("Execute Failed (Main): " . $stmt->error);
+    }
     
     $pr_id = $conn->insert_id;
+    write_log("Inserted PR ID: $pr_id");
 
-    // 5. บันทึกลงตาราง pr_items (เหมือนเดิม)
-    $stmt_item = $conn->prepare("INSERT INTO pr_items (pr_id, item_desc, item_qty, item_unit, item_price, item_total) VALUES (?, ?, ?, ?, ?, ?)");
+    // 4. สร้างเลขที่เอกสารใหม่ (PR-260305XXXXXX)
+    $date_prefix = date('ymd'); 
+    $new_doc_no = "PR-" . $date_prefix . str_pad($pr_id, 6, '0', STR_PAD_LEFT);
+    $conn->query("UPDATE pr SET doc_no = '$new_doc_no' WHERE id = $pr_id");
+    write_log("Generated Doc No: $new_doc_no");
 
+    // 5. บันทึกตารางลูก
+    $stmt_item = $conn->prepare("INSERT INTO pr_items (pr_id, item_desc, item_qty, item_unit, item_price, item_discount, item_total) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    
     foreach ($items_desc as $key => $desc) {
         if (trim($desc) == "") continue;
+        $qty      = floatval($items_qty[$key]);
+        $unit     = $items_unit[$key];
+        $price    = floatval($items_price[$key]);
+        $discount = floatval($items_discount[$key] ?? 0);
+        $total    = ($qty * $price) - $discount;
 
-        $qty   = floatval($items_qty[$key]);
-        $unit  = $items_unit[$key];
-        $price = floatval($items_price[$key]);
-        $total = $qty * $price;
-
-        $stmt_item->bind_param("isssdd", $pr_id, $desc, $qty, $unit, $price, $total);
-        if (!$stmt_item->execute())
-            throw new Exception("Error saving PR item: " . $desc);
+        $stmt_item->bind_param("isssddd", $pr_id, $desc, $qty, $unit, $price, $discount, $total);
+        if (!$stmt_item->execute()) {
+            throw new Exception("Execute Failed (Item): " . $stmt_item->error);
+        }
     }
 
     mysqli_commit($conn);
+    write_log("PR Saved Successfully!");
+    
     $_SESSION['flash_msg'] = 'add_success';
     header("Location: ../pr_list.php");
 
 } catch (Exception $e) {
     mysqli_rollback($conn);
-    $_SESSION['flash_msg'] = 'error';
-    // จารสามารถเปิดบรรทัดล่างนี้เพื่อดู error ตอน debug ได้ครับ
-    // die($e->getMessage()); 
-    header("Location: ../pr_list.php");
+    write_log("FATAL ERROR: " . $e->getMessage());
+    
+    // แสดง Error ออกหน้าจอด้วยเพื่อความชัดเจน
+    echo "<h3>เกิดข้อผิดพลาดในการบันทึก</h3>";
+    echo "สาเหตุ: " . $e->getMessage();
+    echo "<br><br><a href='javascript:history.back()'>กลับไปแก้ไข</a>";
+    exit;
 }
 
 $conn->close();

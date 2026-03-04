@@ -329,8 +329,12 @@ function ReadNumber($number)
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding-bottom: 5px;">ภาษีมูลค่าเพิ่ม 7%</td>
-                            <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat'], 2) ?></td>
+                            <td style="padding-bottom: 5px;">
+                                ภาษีมูลค่าเพิ่ม <?= number_format($data['vat_percent'], 0) ?>%
+                            </td>
+                            <td align="right" style="padding-bottom: 5px;">
+                                <?= number_format($data['vat'], 2) ?>
+                            </td>
                         </tr>
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
                             <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">รวมทั้งสิ้น</td>
