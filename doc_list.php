@@ -309,7 +309,7 @@ $result = mysqli_query($conn, $sql);
             showCancelButton: true,
             confirmButtonColor: '#10b981',
             cancelButtonColor: '#64748b',
-            confirmButtonText: 'ใช่, อนุมัติเลย!',
+            confirmButtonText: 'ยืนยันอนุมัติ',
             cancelButtonText: 'ยกเลิก',
             reverseButtons: true,
             heightAuto: false

@@ -48,6 +48,7 @@ $result = mysqli_query($conn, $sql);
                             <th>CLIENT</th>
                             <th>ISSUER</th>
                             <th class="text-right">TOTAL AMOUNT</th>
+                            <th>STATUS</th>
                             <th class="text-center w-24">ACTIONS</th>
                         </tr>
                     </thead>
@@ -100,16 +101,34 @@ $result = mysqli_query($conn, $sql);
                                     <?= number_format($row['grand_total'], 2) ?>
                                 </td>
 
+                                <td>
+                                    <div class="text-slate-500 font-medium">
+                                        <?= htmlspecialchars($row['status'] ?: '-') ?>
+                                    </div>
+                                </td>
+
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
+                                                title="อนุมัติ PR"
+                                                class="w-8 h-8 flex items-center justify-center bg-white text-emerald-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-95">
+                                                <i class="fas fa-check-circle text-xs"></i>
+                                            </button>
+                                        <?php endif; ?>
+
                                         <a href="view_pr.php?id=<?= $row['id'] ?>" title="ดูรายละเอียด"
                                             class="w-8 h-8 flex items-center justify-center bg-white text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all active:scale-90">
                                             <i class="fas fa-eye text-xs"></i>
                                         </a>
-                                        <a href="edit_pr.php?id=<?= $row['id'] ?>" title="แก้ไข"
-                                            class="w-8 h-8 flex items-center justify-center bg-white text-slate-400 rounded-lg hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all active:scale-90">
-                                            <i class="fas fa-edit text-xs"></i>
-                                        </a>
+
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <a href="edit_pr.php?id=<?= $row['id'] ?>" title="แก้ไข"
+                                                class="w-8 h-8 flex items-center justify-center bg-white text-slate-400 rounded-lg hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all active:scale-90">
+                                                <i class="fas fa-edit text-xs"></i>
+                                            </a>
+                                        <?php endif; ?>
+
                                         <button onclick="deletePR(<?= $row['id'] ?>)" title="ลบ"
                                             class="w-8 h-8 flex items-center justify-center bg-white text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all active:scale-90">
                                             <i class="fas fa-trash text-xs"></i>
@@ -286,6 +305,48 @@ $result = mysqli_query($conn, $sql);
                 console.error(err);
                 renderAlert('error', 'การเชื่อมต่อผิดพลาด');
             });
+    }
+
+    function approvePR(id, prNo) {
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติ?',
+            text: `คุณกำลังจะอนุมัติใบขอซื้อเลขที่ ${prNo}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonText: 'ยืนยันอนุมัติ',
+            reverseButtons: true,
+
+            heightAuto: false // กันหน้าดีด
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ส่งไปที่ API ของ PR (จารอย่าลืมสร้างไฟล์นี้แยกจากของ Quotation นะ)
+                fetch(`api/update_pr_status.php?id=${id}&action=approved`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            renderAlert('success', 'อนุมัติใบขอซื้อเรียบร้อยแล้ว');
+
+                            // 1. หาแถว (Row) ที่เราเพิ่งกด
+                            const targetRow = $(`.pr-checkbox[value="${id}"]`).closest('tr');
+
+                            // 2. อัปเดต Column "STATUS" (ในตารางของจารคือคอลัมน์ที่ 7 นับจาก 0)
+                            // เราจะเปลี่ยนตัวหนังสือเป็น 'approved'
+                            prTable.cell(targetRow, 7).data('approved').draw(false);
+
+                            // 3. ซ่อนปุ่มอนุมัติและปุ่มแก้ไขทิ้ง (เพราะอนุมัติแล้วไม่ควรแก้)
+                            targetRow.find('button[onclick^="approvePR"]').fadeOut();
+                            targetRow.find('a[href^="edit_pr.php"]').fadeOut();
+
+                            // --- ลบ location.reload() ทิ้งไปเลยครับจาร ---
+                        } else {
+                            Swal.fire('ผิดพลาด', data.message, 'error');
+                        }
+                    })
+            }
+        })
     }
 </script>
 <?php include 'footer.php'; ?>

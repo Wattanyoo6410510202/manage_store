@@ -44,6 +44,7 @@ $result = mysqli_query($conn, $sql);
                             <th>CLIENT</th>
                             <th>SUPPLIER</th>
                             <th class="text-right">TOTAL AMOUNT</th>
+                            <th>STATUS</th>
                             <th class="text-center w-24">ACTIONS</th>
                         </tr>
                     </thead>
@@ -74,15 +75,30 @@ $result = mysqli_query($conn, $sql);
                                     <?= number_format($row['grand_total'], 2) ?>
                                 </td>
                                 <td>
+                                    <div class="text-slate-500 font-medium">
+                                        <?= htmlspecialchars($row['status'] ?: '-') ?>
+                                    </div>
+                                </td>
+                                <td>
                                     <div class="flex justify-center gap-1">
+
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <button onclick="approvePo(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
+                                                title="อนุมัติ PR"
+                                                class="w-8 h-8 flex items-center justify-center bg-white text-emerald-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-95">
+                                                <i class="fas fa-check-circle text-xs"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <a href="view_po.php?id=<?= $row['id'] ?>"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all">
                                             <i class="fas fa-eye text-[10px]"></i>
                                         </a>
-                                        <a href="edit_po.php?id=<?= $row['id'] ?>"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all">
-                                            <i class="fas fa-edit text-[10px]"></i>
-                                        </a>
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <a href="edit_po.php?id=<?= $row['id'] ?>"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all">
+                                                <i class="fas fa-edit text-[10px]"></i>
+                                            </a>
+                                        <?php endif; ?>
                                         <button onclick="deletePO(<?= $row['id'] ?>)"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all">
                                             <i class="fas fa-trash text-[10px]"></i>
@@ -192,28 +208,33 @@ $result = mysqli_query($conn, $sql);
     function renderAlert(type, customMsg = '') {
         const configs = {
             'success': { msg: customMsg || "ทำรายการสำเร็จ", color: "#10b981", icon: "bi-check-lg" },
-            'delete': { msg: customMsg || "ย้ายรายการเรียบร้อย", color: "#f43f5e", icon: "bi-trash3" },
+            'delete': { msg: customMsg || "ย้ายรายการไปที่ถังขยะเรียบร้อย", color: "#f43f5e", icon: "bi-trash3" },
             'error': { msg: customMsg || "เกิดข้อผิดพลาด", color: "#64748b", icon: "bi-x-circle" }
         };
         const config = configs[type] || configs['error'];
+
+        // คำนวณตำแหน่งทับซ้อน
         const existingAlerts = $('.custom-alert').length;
         const topPosition = 25 + (existingAlerts * 85);
 
         const alertHtml = `
-        <div class="custom-alert shadow-lg" style="color: ${config.color}; position: fixed; top: ${topPosition}px; right: 25px; z-index: 10000; width: 100%; max-width: 380px; display: flex; align-items: center; transition: all 0.5s ease; background: white; padding: 15px; border-radius: 12px; border-left: 5px solid ${config.color}">
-            <div style="background-color: ${config.color}20; padding: 10px; border-radius: 10px; margin-right: 15px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi ${config.icon}" style="font-size: 1.5rem;"></i>
-            </div>
-            <div style="flex-grow: 1;">
-                <div style="color: #334155; font-weight: bold; font-size: 0.95rem;">${config.msg}</div>
-            </div>
-            <button type="button" onclick="closeThisAlert(this)" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:1.2rem;">&times;</button>
-        </div>`;
+            <div class="custom-alert shadow-lg" style="color: ${config.color}; position: fixed; top: ${topPosition}px; right: 25px; z-index: 10000; width: 100%; max-width: 380px; display: flex; align-items: center; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); background: white; padding: 15px; border-radius: 12px; border-left: 5px solid ${config.color}">
+                <div class="alert-icon-wrap" style="background-color: ${config.color}20; padding: 10px; border-radius: 10px; margin-right: 15px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi ${config.icon} fs-4"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="text-dark fw-bold mb-0" style="font-size: 0.95rem;">${config.msg}</div>
+                </div>
+                <button type="button" class="btn-close" onclick="closeThisAlert(this)" style="font-size: 0.8rem;"></button>
+            </div>`;
 
         const $alert = $(alertHtml).hide().appendTo('body').fadeIn(300);
-        const timer = setTimeout(() => { closeThisAlert($alert.find('button')); }, 4500);
+
+        // ตั้งเวลาปิดอัตโนมัติ
+        const timer = setTimeout(() => { closeThisAlert($alert.find('.btn-close')); }, 4500);
         $alert.data('timer', timer);
     }
+
 
     function closeThisAlert(btn) {
         const $target = $(btn).closest('.custom-alert');
@@ -230,5 +251,58 @@ $result = mysqli_query($conn, $sql);
 
         $target.fadeOut(300, function () { $(this).remove(); });
     }
+
+    function approvePo(id, poNo) {
+        Swal.fire({
+            title: 'ยืนยันการอนุมัติ?',
+            html: `คุณกำลังจะอนุมัติใบสั่งซื้อเลขที่ ${poNo}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'ยืนยันอนุมัติ',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true,
+            heightAuto: false // กันหน้าดีด
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const fd = new FormData();
+                fd.append('id', id);
+                fd.append('action', 'approve');
+
+                // เปลี่ยน path มาที่ไฟล์เฉพาะของ PO
+                fetch('api/update_po_status.php', {
+                    method: 'POST',
+                    body: fd
+                })
+                    .then(res => res.json())
+                    .then(res => {
+                        // ... เมื่อ success แล้ว ...
+                        if (res.status === 'success') {
+                            renderAlert('success', 'อนุมัติใบสั่งซื้อเรียบร้อยแล้ว');
+
+                            const rowElement = $(`.po-checkbox[value="${id}"]`).closest('tr');
+
+                            // 1. เปลี่ยนคำว่า Status เป็น approved
+                            rowElement.find('td:nth-child(8)').html('<span class="">approved</span>');
+
+                            // 2. ซ่อนปุ่ม Approve (ตัวที่กด)
+                            rowElement.find('button[onclick*="approvePo"]').fadeOut(300);
+
+                            // 3. ซ่อนปุ่ม Edit (แก้ Selector ให้แม่นขึ้น)
+                            rowElement.find('a[href*="edit_po.php"]').fadeOut(300);
+
+                            // 4. (แถม) ถ้าอยากให้ปุ่มลบหายไปด้วยกันพลาด
+                            // rowElement.find('button[onclick*="deletePO"]').fadeOut(300);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        renderAlert('error', 'การเชื่อมต่อผิดพลาด');
+                    });
+            }
+        });
+    }
+
 </script>
 <?php include 'footer.php'; ?>

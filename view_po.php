@@ -8,25 +8,47 @@ if (empty($id)) {
     die("ไม่พบรหัสเอกสาร");
 }
 
-// SQL สำหรับดึงข้อมูล PR (ดึงข้อมูล Supplier และข้อมูลบริษัทเรามาโชว์)
 $sql = "SELECT p.*, 
-               s.company_name as supplier_name, s.address as sup_address, s.tax_id as sup_tax, s.phone as sup_phone,
-               -- ข้อมูลลูกค้าที่เพิ่มเข้ามา
-               c.customer_name, c.address as cust_address, c.tax_id as cust_tax, c.phone as cust_phone, c.email as cust_email,
-               -- ข้อมูลบริษัทเรา (กรณีเก็บไว้ในตาราง suppliers หรือตารางตั้งค่า)
-               own.company_name as my_company, own.tax_id as my_tax, own.phone as my_phone, 
-               own.email as my_email, own.address as my_address, own.logo_path
+               -- 1. ข้อมูลบริษัทเรา (ดึงจาก supplier_id ในตาราง p)
+               own.company_name as my_company, 
+               own.address as my_address, 
+               own.tax_id as my_tax, 
+               own.phone as my_phone, 
+               own.email as my_email, 
+               own.logo_path,
+
+               -- 2. ข้อมูลลูกค้า/สถานที่จัดส่ง (ถ้ามี)
+               c.customer_name, 
+               c.address as cust_address, 
+               c.tax_id as cust_tax,
+
+               -- 3. ข้อมูลผู้จัดทำและลายเซ็น
+               u_creator.name as creator_name, 
+               sig_creator.path as creator_signature,
+               
+               -- 4. ข้อมูลผู้อนุมัติและลายเซ็น
+               u_app.name as approver_name, 
+               sig_app.path as approver_signature
+
         FROM po p
-        LEFT JOIN suppliers s ON p.supplier_id = s.id
-        LEFT JOIN customers c ON p.customer_id = c.id -- ดึงข้อมูลลูกค้าผ่าน customer_id ในตาราง pr
-        LEFT JOIN suppliers own ON p.supplier_id = own.id -- หรือเปลี่ยนเป็น ID ของบริษัทคุณเอง
+        -- เชื่อมตาราง suppliers เพื่อเอาข้อมูลบริษัทเรา โดยใช้ supplier_id จาก po
+        LEFT JOIN suppliers own ON p.supplier_id = own.id 
+        
+        LEFT JOIN customers c ON p.customer_id = c.id
+        LEFT JOIN users u_creator ON p.created_by = u_creator.id
+        LEFT JOIN signatures sig_creator ON u_creator.id = sig_creator.users_id
+        LEFT JOIN users u_app ON p.approved_by = u_app.id
+        LEFT JOIN signatures sig_app ON u_app.id = sig_app.users_id
+        
         WHERE p.id = '$id' LIMIT 1";
+
 $result = mysqli_query($conn, $sql);
 $data = mysqli_fetch_assoc($result);
 
-if (!$data) {
-    die("ไม่พบข้อมูลเอกสารในระบบ");
-}
+// เช็ค Path โลโก้ให้ชัวร์
+$logo_path = (!empty($data['logo_path']) && file_exists('uploads/' . $data['logo_path']))
+    ? 'uploads/' . $data['logo_path']
+    : '';
 
 // ดึงรายการสินค้าของ PR
 $sql_items = "SELECT * FROM po_items WHERE po_id = '$id' ORDER BY id ASC";
@@ -205,7 +227,7 @@ function ReadNumber($number)
             style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc; ">
             <p
                 style="margin: 0 0 5px; font-size: 9px; font-weight: bold; color: var(--primary-color); text-transform: uppercase;">
-                Customer / ลูกค้า
+                ผู้รับสั่งซื้อ / ร้านค้า
             </p>
             <h3 style="margin: 0; font-size: 14px; color: #0f172a;"><?= $data['customer_name'] ?></h3>
 
@@ -332,17 +354,49 @@ function ReadNumber($number)
             </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; text-align: center; font-size: 12px;">
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
-                <p style="margin: 0; font-weight: bold;">ผู้รับบริการ / Customer</p>
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; text-align: center;">
+
+            <div style="width: 30%;">
+                <div class="sig-box"
+                    style="border-bottom: 1px solid #cbd5e1; height: 60px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center;">
+                    <?php if (!empty($data['creator_signature'])): ?>
+                        <img src="uploads/signatures/<?= $data['creator_signature'] ?>"
+                            style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                    <?php endif; ?>
+                </div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้จัดทำ</p>
+                <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">(
+                    <?= $data['creator_name'] ?: '................................' ?> )
+                </p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
+                    <?= date('d/m/Y', strtotime($data['created_at'])) ?>
+                </p>
+            </div>
+
+            <div style="width: 30%;">
+                <div class="sig-box"
+                    style="border-bottom: 1px solid #cbd5e1; height: 60px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center;">
+                    <?php if ($data['status'] === 'approved' && !empty($data['approver_signature'])): ?>
+                        <img src="uploads/signatures/<?= $data['approver_signature'] ?>"
+                            style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                    <?php endif; ?>
+                </div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้อนุมัติ</p>
+                <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">(
+                    <?= $data['approver_name'] ?: '................................' ?> )
+                </p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
+                    <?= $data['approved_at'] ? date('d/m/Y', strtotime($data['approved_at'])) : '../../..' ?>
+                </p>
+            </div>
+
+            <div style="width: 30%;">
+                <div class="sig-box" style="border-bottom: 1px solid #cbd5e1; height: 60px; margin-bottom: 10px;"></div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้รับสั่งซื้อ / ร้านค้า</p>
+                <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">( <?= $data['customer_name'] ?> )</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
             </div>
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
-                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม / Authorized Signature</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['my_company'] ?> )</p>
-            </div>
+
         </div>
     </div>
 

@@ -365,7 +365,7 @@ function ReadNumber($number)
                     <?php endif; ?>
 
                 </div>
-                <p style="margin: 0; font-weight: bold;">ผู้จัดทำ / Prepared by</p>
+                <p style="margin: 0; font-weight: bold;">ผู้จัดทำ</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">(
                     <?= $data['creator_name'] ?? $data['created_by'] ?> )
                 </p>
@@ -388,7 +388,7 @@ function ReadNumber($number)
                     <?php endif; ?>
 
                 </div>
-                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม / Authorized Signature</p>
+                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['my_company'] ?> )</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
                     วันที่
@@ -398,7 +398,7 @@ function ReadNumber($number)
 
             <div style="width: 30%;">
                 <div class="sig-box" style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
-                <p style="margin: 0; font-weight: bold;">ลูกค้า / Customer</p>
+                <p style="margin: 0; font-weight: bold;">ลูกค้า</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['customer_name'] ?> )</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
             </div>

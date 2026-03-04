@@ -23,7 +23,7 @@ include('assets/alert.php');
     <button onclick="createDoc('other')"
         class="flex items-center justify-center gap-3 p-4 bg-slate-700 text-white rounded-2xl shadow-sm hover:bg-slate-800 hover:-translate-y-1 transition-all">
         <i class="fas fa-folder-plus text-xl"></i>
-        <span class="font-bold">เอกสารอื่นๆ</span>
+        <span class="font-bold">ใบเบิกงวดงาน</span>
     </button>
 </div>
 

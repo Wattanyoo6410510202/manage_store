@@ -53,7 +53,9 @@ include('assets/alert.php');
                             <option value="staff">Staff (พนักงานทั่วไป)</option>
                             <option value="admin">Admin (ผู้ดูแลระบบ)</option>
                             <option value="gm">GM (ผู้จัดการ)</option>
-                            <option value="viewer">Viewer</option>
+                             <option value="gmhok">GM HOK (ผู้จัดการ HOK)</option>
+                            <option value="hok">HOK (ผู้ปฏิบัติงานพิเศษ)</option>
+                            <option value="viewer">Viewer (ผู้ชม)</option>
                         </select>
                     </div>
 
@@ -99,10 +101,15 @@ include('assets/alert.php');
                                     <?php
                                     // กำหนดสีตาม Role (แบบตัวเต็มครบทุกสถานะ)
                                     $role_styles = [
-                                        'admin' => 'bg-purple-100 text-purple-600',   // ผู้ดูแลระบบ (สีม่วง)
-                                        'gm' => 'bg-amber-100 text-amber-600',     // ผู้จัดการ (สีส้ม/ทอง)
-                                        'staff' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า)
-                                        'viewer' => 'bg-slate-100 text-slate-500'      // ผู้ชม (สีเทา)
+                                        'admin' => 'bg-purple-100 text-purple-600',   // ผู้ดูแลระบบ (สีม่วง) - เหมือนเดิม
+                                        'gm' => 'bg-amber-100 text-amber-600',     // ผู้จัดการ (สีส้ม/ทอง) - เหมือนเดิม
+                                        'staff' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า) - เหมือนเดิม
+                                
+                                        // --- จุดที่เปลี่ยนใหม่ให้ต่างกันครับจาร ---
+                                
+                                        'gmhok' => 'bg-rose-100 text-rose-600',       // GM HOK (สีชมพูเข้ม/แดง) - ให้ดูเด่นระดับผู้บริหาร
+                                        'hok' => 'bg-emerald-100 text-emerald-600', // HOK (สีเขียวมรกต) - แยกออกมาให้ดูเป็นฝ่ายปฏิบัติการพิเศษ
+                                        'viewer' => 'bg-slate-100 text-slate-500',     // ผู้ชม (สีเทา) - เหมือนเดิม (เน้นเรียบๆ เพราะแค่อ่านอย่างเดียว)
                                     ];
 
                                     // ดึง Class ตาม Role ถ้าไม่มีในรายการให้ใช้สีเทามาตรฐาน

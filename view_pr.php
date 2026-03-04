@@ -10,23 +10,30 @@ if (empty($id)) {
 
 $sql = "SELECT p.*, 
                s.company_name as supplier_name, s.address as sup_address, s.tax_id as sup_tax, s.phone as sup_phone,
-               
-               -- เช็คเงื่อนไขตรงนี้เลย ถ้า is_internal เป็น 1 ให้ไปดึงชื่อจาก users
-               IF(p.is_internal = 1, 
-                  (SELECT name FROM users WHERE id = p.created_by), 
-                  c.customer_name
-               ) as customer_name,
-               
-               -- ส่วนที่เหลือก็ใช้ logic เดียวกัน หรือปล่อยว่างถ้าเป็นคนใน
+               IF(p.is_internal = 1, u_creator.name, c.customer_name) as customer_name,
                IF(p.is_internal = 1, 'ภายในองค์กร', c.address) as cust_address,
                IF(p.is_internal = 1, '-', c.tax_id) as cust_tax,
                
+               -- ข้อมูลผู้จัดทำ (Created By)
+               u_creator.name as creator_name,
+               sig_creator.path as creator_signature,
+               
+               -- ข้อมูลผู้อนุมัติ (Approved By)
+               u_app.name as approver_name,
+               sig_app.path as approver_signature,
+
                own.company_name as my_company, own.tax_id as my_tax, own.phone as my_phone, 
                own.email as my_email, own.address as my_address, own.logo_path
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
         LEFT JOIN customers c ON p.customer_id = c.id 
         LEFT JOIN suppliers own ON p.supplier_id = own.id 
+        -- Join หาคนทำ (ใช้ users_id ตามตาราง signatures)
+        LEFT JOIN users u_creator ON p.created_by = u_creator.id
+        LEFT JOIN signatures sig_creator ON u_creator.id = sig_creator.users_id
+        -- Join หาคนอนุมัติ (ใช้ users_id ตามตาราง signatures)
+        LEFT JOIN users u_app ON p.approved_by = u_app.id
+        LEFT JOIN signatures sig_app ON u_app.id = sig_app.users_id
         WHERE p.id = '$id' LIMIT 1";
 
 $result = mysqli_query($conn, $sql);
@@ -38,6 +45,12 @@ $res_items = mysqli_query($conn, $sql_items);
 $num_rows = mysqli_num_rows($res_items);
 
 $logo_path = !empty($data['logo_path']) ? 'uploads/' . $data['logo_path'] : '';
+
+
+$prepared_by_id = $data['created_by'];
+$sig_sql = "SELECT path FROM signatures WHERE users_id = '$prepared_by_id' LIMIT 1";
+$sig_res = mysqli_query($conn, $sig_sql);
+$sig_data = mysqli_fetch_assoc($sig_res);
 
 // คำนวณความแน่นของตารางตามจำนวนรายการ
 if ($num_rows <= 5) {
@@ -340,19 +353,56 @@ function ReadNumber($number)
                 </div>
             </div>
         </div>
+        <div class="doc-footer" style="display: flex; justify-content: space-between; gap: 20px; margin-top: 30px;">
 
-        <div style="display: flex; justify-content: space-between; text-align: center; font-size: 12px;">
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
-                <p style="margin: 0; font-weight: bold;">ผู้รับบริการ / Customer</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
+            <div style="width: 33%; text-align: center;">
+                <div class="sig-box"
+                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
+                    <?php if (!empty($data['creator_signature'])): ?>
+                        <img src="uploads/signatures/<?= $data['creator_signature'] ?>"
+                            style="max-height: 50px; object-fit: contain;">
+                    <?php endif; ?>
+                </div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้จัดทำ </p>
+                <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(
+                    <?= $data['creator_name'] ?: '..................................' ?> )
+                </p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
+                    <?= date('d/m/Y', strtotime($data['created_at'])) ?>
+                </p>
             </div>
-            <div style="width: 45%;">
-                <div class="sig-box"></div>
-                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม / Authorized Signature</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['my_company'] ?> )</p>
+
+            <div style="width: 33%; text-align: center;">
+                <div class="sig-box"
+                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
+                    <?php if ($data['status'] === 'approved' && !empty($data['approver_signature'])): ?>
+                        <img src="uploads/signatures/<?= $data['approver_signature'] ?>"
+                            style="max-height: 50px; object-fit: contain;">
+                    <?php elseif ($data['status'] === 'approved'): ?>
+                        <span style="font-weight: bold; color: #10b981;">APPROVED</span>
+                    <?php else: ?>
+                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;">( รออนุมัติ )</span>
+                    <?php endif; ?>
+                </div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">แผนกบัญชี / จัดซื้อ</p>
+                <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(
+                    <?= $data['approver_name'] ?: '..................................' ?> )
+                </p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
+                    วันที่
+                    <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : '......../......../........' ?>
+                </p>
             </div>
+
+            <div style="width: 33%; text-align: center;">
+                <div class="sig-box" style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้อนุมัติ </p>
+                <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(..................................)</p>
+                <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">วันที่ ......../......../........</p>
+            </div>
+
         </div>
+
     </div>
 
     <div

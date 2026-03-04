@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $requested_by = mysqli_real_escape_string($conn, $_POST['requested_by']);
     $contact_tel = mysqli_real_escape_string($conn, $_POST['contact_tel']);
     $notes = mysqli_real_escape_string($conn, $_POST['notes']);
+    $created_by = $_SESSION['user_id'];
     $vat_percent = floatval($_POST['vat_type']);
 
     // 2. สร้างเลขที่เอกสาร PO อัตโนมัติ (รูปแบบ PO-000001)
@@ -50,11 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $sql_po = "INSERT INTO po (
             doc_no, customer_id, supplier_id, reference_no, 
             due_date, payment_term, requested_by, contact_tel, 
-            notes, subtotal, vat_amount, grand_total, status
+            notes, subtotal, vat_amount, grand_total, status,
+            created_by 
         ) VALUES (
             '$doc_no', '$customer_id', '$supplier_id', '$reference_no', 
             '$due_date', '$payment_term', '$requested_by', '$contact_tel', 
-            '$notes', '$subtotal', '$vat_amount', '$grand_total', 'pending'
+            '$notes', '$subtotal', '$vat_amount', '$grand_total', 'pending', '$created_by'
         )";
 
         if (!mysqli_query($conn, $sql_po)) {
