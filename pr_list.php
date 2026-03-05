@@ -154,7 +154,7 @@ $result = mysqli_query($conn, $sql);
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[1, "asc"]],
-            "columnDefs": [{ "orderable": false, "targets": [0, 7] }],
+            "columnDefs": [{ "orderable": false, "targets": [0, 8] }],
             "drawCallback": function () {
                 updateBulkUI(); // อัปเดต UI ปุ่ม Bulk ทันทีที่มีการวาดตารางใหม่
             }

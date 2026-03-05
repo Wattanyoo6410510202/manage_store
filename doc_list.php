@@ -141,7 +141,7 @@ $result = mysqli_query($conn, $sql);
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[2, "desc"]], // เรียงตามวันที่ (Column 2)
-            "columnDefs": [{ "orderable": false, "targets": [0, 7] }], // ปิด sorting checkbox และ action
+            "columnDefs": [{ "orderable": false, "targets": [0, 8] }], // ปิด sorting checkbox และ action
             "drawCallback": function () {
                 updateBulkUI();
             }

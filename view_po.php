@@ -333,7 +333,7 @@ function ReadNumber($number)
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding-bottom: 5px;">ภาษีมูลค่าเพิ่ม 7%</td>
+                            <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย <?= number_format($data['vat_percent'], 0) ?>%</td>
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat_amount'], 2) ?>
                             </td>
                         </tr>
@@ -383,10 +383,10 @@ function ReadNumber($number)
                 </div>
                 <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้อนุมัติ</p>
                 <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">(
-                    <?= $data['approver_name'] ?: '................................' ?> )
+                    <?= $data['approver_name'] ?: '................................................................' ?> )
                 </p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
-                    <?= $data['approved_at'] ? date('d/m/Y', strtotime($data['approved_at'])) : '../../..' ?>
+                    <?= $data['approved_at'] ? date('d/m/Y', strtotime($data['approved_at'])) : '......../......../........' ?>
                 </p>
             </div>
 
@@ -442,22 +442,12 @@ function ReadNumber($number)
     }
 </script>
 <script>
-    // 1. ลูกเล่นเปิด-ปิดลายเซ็น
     function toggleSignature() {
-        const sigBox = document.querySelectorAll('.sig-box');
-        const btn = document.getElementById('sigBtn');
+        // 1. ถ้าจารต้องการให้กดแล้วเด้งไปหน้าสร้างเลย
+        window.location.href = 'create_signature.php';
 
-        sigBox.forEach(el => {
-            el.style.opacity = (el.style.opacity === '0') ? '1' : '0';
-        });
-
-        btn.classList.toggle('active');
-
-        // แจ้งเตือนเล็กน้อย
-        if (typeof renderAlert === 'function') {
-            const status = btn.classList.contains('active') ? 'แสดงลายเซ็น' : 'ซ่อนลายเซ็น';
-            renderAlert('success', status);
-        }
+        // หรือถ้าอยากให้เปิด Tab ใหม่ (จะได้ไม่หลุดจากหน้า PR)
+        // window.open('create_signature.php', '_blank');
     }
 
     // 2. ส่งออกเป็น Word (.doc)

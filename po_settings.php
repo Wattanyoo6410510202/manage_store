@@ -80,27 +80,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800">
-                        <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
-                            <h3
-                                class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
-                                <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
-                            </h3>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <div class="text-white font-black text-lg">
-                                    <?= htmlspecialchars($customer['customer_name']) ?>
-                                </div>
-                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
-                                    <?= $customer['tax_id'] ?: '-' ?>
-                                </div>
-                            </div>
-                            <div class="text-slate-400 text-xs leading-relaxed">
-                                <?= nl2br(htmlspecialchars($customer['address'])) ?>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
 
                 <div class="lg:col-span-2 space-y-6">
@@ -139,101 +119,123 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <option value="7">7%</option>
                                 <option value="0">0%</option>
                                 <option value="10">10%</option>
+                                <option value="5">5%</option>
+                                <option value="3">3%</option>
                             </select>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                            <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
-                                    class="fas fa-shopping-cart mr-2 text-indigo-500"></i> Order Items</span>
-                            <button type="button" onclick="addItemRow()"
-                                class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all"><i
-                                    class="fas fa-plus mr-1"></i> เพิ่มรายการ</button>
+                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800">
+                        <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
+                            <h3
+                                class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
+                                <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
+                            </h3>
                         </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse" id="itemsTable">
-                                <thead
-                                    class="bg-slate-50/80 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
-                                    <tr>
-                                        <th class="px-6 py-4 w-12 text-center">#</th>
-                                        <th class="px-2 py-4">รายละเอียดสินค้า</th>
-                                        <th class="px-2 py-4 w-24 text-center">จำนวน</th>
-                                        <th class="px-2 py-4 w-24 text-center">หน่วย</th>
-                                        <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
-                                        <th class="px-2 py-4 w-32 text-right">ส่วนลด (บาท)</th>
-                                        <th class="px-6 py-4 w-32 text-right">รวมเงิน</th>
-                                        <th class="px-4 py-4 w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    <tr class="item-row group">
-                                        <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">1
-                                        </td>
-                                        <td class="px-2 py-4">
-                                            <textarea name="item_desc[]" oninput="autoResize(this)"
-                                                placeholder="ระบุรายละเอียด..."
-                                                class="w-full bg-transparent border-none outline-none text-sm font-bold resize-none block overflow-hidden focus:ring-0"></textarea>
-                                        </td>
-                                        <td class="px-2 py-4">
-                                            <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
-                                                oninput="calculateTotal()"
-                                                class="w-full bg-slate-50 border-none rounded-lg p-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50 outline-none">
-                                        </td>
-                                        <td class="px-2 py-4">
-                                            <input type="text" name="item_unit[]" placeholder="หน่วย"
-                                                class="w-full bg-transparent border-b border-slate-100 text-center text-sm font-bold outline-none focus:border-indigo-400">
-                                        </td>
-                                        <td class="px-2 py-4">
-                                            <input type="number" name="item_price[]" value="0.00" step="0.01"
-                                                oninput="calculateTotal()"
-                                                class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
-                                        </td>
-                                        <td class="px-2 py-4">
-                                            <input type="number" name="item_discount[]" value="0.00" step="0.01"
-                                                oninput="calculateTotal()"
-                                                class="w-full bg-amber-50/50 border-none rounded-lg p-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
-                                        </td>
-                                        <td
-                                            class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
-                                            0.00</td>
-                                        <td class="px-4 py-4 text-center">
-                                            <button type="button" onclick="removeRow(this)"
-                                                class="text-slate-200 hover:text-red-500 transition-colors">
-                                                <i class="fas fa-times-circle"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <div class="text-white font-black text-lg">
+                                    <?= htmlspecialchars($customer['customer_name']) ?>
+                                </div>
+                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
+                                    <?= $customer['tax_id'] ?: '-' ?>
+                                </div>
+                            </div>
+                            <div class="text-slate-400 text-xs leading-relaxed">
+                                <?= nl2br(htmlspecialchars($customer['address'])) ?>
+                            </div>
                         </div>
+                    </div>
 
+                </div>
+
+            </div>
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                    <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
+                            class="fas fa-shopping-cart mr-2 text-indigo-500"></i> Order Items</span>
+                    <button type="button" onclick="addItemRow()"
+                        class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all"><i
+                            class="fas fa-plus mr-1"></i> เพิ่มรายการ</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="itemsTable">
+                        <thead
+                            class="bg-slate-50/80 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-4 w-12 text-center">#</th>
+                                <th class="px-2 py-4">รายละเอียดสินค้า</th>
+                                <th class="px-2 py-4 w-24 text-center">จำนวน</th>
+                                <th class="px-2 py-4 w-24 text-center">หน่วย</th>
+                                <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
+                                <th class="px-2 py-4 w-32 text-right">ส่วนลด (บาท)</th>
+                                <th class="px-6 py-4 w-32 text-right">รวมเงิน</th>
+                                <th class="px-4 py-4 w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <tr class="item-row group">
+                                <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">1
+                                </td>
+                                <td class="px-2 py-4">
+                                    <textarea name="item_desc[]" oninput="autoResize(this)"
+                                        placeholder="ระบุรายละเอียด..."
+                                        class="w-full bg-transparent border-none outline-none text-sm font-bold resize-none block overflow-hidden focus:ring-0"></textarea>
+                                </td>
+                                <td class="px-2 py-4">
+                                    <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
+                                        oninput="calculateTotal()"
+                                        class="w-full bg-slate-50 border-none rounded-lg p-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50 outline-none">
+                                </td>
+                                <td class="px-2 py-4">
+                                    <input type="text" name="item_unit[]" placeholder="หน่วย"
+                                        class="w-full bg-transparent border-b border-slate-100 text-center text-sm font-bold outline-none focus:border-indigo-400">
+                                </td>
+                                <td class="px-2 py-4">
+                                    <input type="number" name="item_price[]" value="0.00" step="0.01"
+                                        oninput="calculateTotal()"
+                                        class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
+                                </td>
+                                <td class="px-2 py-4">
+                                    <input type="number" name="item_discount[]" value="0.00" step="0.01"
+                                        oninput="calculateTotal()"
+                                        class="w-full bg-amber-50/50 border-none rounded-lg p-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
+                                    0.00</td>
+                                <td class="px-4 py-4 text-center">
+                                    <button type="button" onclick="removeRow(this)"
+                                        class="text-slate-200 hover:text-red-500 transition-colors">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div
+                    class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div class="w-full md:flex-grow">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
+                        <textarea name="notes" rows="3"
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none"></textarea>
+                    </div>
+                    <div class="w-full md:w-72 space-y-2">
+                        <div class="flex justify-between text-sm font-bold text-slate-500">
+                            <span>รวมเป็นเงิน</span><span id="subtotal_display">0.00</span>
+                        </div>
+                        <div class="flex justify-between text-sm font-bold text-slate-500">
+                            <span>หัก ณ ที่จ่าย(<span id="vat_percent_label">7</span>%)</span>
+                            <span id="vat_display">0.00</span>
+                        </div>
                         <div
-                            class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
-                            <div class="w-full md:flex-grow">
-                                <label
-                                    class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
-                                <textarea name="notes" rows="3"
-                                    class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none"></textarea>
-                            </div>
-                            <div class="w-full md:w-72 space-y-2">
-                                <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>รวมเป็นเงิน</span><span id="subtotal_display">0.00</span>
-                                </div>
-                                <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>ภาษีมูลค่าเพิ่ม (<span id="vat_percent_label">7</span>%)</span>
-                                    <span id="vat_display">0.00</span>
-                                </div>
-                                <div
-                                    class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
-                                    <span>รวม</span><span id="grandtotal_display">0.00</span>
-                                </div>
-                                <button type="submit"
-                                    class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl  hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"><i
-                                        class="fas fa-save"></i>บันทึกและออกเอกสาร</button>
-                            </div>
+                            class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
+                            <span>รวม</span><span id="grandtotal_display">0.00</span>
                         </div>
+                        <button type="submit"
+                            class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl  hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"><i
+                                class="fas fa-save"></i>บันทึกและออกเอกสาร</button>
                     </div>
                 </div>
             </div>

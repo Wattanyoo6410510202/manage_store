@@ -64,25 +64,14 @@ if ($data['status'] === 'approved' && !empty($data['approved_by'])) {
 $num_rows = mysqli_num_rows($res_items);
 
 if ($num_rows <= 5) {
-    // โหมดโล่ง (1-5 รายการ)
-    $padding = '20px 15px';
-    $font_size = '14px';
-    $line_height = '1.8';
+    $dynamic_padding = '20px 15px';
+    $dynamic_font_size = '14px';
 } elseif ($num_rows <= 10) {
-    // โหมดปกติ (6-10 รายการ)
-    $padding = '12px 15px';
-    $font_size = '13px';
-    $line_height = '1.6';
-} elseif ($num_rows <= 15) {
-    // โหมดประหยัดพื้นที่ (11-15 รายการ)
-    $padding = '6px 15px';
-    $font_size = '12px';
-    $line_height = '1.4';
+    $dynamic_padding = '12px 15px';
+    $dynamic_font_size = '13px';
 } else {
-    // โหมดอัดแน่น (16 รายการขึ้นไป)
-    $padding = '3px 15px';
-    $font_size = '11px';
-    $line_height = '1.2';
+    $dynamic_padding = '5px 15px';
+    $dynamic_font_size = '12px';
 }
 ?>
 
