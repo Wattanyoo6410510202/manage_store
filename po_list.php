@@ -82,7 +82,10 @@ $result = mysqli_query($conn, $sql);
                                 <td>
                                     <div class="flex justify-center gap-1">
 
-                                        <?php if ($row['status'] === 'pending'): ?>
+                                        <?php
+                                        // ตรวจสอบทั้งสถานะ pending และสิทธิ์การใช้งาน (สมมติว่าตัวแปร session ชื่อ $_SESSION['role'])
+                                        if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok')):
+                                            ?>
                                             <button onclick="approvePo(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
                                                 title="อนุมัติ PR"
                                                 class="w-8 h-8 flex items-center justify-center bg-white text-emerald-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-95">

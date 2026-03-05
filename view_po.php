@@ -21,6 +21,7 @@ $sql = "SELECT p.*,
                c.customer_name, 
                c.address as cust_address, 
                c.tax_id as cust_tax,
+               c.phone as cust_phone,
 
                -- 3. ข้อมูลผู้จัดทำและลายเซ็น
                u_creator.name as creator_name, 
@@ -238,15 +239,13 @@ function ReadNumber($number)
                     <b>เลขประจำตัวผู้เสียภาษี:</b> <?= $data['cust_tax'] ?><br>
                 <?php endif; ?>
 
+                <?php if (!empty($data['cust_phone'])): ?>
+                    <b>เบอร์โทร:</b> <?= $data['cust_phone'] ?><br>
+                <?php endif; ?>
+
+
                 <?php if (!empty($data['contact_person']) || !empty($data['cust_phone']) || !empty($data['cust_email'])): ?>
                     <div style="margin-top: 4px;">
-                        <b style="color: #475569;">ติดต่อ:</b>
-                        <?= htmlspecialchars($data['contact_person'] ?? '-') ?>
-
-                        <?php if (!empty($data['cust_phone'])): ?>
-                            <span style="color: #64748b;"> | โทร: </span><?= htmlspecialchars($data['cust_phone']) ?>
-                        <?php endif; ?>
-
                         <?php if (!empty($data['cust_email'])): ?>
                             <span style="color: #64748b;"> | อีเมล: </span><span
                                 style="color: #0f172a; text-decoration: none;"><?= htmlspecialchars($data['cust_email']) ?></span>
@@ -268,12 +267,12 @@ function ReadNumber($number)
                 <span
                     style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['created_at'])) ?></span>
             </div>
-
             <div
                 style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b;">วันที่ต้องการสินค้า</span>
-                <span
-                    style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
+                <span style="color: #0f172a; font-weight: bold;">
+                    <?= (!empty($data['due_date']) && $data['due_date'] != '0000-00-00') ? date('d/m/Y', strtotime($data['due_date'])) : '-' ?>
+                </span>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding: 6px 0;">
@@ -333,7 +332,9 @@ function ReadNumber($number)
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย <?= number_format($data['vat_percent'], 0) ?>%</td>
+                            <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย4
+                                <?= number_format($data['vat_percent'], 0) ?>%
+                            </td>
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat_amount'], 2) ?>
                             </td>
                         </tr>
@@ -383,7 +384,8 @@ function ReadNumber($number)
                 </div>
                 <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้อนุมัติ</p>
                 <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">(
-                    <?= $data['approver_name'] ?: '................................................................' ?> )
+                    <?= $data['approver_name'] ?: '................................................................' ?>
+                    )
                 </p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
                     <?= $data['approved_at'] ? date('d/m/Y', strtotime($data['approved_at'])) : '......../......../........' ?>
