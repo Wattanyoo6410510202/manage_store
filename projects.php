@@ -9,19 +9,15 @@ $sql = "SELECT p.*,
 $result = mysqli_query($conn, $sql);
 ?>
 
-<div class="p-6">
+<div>
     <div class="flex justify-between items-center mb-6">
         <div>
             <h2 class="text-2xl font-bold text-slate-800">บริหารโครงการ & งวดงาน</h2>
             <p class="text-slate-500 text-sm">คลิกที่การ์ดเพื่อดูรายละเอียดเอกสารที่เชื่อมโยง</p>
         </div>
         <button onclick="location.href='add_project.php'"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-200">
-            <i class="fas fa-plus-circle"></i> สร้างโครงการใหม่
-        </button>
-        <button type="button" onclick="randomProject()"
-            class="bg-amber-100 hover:bg-amber-200 text-amber-700 px-5 py-2.5 rounded-xl font-bold border border-amber-200 transition-all">
-            <i class="fas fa-dice mr-2"></i> สุ่มข้อมูล & บันทึก
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all ">
+            <i class="fas fa-plus-circle"></i> สร้างงานใหม่
         </button>
     </div>
 
@@ -30,7 +26,7 @@ $result = mysqli_query($conn, $sql);
             $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
             $pj_id = $row['id'];
             ?>
-            <div class="group bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all">
+            <div class="group bg-white rounded-2xl border border-slate-200 p-5  transition-all">
                 <div class="flex justify-between items-start mb-4">
                     <span
                         class="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md uppercase tracking-wider"><?= $row['project_no'] ?></span>
@@ -45,6 +41,12 @@ $result = mysqli_query($conn, $sql);
                             class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all"
                             title="ดูหน้าเต็ม/พิมพ์เอกสาร">
                             <i class="fas fa-eye text-xs"></i>
+                        </a>
+
+                        <a href="edit_project.php?id=<?= $pj_id ?>"
+                            class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all"
+                            title="แก้ไขโครงการ">
+                            <i class="fas fa-edit text-xs"></i>
                         </a>
 
                         <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
@@ -94,7 +96,7 @@ $result = mysqli_query($conn, $sql);
                         <?php if ($row['attachment_path']): ?>
                             <a href="uploads/projects/<?= $row['attachment_path'] ?>" target="_blank"
                                 class="text-slate-400 hover:text-indigo-600 text-sm">
-                                <i class="fas fa-paperclip mr-1"></i> ไฟล์สัญญา
+                                <i class="fas fa-paperclip mr-1"></i> ไฟล์ประกอบ
                             </a>
                         <?php endif; ?>
                     </div>
@@ -106,11 +108,11 @@ $result = mysqli_query($conn, $sql);
 
 <div id="viewModal"
     class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-fade-in-up">
+    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden  animate-fade-in-up">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h3 class="text-xl font-bold text-slate-800" id="modalTitle">รายละเอียดโครงการ</h3>
             <button onclick="closeModal()"
-                class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white hover:shadow-sm text-slate-400 transition-all">
+                class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white  text-slate-400 transition-all">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -125,20 +127,9 @@ $result = mysqli_query($conn, $sql);
 
 <script>
     function viewProjectDetails(id) {
-        $('#viewModal').removeClass('hidden').addClass('flex');
-
-        // โหลดข้อมูลจากไฟล์ API (เดี๋ยวจารต้องสร้างไฟล์ get_project_view.php ตามข้างล่างนะ)
-        $.ajax({
-            url: 'api/get_project_view.php',
-            type: 'GET',
-            data: { id: id },
-            success: function (response) {
-                $('#modalContent').html(response);
-            },
-            error: function () {
-                $('#modalContent').html('<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>');
-            }
-        });
+        // แทนที่จะเปิด Modal เราจะย้ายหน้าไปที่ไฟล์รายละเอียดโครงการแทน
+        // โดยส่ง ID ผ่าน URL Parameter ครับจาร
+        window.location.href = 'detail_project.php?id=' + id;
     }
 
     function closeModal() {
@@ -168,42 +159,6 @@ $result = mysqli_query($conn, $sql);
                 window.location.href = `api/delete_project.php?id=${id}`;
             }
         })
-    }
-
-    // ฟังก์ชันสุ่มและบันทึกทันที (สำหรับหน้า List)
-    function randomProject() {
-        const names = ["ปรับปรุงอาคารสำนักงาน A", "ติดตั้งระบบ Solar Cell", "วางระบบ Network", "งานตกแต่งภายใน", "ซ่อมบำรุงระบบประปา"];
-        const contractors = ["บริษัท สุเทพ เอ็นจิเนียริ่ง จำกัด", "หจก. รวมช่างรุ่งเรือง", "บจก. เทคโนโลยีล้ำสมัย"];
-        const banks = ["กสิกรไทย", "ไทยพาณิชย์", "กรุงเทพ", "กรุงไทย"];
-
-        // สร้าง FormData จำลองการส่งจาก Form
-        const formData = new FormData();
-        formData.append('project_no', 'PJ-' + Math.floor(1000 + Math.random() * 9000));
-        formData.append('project_name', names[Math.floor(Math.random() * names.length)] + " (สุ่ม " + Math.floor(Math.random() * 100) + ")");
-        formData.append('customer_id', 1); // สมมติว่ามีลูกค้า ID 1 อยู่ในระบบ
-        formData.append('contractor_name', contractors[Math.floor(Math.random() * contractors.length)]);
-        formData.append('contract_value', (Math.floor(Math.random() * 20) + 1) * 50000);
-        formData.append('start_date', new Date().toISOString().split('T')[0]);
-        formData.append('end_date', new Date(Date.now() + 15552000000).toISOString().split('T')[0]); // อีก 6 เดือน
-        formData.append('bank_name', banks[Math.floor(Math.random() * banks.length)]);
-        formData.append('bank_account_no', Math.floor(Math.random() * 9000000000) + 1000000000);
-        formData.append('bank_account_name', "บัญชีบริษัททดสอบ");
-        formData.append('project_status', 'active');
-
-        if (confirm("ต้องการสุ่มข้อมูลโครงการใหม่และบันทึกลงฐานข้อมูลทันทีหรือไม่?")) {
-            fetch('api/save_project.php', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => {
-                    // หลังจากบันทึกเสร็จ ให้ Refresh หน้าเพื่อดูผลลัพธ์
-                    window.location.reload();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('เกิดข้อผิดพลาดในการบันทึก');
-                });
-        }
     }
 </script>
 
