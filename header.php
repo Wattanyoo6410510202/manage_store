@@ -29,7 +29,7 @@ $permissions = [
     'gmhok' => ['dashboard', 'docs', 'projects', 'compare'],
 
     // 4. HOK: สิทธิ์ระดับหัวหน้าส่วนงาน
-    'hok' => ['dashboard', 'docs', 'projects'],
+    'hok' => ['dashboard', 'docs', 'projects', 'compare'],
 
     // 5. Staff: พนักงานปฏิบัติการ
     'staff' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],

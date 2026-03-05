@@ -37,7 +37,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
     <div class="bg-slate-50">
-        <div class="max-w-[1400px] mx-auto px-4 py-6">
+        <div class="max-w-[1400px] mx-auto ">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
@@ -142,6 +142,22 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <option value="10" <?= $po_data['vat_percent'] == 10 ? 'selected' : '' ?>>10%</option>
                                 <option value="3" <?= $po_data['vat_percent'] == 3 ? 'selected' : '' ?>>3%</option>
                                 <option value="5" <?= $po_data['vat_percent'] == 5 ? 'selected' : '' ?>>5%</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
+                                %)</label>
+                            <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <option value="0" <?= ($po_data['wht_percent'] ?? 0) == 0 ? 'selected' : '' ?>>0%
+                                </option>
+                                <option value="1" <?= ($po_data['wht_percent'] ?? 0) == 1 ? 'selected' : '' ?>>1%
+                                </option>
+                                <option value="3" <?= ($po_data['wht_percent'] ?? 0) == 3 ? 'selected' : '' ?>>3%
+                                </option>
+                                <option value="5" <?= ($po_data['wht_percent'] ?? 0) == 5 ? 'selected' : '' ?>>5%
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -257,21 +273,30 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     </div>
                     <div class="w-full md:w-72 space-y-2">
                         <div class="flex justify-between text-sm font-bold text-slate-500">
-                            <span>Subtotal</span>
+                            <span>รวม</span>
                             <span id="subtotal_display">0.00</span>
                         </div>
                         <div class="flex justify-between text-sm font-bold text-slate-500">
                             <span>หัก ณ ที่จ่าย (<span
+                                    id="wht_percent_label"><?= number_format($po_data['wht_percent'] ?? 0, 0) ?></span>%)</span>
+                            <div class="flex items-center gap-1">
+                                <span>-</span>
+                                <span id="wht_display"><?= number_format($po_data['wht_amount'] ?? 0, 2) ?></span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-sm font-bold text-slate-500">
+                            <span>ภาษี (<span
                                     id="vat_percent_label"><?= number_format($po_data['vat_percent'] ?? 7, 0) ?></span>%)</span>
 
                             <div class="flex items-center gap-1">
                                 <span id="vat_display"><?= number_format($po_data['vat_amount'] ?? 0, 2) ?></span>
-                                <span class="text-[10px] text-slate-400">THB</span>
                             </div>
+
                         </div>
+
                         <div
                             class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
-                            <span>รวม</span>
+                            <span>ยอดสุทธิ</span>
                             <span id="grandtotal_display">0.00</span>
                         </div>
                         <button type="submit"
@@ -306,7 +331,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
             </td>
             <td class="px-2 py-4">
-                <input type="number" name="item_discount[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-transparent border-none text-right text-sm font-mono text-red-500 focus:ring-0" placeholder="0.00">
+                <input type="number" name="item_discount[]" value="0.00" step="0.01" oninput="calculateTotal()" class="w-full bg-amber-50/50 border-none rounded-lg p-2 text-right text-sm font-mono font-black text-amber-600 outline-none">
             </td>
             <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
             <td class="px-4 py-4 text-center">
@@ -339,10 +364,15 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     function calculateTotal() {
         let subtotal = 0;
 
-        // 1. ดึงค่า % VAT จาก Select box มาใช้ (ถ้าไม่มีให้ default เป็น 7)
+        // 1. ดึงค่า % VAT จาก Select box
         const vatSelect = document.getElementById('vat_percent');
-        const vatRate = vatSelect ? (parseFloat(vatSelect.value) / 100) : 0.07;
+        const vatRate = vatSelect ? (parseFloat(vatSelect.value) / 100) : 0;
 
+        // 2. ดึงค่า % หัก ณ ที่จ่าย (WHT) จาก Select box (เพิ่มใหม่)
+        const whtSelect = document.getElementById('wht_percent');
+        const whtRate = whtSelect ? (parseFloat(whtSelect.value) / 100) : 0;
+
+        // คำนวณแต่ละรายการในตาราง
         document.querySelectorAll('.item-row').forEach(row => {
             const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
             const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
@@ -353,19 +383,29 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             subtotal += total;
         });
 
-        // 2. คำนวณ VAT ตาม Rate ที่ดึงมาได้จริง
+        // 3. คำนวณภาษีต่างๆ
         const vat = subtotal * vatRate;
-        const grandtotal = subtotal + vat;
+        const wht = subtotal * whtRate; // หัก ณ ที่จ่าย คำนวณจากยอดก่อน VAT
+        const grandtotal = (subtotal + vat) - wht; // ยอดสุทธิ = (ต้นทุน + ภาษีมูลค่าเพิ่ม) - หัก ณ ที่จ่าย
 
-        // 3. อัปเดต Label แสดงผล % (เช่น VAT (0%))
+        // 4. อัปเดต Label แสดงผล % ที่สรุปยอดด้านล่าง
         if (document.getElementById('vat_percent_label')) {
             document.getElementById('vat_percent_label').innerText = (vatRate * 100).toFixed(0);
         }
+        if (document.getElementById('wht_percent_label')) {
+            document.getElementById('wht_percent_label').innerText = (whtRate * 100).toFixed(0);
+        }
 
-        // อัปเดตค่าที่หน้าจอ
-        if (document.getElementById('subtotal_display')) document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        if (document.getElementById('vat_display')) document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        if (document.getElementById('grandtotal_display')) document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        // 5. อัปเดตตัวเลขแสดงผลที่หน้าจอ
+        const setDisplay = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = value.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        };
+
+        setDisplay('subtotal_display', subtotal);
+        setDisplay('vat_display', vat);
+        setDisplay('wht_display', wht); // แสดงยอดเงินที่โดนหัก
+        setDisplay('grandtotal_display', grandtotal);
     }
     // 5. จัดการข้อมูล Supplier
     function updateSupplierInfo() {

@@ -331,23 +331,34 @@ function ReadNumber($number)
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['subtotal'], 2) ?>
                             </td>
                         </tr>
+
                         <tr>
-                            <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย4
-                                <?= number_format($data['vat_percent'], 0) ?>%
-                            </td>
+                            <td style="padding-bottom: 5px;">ภาษีมูลค่าเพิ่ม
+                                <?= number_format($data['vat_percent'], 0) ?>%</td>
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat_amount'], 2) ?>
                             </td>
                         </tr>
+
+                        <?php if (($data['wht_amount'] ?? 0) > 0): ?>
+                            <tr >
+                                <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย
+                                    <?= number_format($data['wht_percent'], 0) ?>%</td>
+                                <td align="right" style="padding-bottom: 5px;">-
+                                    <?= number_format($data['wht_amount'], 2) ?></td>
+                            </tr>
+                        <?php endif; ?>
+
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">รวมทั้งสิ้น</td>
+                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดชำระสุทธิ</td>
                             <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
                                 <?= number_format($data['grand_total'], 2) ?>
                             </td>
                         </tr>
+
                         <tr>
                             <td colspan="2" align="right"
                                 style="padding-top: 8px; font-size: 11px; color: #64748b; font-style: italic;">
-                                ( <?= BahtText($data['grand_total']) ?> )
+                                ( <?= BahtText($data['grand_total']) ?>ถ้วน)
                             </td>
                         </tr>
                     </table>

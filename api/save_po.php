@@ -1,7 +1,7 @@
 <?php
 require_once '../config.php';
 
-// 1. ตั้งค่าโซนเวลาให้เป็นประเทศไทย (เพื่อให้วันที่ 05 มาตรงๆ ไม่ดีเลย์ตาม Server)
+// 1. ตั้งค่าโซนเวลาให้เป็นประเทศไทย
 date_default_timezone_set('Asia/Bangkok');
 
 ini_set('display_errors', 1);
@@ -22,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $notes = mysqli_real_escape_string($conn, $_POST['notes'] ?? '');
     $created_by = $_SESSION['user_id'] ?? 0;
 
-    $vat_percent = floatval($_POST['vat_percent'] ?? 7);
+    // รับค่า % ภาษี และ % หัก ณ ที่จ่าย
+    $vat_percent = floatval($_POST['vat_percent'] ?? 0);
+    $wht_percent = floatval($_POST['wht_percent'] ?? 0); // เพิ่มรับค่า WHT
 
     mysqli_begin_transaction($conn);
 
@@ -36,27 +38,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $subtotal = 0;
         foreach ($item_descs as $key => $desc) {
-            if (trim($desc) === '')
-                continue;
+            if (trim($desc) === '') continue;
             $qty = floatval($item_qtys[$key] ?? 0);
             $prc = floatval($item_prices[$key] ?? 0);
             $disc = floatval($item_discounts[$key] ?? 0);
             $subtotal += ($qty * $prc) - $disc;
         }
 
+        // คำนวณ VAT และ WHT
         $vat_amount = $subtotal * ($vat_percent / 100);
-        $grand_total = $subtotal + $vat_amount;
+        $wht_amount = $subtotal * ($wht_percent / 100); // หัก ณ ที่จ่าย คำนวณจากยอดก่อน VAT
+        
+        // ยอดสุทธิ = (ยอดสินค้า + VAT) - หัก ณ ที่จ่าย
+        $grand_total = ($subtotal + $vat_amount) - $wht_amount;
 
-        // 4. บันทึกหัวเอกสาร (ทิ้ง doc_no เป็นค่าว่างก่อนเพื่อรอรับ ID)
+        // 4. บันทึกหัวเอกสาร (เพิ่มฟิลด์ wht_percent, wht_amount)
         $sql_po = "INSERT INTO po (
             doc_no, customer_id, supplier_id, reference_no, 
             due_date, payment_term, requested_by, 
-            notes, subtotal, vat_percent, vat_amount, grand_total, 
+            notes, subtotal, vat_percent, vat_amount, 
+            wht_percent, wht_amount, grand_total, 
             status, created_by, created_at
         ) VALUES (
             '', '$customer_id', '$supplier_id', '$reference_no', 
             " . ($due_date ? "'$due_date'" : "NULL") . ", '$payment_term', '$requested_by', 
-            '$notes', '$subtotal', '$vat_percent', '$vat_amount', '$grand_total', 
+            '$notes', '$subtotal', '$vat_percent', '$vat_amount', 
+            '$wht_percent', '$wht_amount', '$grand_total', 
             'pending', '$created_by', NOW()
         )";
 
@@ -67,11 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // 5. ดึง ID ล่าสุดมาเจนเลขที่เอกสาร
         $po_id = mysqli_insert_id($conn);
 
-        // ปี พ.ศ. 2 หลัก (2026 + 43 = 69) และ เดือน 2 หลัก (03)
+        // ปี พ.ศ. 2 หลัก (2026 + 43 = 69) และ เดือน 2 หลัก
         $date_prefix = (date('y') + 43) . date('m');
 
-        // รูปแบบ PO-6903001 (เลข ID รัน 3 หลัก ตามตัวอย่างที่คุณให้มา)
-// หาก ID เกิน 999 มันจะขยายเป็น 4 หลักให้อัตโนมัติครับ
+        // รูปแบบ PO-69030001 (ใช้ 4 หลักตาม str_pad ด้านล่าง)
         $doc_no = "PO-" . $date_prefix . str_pad($po_id, 4, '0', STR_PAD_LEFT);
 
         // 6. UPDATE เลขที่เอกสารกลับเข้าไป
@@ -82,8 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // 7. บันทึกลงตาราง po_items
         foreach ($item_descs as $key => $desc) {
-            if (trim($desc) === '')
-                continue;
+            if (trim($desc) === '') continue;
 
             $d = mysqli_real_escape_string($conn, $desc);
             $q = floatval($item_qtys[$key] ?? 0);

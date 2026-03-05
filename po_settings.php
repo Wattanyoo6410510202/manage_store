@@ -25,7 +25,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
     <div class="bg-slate-50 ">
-        <div class="max-w-[1400px] mx-auto px-4 py-6">
+        <div class="max-w-[1400px] mx-auto ">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
@@ -121,6 +121,17 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <option value="10">10%</option>
                                 <option value="5">5%</option>
                                 <option value="3">3%</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
+                                %)</label>
+                            <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
+                                <option value="0">0% </option>
+                                <option value="1">1% </option>
+                                <option value="3">3% </option>
+                                <option value="5">5% </option>
                             </select>
                         </div>
                     </div>
@@ -219,23 +230,36 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     <div class="w-full md:flex-grow">
                         <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
-                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none"></textarea>
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none shadow-sm focus:border-indigo-300 transition-all"
+                            placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)..."></textarea>
                     </div>
-                    <div class="w-full md:w-72 space-y-2">
+                    <div class="w-full md:w-80 space-y-2">
                         <div class="flex justify-between text-sm font-bold text-slate-500">
-                            <span>รวมเป็นเงิน</span><span id="subtotal_display">0.00</span>
+                            <span>รวม</span>
+                            <span id="subtotal_display">0.00</span>
                         </div>
                         <div class="flex justify-between text-sm font-bold text-slate-500">
-                            <span>หัก ณ ที่จ่าย(<span id="vat_percent_label">7</span>%)</span>
+                            <span>หัก ณ ที่จ่าย (<span id="wht_percent_label">0</span>%)</span>
+                            <span>- <span id="wht_display">0.00</span></span>
+                        </div>
+
+                        <div class="flex justify-between text-sm font-bold text-slate-500">
+                            <span>ภาษี (<span id="vat_percent_label">7</span>%)</span>
                             <span id="vat_display">0.00</span>
                         </div>
+
+
+
                         <div
                             class="flex justify-between text-lg font-black text-indigo-600 pt-2 border-t border-slate-200">
-                            <span>รวม</span><span id="grandtotal_display">0.00</span>
+                            <span>ยอดสุทธิ</span>
+                            <span id="grandtotal_display">0.00</span>
                         </div>
+
                         <button type="submit"
-                            class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl  hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"><i
-                                class="fas fa-save"></i>บันทึกและออกเอกสาร</button>
+                            class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700  transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <i class="fas fa-save"></i>บันทึกและออกเอกสาร
+                        </button>
                     </div>
                 </div>
             </div>
@@ -296,18 +320,23 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         });
     }
 
-    // 3. คำนวณยอด (รองรับ ส่วนลด + VAT Dynamic)
+    // 3. คำนวณยอด (รองรับ ส่วนลด + VAT + หัก ณ ที่จ่าย)
     function calculateTotal() {
         let subtotal = 0;
 
-        // ดึงค่า % ภาษีจาก Select vat_percent
+        // --- ส่วนของ VAT ---
         const vatSelect = document.querySelector('select[name="vat_percent"]');
-        const vatPercent = vatSelect ? parseFloat(vatSelect.value) : 7;
-
-        // อัปเดตตัวเลขในวงเล็บที่จารเพิ่งแก้
+        const vatPercent = vatSelect ? parseFloat(vatSelect.value) : 0;
         const vatLabel = document.getElementById('vat_percent_label');
         if (vatLabel) vatLabel.innerText = vatPercent;
 
+        // --- ส่วนของ หัก ณ ที่จ่าย (WHT) ---
+        const whtSelect = document.querySelector('select[name="wht_percent"]');
+        const whtPercent = whtSelect ? parseFloat(whtSelect.value) : 0;
+        const whtLabel = document.getElementById('wht_percent_label');
+        if (whtLabel) whtLabel.innerText = whtPercent;
+
+        // คำนวณแต่ละรายการสินค้า
         document.querySelectorAll('.item-row').forEach(row => {
             const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
             const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
@@ -316,16 +345,32 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             // สูตร: (จำนวน * ราคา) - ส่วนลด
             const total = (qty * price) - discount;
 
-            row.querySelector('.row-total').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            row.querySelector('.row-total').innerText = total.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
             subtotal += total;
         });
 
+        // คำนวณภาษีมูลค่าเพิ่ม
         const vat = subtotal * (vatPercent / 100);
-        const grandtotal = subtotal + vat;
+
+        // คำนวณหัก ณ ที่จ่าย (คำนวณจากยอด Subtotal ก่อน VAT ตามหลักสรรพากร)
+        const wht = subtotal * (whtPercent / 100);
+
+        // ยอดรวมสุทธิ = ยอดรวม + VAT - หัก ณ ที่จ่าย
+        const grandtotal = (subtotal + vat) - wht;
 
         // อัปเดตการแสดงผลสรุปยอด
         document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
         document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        // อัปเดตการแสดงผล หัก ณ ที่จ่าย
+        const whtDisplay = document.getElementById('wht_display');
+        if (whtDisplay) {
+            whtDisplay.innerText = wht.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        }
+
         document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
 
