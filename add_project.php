@@ -166,16 +166,30 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
 
             <div class="space-y-6">
                 <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
-                    <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2">
+                    <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2 gap-4">
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
-                        <label class="inline-flex items-center cursor-pointer">
-                            <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">คิดภาษี VAT</span>
-                            <input type="checkbox" id="vat_toggle" name="include_vat" value="yes" checked
-                                class="hidden peer">
-                            <div onclick="calculateNetValue()"
-                                class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative">
-                            </div>
-                        </label>
+
+                        <div class="flex gap-4">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">คิดภาษี VAT
+                                    (7%)</span>
+                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes" checked
+                                    class="hidden peer" onchange="calculateNetValue()">
+                                <div
+                                    class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative">
+                                </div>
+                            </label>
+
+                            <label class="inline-flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
+                                    (3%)</span>
+                                <input type="checkbox" id="wht_toggle" name="include_wht" value="yes" checked
+                                    class="hidden peer" onchange="calculateNetValue()">
+                                <div
+                                    class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 relative">
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     <div class="space-y-3 text-sm">
@@ -186,12 +200,22 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                         <div id="vat_row" class="flex justify-between transition-all duration-300">
                             <span class="text-slate-400">VAT (7%):</span>
                             <input type="hidden" name="total_vat_amount" id="total_vat_amount">
-                            <span id="display_vat" class="text-indigo-400">0.00</span>
+                            <span id="display_vat" class="text-indigo-400">+ 0.00</span>
                         </div>
+
+                        <div id="wht_row" class="flex justify-between transition-all duration-300">
+                            <span class="text-slate-400">หัก ณ ที่จ่าย (3%):</span>
+                            <input type="hidden" name="total_wht_amount" id="total_wht_amount">
+                            <span id="display_wht" class="text-rose-400">- 0.00</span>
+                        </div>
+
                         <div class="flex justify-between border-t border-slate-800 pt-2">
-                            <span class="font-bold">มูลค่าสุทธิ:</span>
+                            <span class="font-bold text-slate-200">มูลค่าสุทธิ:</span>
                             <input type="hidden" name="net_contract_value" id="net_contract_value">
-                            <span id="display_net" class="font-bold text-lg text-indigo-400">0.00</span>
+                            <div class="text-right">
+                                <span id="display_net" class="font-bold text-lg text-indigo-400">0.00</span>
+                                <p class="text-[10px] text-slate-500 font-normal">บาท (รวม VAT หัก WHT)</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -312,43 +336,51 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
             document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
 
-    /**
-     * 2. ฟังก์ชันคำนวณจากยอด Contract (สำหรับกรณีมี Input ยอดรวมก้อนเดียว)
-     */
     function calculateNetValue() {
-        const inputBase = document.getElementById('contract_value');
-        if (!inputBase) return;
+        // 1. ดึงค่าจาก input ที่จารส่งมา (ID: contract_value)
+        let contractInput = document.getElementById('contract_value');
+        let baseValue = parseFloat(contractInput.value) || 0;
 
-        const base = parseFloat(inputBase.value) || 0;
+        // 2. เช็คสถานะ Toggle (เช็คว่า ID ตรงกับปุ่มสวิตช์ที่ทำไว้ไหม)
+        let vatToggle = document.getElementById('vat_toggle');
+        let whtToggle = document.getElementById('wht_toggle');
 
-        // เช็ค Toggle VAT
-        const vatToggle = document.getElementById('vat_toggle');
-        const vatRow = document.getElementById('vat_row');
+        let isVat = (vatToggle && vatToggle.checked);
+        let isWht = (whtToggle && whtToggle.checked);
 
-        // สำคัญ: ต้องใช้ !vatToggle.checked เพราะตอนคลิก ค่ามันอาจจะยังไม่เปลี่ยนทันทีในบาง Browser 
-        // หรือเช็คจากสถานะปัจจุบันของ Checkbox
-        const isVatEnabled = vatToggle ? vatToggle.checked : true;
+        // 3. คำนวณภาษี
+        let vatAmount = isVat ? (baseValue * 0.07) : 0;
+        let whtAmount = isWht ? (baseValue * 0.03) : 0;
 
-        let vat = 0;
-        if (isVatEnabled) {
-            vat = base * 0.07;
-            if (vatRow) vatRow.style.opacity = '1'; // แสดงแถว VAT ปกติ
-        } else {
-            vat = 0;
-            if (vatRow) vatRow.style.opacity = '0.3'; // จางแถว VAT เมื่อไม่คิดเงิน
+        // 4. คำนวณยอดสุทธิ
+        let netValue = baseValue + vatAmount - whtAmount;
+
+        // 5. อัปเดตตัวเลขบนหน้าจอ (ต้องมี ID เหล่านี้ในส่วนแสดงผล)
+        if (document.getElementById('display_base')) {
+            document.getElementById('display_base').innerText = baseValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        if (document.getElementById('display_vat')) {
+            document.getElementById('display_vat').innerText = "+ " + vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        if (document.getElementById('display_wht')) {
+            document.getElementById('display_wht').innerText = "- " + whtAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        if (document.getElementById('display_net')) {
+            document.getElementById('display_net').innerText = netValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        const net = base + vat;
-
-        // อัปเดต Hidden Input
-        document.getElementById('total_vat_amount').value = vat.toFixed(2);
-        document.getElementById('net_contract_value').value = net.toFixed(2);
-
-        // อัปเดต UI Display
-        document.getElementById('display_base').innerText = base.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('display_vat').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('display_net').innerText = net.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        // 6. เก็บค่าเข้า Hidden Inputs (สำหรับส่งลง Database)
+        if (document.getElementById('total_vat_amount')) document.getElementById('total_vat_amount').value = vatAmount.toFixed(2);
+        if (document.getElementById('total_wht_amount')) document.getElementById('total_wht_amount').value = whtAmount.toFixed(2);
+        if (document.getElementById('net_contract_value')) document.getElementById('net_contract_value').value = netValue.toFixed(2);
     }
+
+    // ป้องกันกรณีที่แก้เลขแล้วกด Toggle แล้วเลขไม่ขยับ
+    document.addEventListener('change', function (e) {
+        if (e.target.id === 'vat_toggle' || e.target.id === 'wht_toggle') {
+            calculateNetValue();
+        }
+    });
 
     /**
      * 3. จัดการเอกสารแนบ (Show File Name)

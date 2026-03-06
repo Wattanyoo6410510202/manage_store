@@ -13,14 +13,15 @@ $ids_string = implode(',', $ids);
 
 // 1. Query ดึงข้อมูลโครงการและงวดงานทั้งหมดที่เลือก
 $sql = "SELECT m.*, 
-               p.project_name, p.project_no, p.contractor_name, p.contract_value, p.start_date, p.end_date,p.project_remarks,
+               p.project_name, p.project_no, p.contractor_name, p.contract_value, 
+               p.total_vat_amount, p.total_wht_amount, p.net_contract_value, -- เพิ่ม 3 ตัวนี้
+               p.start_date, p.end_date, p.project_remarks,
                s.company_name as my_company, s.address as my_address, s.tax_id as my_tax, s.phone as my_phone, s.logo_path
         FROM project_milestones m
         LEFT JOIN projects p ON m.project_id = p.id
         LEFT JOIN suppliers s ON s.id = 1 
         WHERE m.id IN ($ids_string)
         ORDER BY m.id ASC";
-
 $result = mysqli_query($conn, $sql);
 $milestones = [];
 while ($row = mysqli_fetch_assoc($result)) {
@@ -205,7 +206,7 @@ if ($num_rows <= 5) {
             </div> -->
         </div>
         <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900;">ใบสรุปงวดงาน</h2>
+            <h2 style="margin: 0; font-size: 25px; color: var(--primary-color); font-weight: 900;">ใบสรุปงวดงาน</h2>
             <p style="margin: 0; font-size: 10px; letter-spacing: 3px; color: #94a3b8; text-transform: uppercase;">
                 MILESTONE SUMMARY REPOR
             </p>
@@ -216,7 +217,7 @@ if ($num_rows <= 5) {
         <div
             style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; background: #f8fafc;">
             <p
-                style="margin: 0 0 8px; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
                 ข้อมูลโครงการ (Project Description)
             </p>
             <h3 style="margin: 0; font-size: 15px; color: #0f172a; line-height: 1.4;"><?= $first['project_name'] ?></h3>
@@ -227,27 +228,70 @@ if ($num_rows <= 5) {
                 <?php if (!empty($data['cust_email'])): ?>
                     <div><strong>อีเมล:</strong> <?= htmlspecialchars($data['cust_email']) ?></div>
                 <?php endif; ?>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <div style="width: 8px; height: 8px; background: #cbd5e1; border-radius: 50%;"></div>
+                        <span
+                            style="font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">ระยะเวลาโครงการ</span>
+                    </div>
+                    <div
+                        style="font-size: 12px; color: #475569; font-weight: 800; background: #f8fafc; padding: 4px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                        <?= ($first['start_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['start_date'])) : 'รอกำหนด' ?>
+                        <span style="color: #cbd5e1; margin: 0 4px;">-</span>
+                        <?= ($first['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['end_date'])) : 'รอกำหนด' ?>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div
-            style="width: 280px; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; text-align: right;">
-            <p style="margin: 0 0 5px; font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase;">
-                TOTAL CONTRACT VALUE
-            </p>
-            <h2
-                style="margin: 0; color: var(--primary-color); font-size: 22px; font-weight: 900; letter-spacing: -0.5px;">
-                ฿ <?= number_format($first['contract_value'], 2) ?>
-            </h2>
+            style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; background: #f8fafc;">
 
-            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px;">Project
-                    Period</div>
-                <div style="font-size: 11px; color: #475569; font-weight: 600;">
-                    <?= date('d/m/Y', strtotime($first['start_date'])) ?> -
-                    <?= date('d/m/Y', strtotime($first['end_date'])) ?>
+            <div style="text-align: right;">
+                <p
+                    style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                    มูลค่าสัญญาทั้งหมด (ฐานเงินต้น)
+                </p>
+
+            </div>
+
+            <div
+                style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px; font-family: 'Sarabun', sans-serif;">
+
+                <div style="text-align: right; margin-bottom: 2px;">
+                    <h2
+                        style="margin: 0; color: #1e293b; font-size: 18px; font-weight: 900; letter-spacing: -1px; line-height: 1;">
+                        <span
+                            style="font-size: 14px; font-weight: 600; color: #94a3b8; margin-right: 1px;"></span><?= number_format($first['contract_value'], 2) ?> 
+                    </h2>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #f8fafc;">
+                    <span style="font-size: 10px; font-weight: 500; color: #64748b;">ภาษีมูลค่าเพิ่ม (7%)</span>
+                    <span style="font-size: 11px; font-weight: 700; color: #475569;">
+                        +<?= number_format($first['total_vat_amount'], 2) ?>
+                    </span>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #f8fafc;">
+                    <span style="font-size: 10px; font-weight: 500; color: #64748b;">หัก ณ ที่จ่าย (3%)</span>
+                    <span style="font-size: 11px; font-weight: 700; color: #475569;">
+                        -<?= number_format($first['total_wht_amount'], 2) ?>
+                    </span>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; margin-top: 2px;">
+                    <span style="font-size: 10px; font-weight: 800; color: #1e293b;">ยอดรวมสุทธิ</span>
+                    <span style="font-size: 15px; font-weight: 900; color: #1e293b; line-height: 1;">
+                        <?= number_format($first['net_contract_value'], 2) ?> <span style="font-size: 9px;"> บาท</span>
+                    </span>
                 </div>
             </div>
+
+
         </div>
     </div>
 
@@ -294,29 +338,31 @@ if ($num_rows <= 5) {
                     </p>
                 </div>
                 <div style="width: 40%;">
-                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
-                        <table width="100%" style="font-size: 14px; border-collapse: collapse;">
+                    <div style="background: #f8fafc; padding: 10px; border-radius: 12px; border: 1px solid #f1f5f9;">
+                        <table width="100%" style="font-size: 11px; border-collapse: collapse; line-height: 1.2;">
                             <tr>
-                                <td style="padding: 5px 0;">รวมเงินก่อนภาษี</td>
-                                <td align="right"><b><?= number_format($total_amount, 2) ?></b></td>
+                                <td style="padding: 2px 0; color: #64748b;">รวมเงินก่อนภาษี</td>
+                                <td align="right" style="color: #1e293b;"><b><?= number_format($total_amount, 2) ?></b>
+                                </td>
                             </tr>
                             <tr>
-                                <td style="padding: 5px 0;">ภาษีมูลค่าเพิ่ม (VAT)</td>
-                                <td align="right"><?= number_format($total_vat, 2) ?></td>
+                                <td style="padding: 2px 0; color: #64748b;">ภาษีมูลค่าเพิ่ม (VAT)</td>
+                                <td align="right" style="color: #1e293b;"><?= number_format($total_vat, 2) ?></td>
                             </tr>
                             <tr>
-                                <td style="padding: 5px 0; color: #ef4444;">หัก ณ ที่จ่าย (WHT)</td>
+                                <td style="padding: 2px 0; color: #94a3b8;">หัก ณ ที่จ่าย (WHT)</td>
                                 <td align="right" style="color: #ef4444;">-<?= number_format($total_wht, 2) ?></td>
                             </tr>
-                            <tr style="font-size: 18px; color: var(--primary-color); font-weight: 900;">
-                                <td style="padding-top: 15px; border-top: 2px solid #cbd5e1;">ยอดรวมเบิกสุทธิ</td>
-                                <td align="right" style="padding-top: 15px; border-top: 2px solid #cbd5e1;">฿
+                            <tr style="font-size: 14px; color: #1e293b; font-weight: 900;">
+                                <td style="padding-top: 8px; border-top: 1px solid #e2e8f0;">ยอดรวมเบิกสุทธิ</td>
+                                <td align="right" style="padding-top: 8px; border-top: 1px solid #e2e8f0;">
+                                    <span style="font-size: 10px; font-weight: 600;">฿</span>
                                     <?= number_format($total_net, 2) ?>
                                 </td>
                             </tr>
                             <tr>
                                 <td colspan="2" align="right"
-                                    style="font-size: 11px; color: #64748b; padding-top: 8px;">
+                                    style="font-size: 9px; color: #94a3b8; padding-top: 2px; font-style: italic;">
                                     ( <?= BahtText($total_net) ?> )
                                 </td>
                             </tr>

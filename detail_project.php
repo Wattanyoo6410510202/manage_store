@@ -12,11 +12,26 @@ $pj = mysqli_fetch_assoc($pj_res);
 if (!$pj) {
     die("<div class='p-10 text-center font-bold text-rose-500'>ไม่พบข้อมูลโครงการครับจาร!</div>");
 }
-
-// 2. คำนวณยอดเบิกสะสม (ใช้ยอดจากฐานภาษี contract_value มาลบกับยอด amount ต้นทาง)
-$collected_sql = mysqli_query($conn, "SELECT SUM(amount) as total FROM project_milestones WHERE project_id = $id AND status = 'paid'");
+// 2. คำนวณยอดเบิกสะสม (ดึงมาครบทั้ง ฐานเงินต้น, VAT, และ WHT)
+$collected_sql = mysqli_query($conn, "
+    SELECT 
+        SUM(amount) as total_base, 
+        SUM(vat_amount) as total_vat, 
+        SUM(wht_amount) as total_wht,
+        SUM(net_amount) as total_net
+    FROM project_milestones 
+    WHERE project_id = $id AND status = 'paid'
+");
 $collected_data = mysqli_fetch_assoc($collected_sql);
-$total_paid_base = $collected_data['total'] ?? 0;
+
+// กำหนดตัวแปรไว้ใช้ในหน้า UI
+$total_paid_base = $collected_data['total_base'] ?? 0;
+$total_paid_vat = $collected_data['total_vat'] ?? 0;
+$total_paid_wht = $collected_data['total_wht'] ?? 0;
+$total_paid_net = $collected_data['total_net'] ?? 0;
+
+// คำนวณยอดคงเหลือ (อ้างอิงจากฐานสัญญาหลัก)
+$current_balance = $pj['contract_value'] - $total_paid_base;
 
 // ยอดคงเหลือเบิกได้ (Base Value)
 $current_balance = $pj['contract_value'] - $total_paid_base;
@@ -42,30 +57,58 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
 
         <div class="lg:col-span-4 space-y-6">
 
-            <div class="bg-white p-6 rounded-3xl -sm border border-slate-100 space-y-4">
-                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 -sm">
-                    <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">มูลค่าสัญญาทั้งหมด</p>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">มูลค่าสัญญาทั้งหมด (Base)
+                    </p>
                     <p class="text-2xl font-black text-emerald-700">
-                        <?= number_format($pj['contract_value'], 2) ?>
-                        <span class="text-sm">฿</span>
+                        <?= number_format($pj['contract_value'], 2) ?> <span class="text-sm">฿</span>
                     </p>
                 </div>
 
-                <div class="bg-red-50 p-4 rounded-2xl border border-red-100 ">
-                    <p class="text-[10px] font-bold text-red-500 uppercase tracking-wider">เบิกแล้วสะสม (ฐานเงินต้น)
-                    </p>
-                    <p class="text-2xl font-black text-red-600">
-                        <?= number_format($total_paid_base, 2) ?>
-                        <span class="text-sm">฿</span>
-                    </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-red-50 p-4 rounded-2xl border border-red-100">
+                        <p class="text-[10px] font-bold text-red-500 uppercase tracking-wider">เบิกแล้วสะสม</p>
+                        <p class="text-xl font-black text-red-600">
+                            <?= number_format($total_paid_base, 2) ?>
+                        </p>
+                    </div>
+                    <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                        <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">คงเหลือเบิกได้</p>
+                        <p class="text-xl font-black text-indigo-700">
+                            <?= number_format($pj['contract_value'] - $total_paid_base, 2) ?>
+                        </p>
+                    </div>
                 </div>
 
-                <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 -sm">
-                    <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">คงเหลือเบิกได้อีก</p>
-                    <p class="text-2xl font-black text-indigo-700">
-                        <?= number_format($current_balance, 2) ?>
-                        <span class="text-sm">฿</span>
-                    </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">VAT สะสมที่จ่ายแล้ว
+                        </p>
+                        <p class="text-lg font-black text-indigo-600">
+                            + <?= number_format($total_paid_vat, 2) ?>
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">WHT สะสมที่หักแล้ว</p>
+                        <p class="text-lg font-black text-rose-500">
+                            - <?= number_format($total_paid_wht, 2) ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] font-bold text-indigo-300 uppercase block">จ่ายจริงสะสม (Net
+                            Paid)</span>
+                        <span class="text-xs text-slate-400">จากเป้าหมาย
+                            <?= number_format($pj['net_contract_value'], 2) ?></span>
+                    </div>
+                    <div class="text-right text-white">
+                        <span class="text-2xl font-black"><?= number_format($total_paid_net, 2) ?></span>
+                        <span class="text-sm text-indigo-300 ml-1">฿</span>
+                    </div>
                 </div>
             </div>
 

@@ -2,7 +2,7 @@
 require_once '../config.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 1. รับค่าจาก Form และจัดการความปลอดภัย
+    // 1. รับค่าจาก Form
     $project_name = mysqli_real_escape_string($conn, $_POST['project_name']);
     $project_no = mysqli_real_escape_string($conn, $_POST['project_no']);
     $customer_id = mysqli_real_escape_string($conn, $_POST['customer_id']);
@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $end_date = $_POST['end_date'];
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
 
-    // ข้อมูลผู้รับจ้าง & ธนาคาร
     $contractor_name = mysqli_real_escape_string($conn, $_POST['contractor_name']);
     $bank_name = mysqli_real_escape_string($conn, $_POST['bank_name']);
     $bank_account_no = mysqli_real_escape_string($conn, $_POST['bank_account_no']);
@@ -19,46 +18,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
     $wht_percent = floatval($_POST['wht_percent'] ?? 3);
 
-    // --- ส่วนที่แก้ไข: เช็ค Toggle ว่าคิด VAT หรือไม่ ---
+    // --- ส่วนที่แก้ไขให้ครบ: คำนวณ VAT และ WHT ---
+
+    // เช็ค Toggle VAT 7%
     $include_vat = isset($_POST['include_vat']) && $_POST['include_vat'] === 'yes';
+    $total_vat_amount = $include_vat ? ($contract_value * 0.07) : 0;
 
-    if ($include_vat) {
-        $total_vat_amount = $contract_value * 0.07;
-    } else {
-        $total_vat_amount = 0;
-    }
+    // เช็ค Toggle WHT (หัก ณ ที่จ่าย) - เพิ่มส่วนนี้
+    $include_wht = isset($_POST['include_wht']) && $_POST['include_wht'] === 'yes';
+    $total_wht_amount = $include_wht ? ($contract_value * ($wht_percent / 100)) : 0;
 
-    // ยอดสุทธิ = ยอดตั้งต้น + VAT (ที่อาจจะเป็น 0 หรือ 7%)
-    $net_contract_value = $contract_value + $total_vat_amount;
+    // ยอดสุทธิ = มูลค่างาน + VAT - WHT
+    $net_contract_value = $contract_value + $total_vat_amount - $total_wht_amount;
+
     // ----------------------------------------------
 
     // 3. จัดการไฟล์แนบ
     $attachment_name = "";
     if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
         $target_dir = "../uploads/projects/";
-        if (!file_exists($target_dir)) {
+        if (!file_exists($target_dir))
             mkdir($target_dir, 0777, true);
-        }
         $file_ext = pathinfo($_FILES["attachment"]["name"], PATHINFO_EXTENSION);
         $attachment_name = "PJ_" . time() . "." . $file_ext;
         move_uploaded_file($_FILES["attachment"]["tmp_name"], $target_dir . $attachment_name);
     }
 
-    // 4. สร้างเลขที่โครงการอัตโนมัติ (ถ้าว่าง)
+    // 4. สร้างเลขที่โครงการอัตโนมัติ
     if (empty($project_no)) {
         $year = (date('Y') + 543) % 100;
         $project_no = "PJ-" . $year . "-" . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
     }
 
-    // 5. บันทึกลงตารางหลัก (เพิ่มฟิลด์เก็บสถานะ VAT ถ้ามีใน DB)
+    // 5. บันทึกลงตารางหลัก (เพิ่ม total_wht_amount เข้าไปใน SQL)
     $sql = "INSERT INTO projects (
                 project_name, contractor_name, bank_name, bank_account_no, bank_account_name,
-                project_no, customer_id, contract_value, total_vat_amount, net_contract_value,
-                start_date, end_date, attachment_path, retention_percent, wht_percent, project_remarks, created_at
+                project_no, customer_id, contract_value, total_vat_amount, total_wht_amount, 
+                net_contract_value, start_date, end_date, attachment_path, retention_percent, 
+                wht_percent, project_remarks, created_at
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
-                '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$net_contract_value',
-                '$start_date', '$end_date', '$attachment_name', '$retention_percent', '$wht_percent', '$project_remarks', NOW()
+                '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
+                '$net_contract_value', '$start_date', '$end_date', '$attachment_name', '$retention_percent', 
+                '$wht_percent', '$project_remarks', NOW()
             )";
 
     if (mysqli_query($conn, $sql)) {
