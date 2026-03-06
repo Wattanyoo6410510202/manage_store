@@ -3,60 +3,101 @@ require_once 'config.php';
 include('header.php');
 include('assets/alert.php');
 
-$id = isset($_GET['id']) ? mysqli_real_escape_string($conn, $_GET['id']) : '';
-if (empty($id)) {
-    die("ไม่พบรหัสเอกสาร");
+$ids_param = isset($_GET['ids']) ? mysqli_real_escape_string($conn, $_GET['ids']) : '';
+if (empty($ids_param)) {
+    die("<div style='text-align:center; padding:50px;'>ไม่พบข้อมูลครับจาร</div>");
 }
 
-$sql = "SELECT p.*, 
-               -- 1. ข้อมูลบริษัทเรา (ดึงจาก supplier_id ในตาราง p)
-               own.company_name as my_company, 
-               own.address as my_address, 
-               own.tax_id as my_tax, 
-               own.phone as my_phone, 
-               own.email as my_email, 
-               own.logo_path,
+$ids = array_map('intval', explode(',', $ids_param));
+$ids_string = implode(',', $ids);
 
-               -- 2. ข้อมูลลูกค้า/สถานที่จัดส่ง (ถ้ามี)
-               c.customer_name, 
-               c.address as cust_address, 
-               c.tax_id as cust_tax,
-               c.phone as cust_phone,
-
-               -- 3. ข้อมูลผู้จัดทำและลายเซ็น
-               u_creator.name as creator_name, 
-               sig_creator.path as creator_signature,
-               
-               -- 4. ข้อมูลผู้อนุมัติและลายเซ็น
-               u_app.name as approver_name, 
-               sig_app.path as approver_signature
-
-        FROM po p
-        -- เชื่อมตาราง suppliers เพื่อเอาข้อมูลบริษัทเรา โดยใช้ supplier_id จาก po
-        LEFT JOIN suppliers own ON p.supplier_id = own.id 
-        
-        LEFT JOIN customers c ON p.customer_id = c.id
-        LEFT JOIN users u_creator ON p.created_by = u_creator.id
-        LEFT JOIN signatures sig_creator ON u_creator.id = sig_creator.users_id
-        LEFT JOIN users u_app ON p.approved_by = u_app.id
-        LEFT JOIN signatures sig_app ON u_app.id = sig_app.users_id
-        
-        WHERE p.id = '$id' LIMIT 1";
+// 1. Query ดึงข้อมูลโครงการและงวดงานทั้งหมดที่เลือก
+$sql = "SELECT m.*, 
+               p.project_name, p.project_no, p.contractor_name, p.contract_value, p.start_date, p.end_date,
+               s.company_name as my_company, s.address as my_address, s.tax_id as my_tax, s.phone as my_phone, s.logo_path
+        FROM project_milestones m
+        LEFT JOIN projects p ON m.project_id = p.id
+        LEFT JOIN suppliers s ON s.id = 1 
+        WHERE m.id IN ($ids_string)
+        ORDER BY m.id ASC";
 
 $result = mysqli_query($conn, $sql);
-$data = mysqli_fetch_assoc($result);
+$milestones = [];
+while ($row = mysqli_fetch_assoc($result)) {
+    $milestones[] = $row;
+}
 
-// เช็ค Path โลโก้ให้ชัวร์
-$logo_path = (!empty($data['logo_path']) && file_exists('uploads/' . $data['logo_path']))
-    ? 'uploads/' . $data['logo_path']
-    : '';
+if (empty($milestones)) {
+    die("ไม่พบข้อมูล");
+}
 
-// ดึงรายการสินค้าของ PR
-$sql_items = "SELECT * FROM po_items WHERE po_id = '$id' ORDER BY id ASC";
-$res_items = mysqli_query($conn, $sql_items);
-$num_rows = mysqli_num_rows($res_items);
+$first = $milestones[0]; // ใช้ข้อมูลโครงการจากแถวแรก
+$logo_path = (!empty($first['logo_path']) && file_exists('uploads/' . $first['logo_path']))
+    ? 'uploads/' . $first['logo_path'] : '';
 
-$logo_path = !empty($data['logo_path']) ? 'uploads/' . $data['logo_path'] : '';
+// 2. คำนวณยอดรวมจากทุกงวดที่เลือก
+$total_amount = 0;
+$total_vat = 0;
+$total_wht = 0;
+$total_net = 0;
+
+foreach ($milestones as $m) {
+    $total_amount += $m['amount'];
+    $total_vat += $m['vat_amount'];
+    $total_wht += $m['wht_amount'];
+    $total_net += $m['net_amount'];
+}
+
+// ฟังก์ชันอ่านเลขเงินไทย
+function BahtText($amount)
+{
+    $amount_number = number_format($amount, 2, '.', '');
+    $pt = strpos($amount_number, '.');
+    $number = ($pt === false) ? $amount_number : substr($amount_number, 0, $pt);
+    $fraction = ($pt === false) ? "00" : substr($amount_number, $pt + 1);
+    $ret = "";
+    $baht = ReadNumber($number);
+    if ($baht != "")
+        $ret .= $baht . "บาท";
+    if ($fraction == "00") {
+        $ret .= "ถ้วน";
+    } else {
+        $ret .= ReadNumber($fraction) . "สตางค์";
+    }
+    return $ret;
+}
+function ReadNumber($number)
+{
+    $position_call = array("แสน", "หมื่น", "พัน", "ร้อย", "สิบ", "");
+    $number_call = array("", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า");
+    $number = intval($number);
+    if ($number == 0)
+        return "";
+    $ret = "";
+    if ($number > 1000000) {
+        $ret .= ReadNumber(intval($number / 1000000)) . "ล้าน";
+        $number = $number % 1000000;
+    }
+    $t = sprintf("%06d", $number);
+    $adjective = false;
+    for ($i = 0; $i < 6; $i++) {
+        $n = substr($t, $i, 1);
+        if ($n != "0") {
+            if ($i == 4 && $n == "1")
+                $ret .= "สิบ";
+            elseif ($i == 4 && $n == "2")
+                $ret .= "ยี่สิบ";
+            elseif ($i == 5 && $n == "1" && $adjective)
+                $ret .= "เอ็ด";
+            else
+                $ret .= $number_call[$n] . $position_call[$i];
+            $adjective = true;
+        } else {
+            $adjective = false;
+        }
+    }
+    return $ret;
+}
 
 // คำนวณความแน่นของตารางตามจำนวนรายการ
 if ($num_rows <= 5) {
@@ -115,58 +156,6 @@ if ($num_rows <= 5) {
     }
 </style>
 
-<?php
-// ฟังก์ชันอ่านเลขเงินไทย
-function BahtText($amount)
-{
-    $amount_number = number_format($amount, 2, '.', '');
-    $pt = strpos($amount_number, '.');
-    $number = ($pt === false) ? $amount_number : substr($amount_number, 0, $pt);
-    $fraction = ($pt === false) ? "00" : substr($amount_number, $pt + 1);
-    $ret = "";
-    $baht = ReadNumber($number);
-    if ($baht != "")
-        $ret .= $baht . "บาท";
-    if ($fraction == "00") {
-        $ret .= "ถ้วน";
-    } else {
-        $ret .= ReadNumber($fraction) . "สตางค์";
-    }
-    return $ret;
-}
-function ReadNumber($number)
-{
-    $position_call = array("แสน", "หมื่น", "พัน", "ร้อย", "สิบ", "");
-    $number_call = array("", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า");
-    $number = intval($number);
-    if ($number == 0)
-        return "";
-    $ret = "";
-    if ($number > 1000000) {
-        $ret .= ReadNumber(intval($number / 1000000)) . "ล้าน";
-        $number = $number % 1000000;
-    }
-    $t = sprintf("%06d", $number);
-    $adjective = false;
-    for ($i = 0; $i < 6; $i++) {
-        $n = substr($t, $i, 1);
-        if ($n != "0") {
-            if ($i == 4 && $n == "1")
-                $ret .= "สิบ";
-            elseif ($i == 4 && $n == "2")
-                $ret .= "ยี่สิบ";
-            elseif ($i == 5 && $n == "1" && $adjective)
-                $ret .= "เอ็ด";
-            else
-                $ret .= $number_call[$n] . $position_call[$i];
-            $adjective = true;
-        } else {
-            $adjective = false;
-        }
-    }
-    return $ret;
-}
-?>
 
 <link rel="stylesheet" href="assets/css/style_quotation.css">
 <div class="floating-toolbar no-print">
@@ -200,7 +189,7 @@ function ReadNumber($number)
 <div id="quotation-content" class="page-container">
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
         <div style="display: flex; gap: 15px;">
-            <?php if ($logo_path): ?>
+            <!-- <?php if ($logo_path): ?>
                 <img src="<?= $logo_path ?>" style="width: 70px; height: 70px; object-fit: contain;">
             <?php else: ?>
                 <div
@@ -213,12 +202,12 @@ function ReadNumber($number)
                 <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
                 <p style="margin: 2px 0 0; color: #64748b;"><b>Tax ID:</b> <?= $data['my_tax'] ?> | <b>Tel:</b>
                     <?= $data['my_phone'] ?></p>
-            </div>
+            </div> -->
         </div>
         <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900;">ใบสั่งซื้อ</h2>
+            <h2 style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900;">ใบสรุปงวดงาน</h2>
             <p style="margin: 0; font-size: 10px; letter-spacing: 3px; color: #94a3b8; text-transform: uppercase;">
-                PURCHASE ORDER
+                MILESTONE SUMMARY REPOR
             </p>
         </div>
     </div>
@@ -228,20 +217,29 @@ function ReadNumber($number)
             style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc; ">
             <p
                 style="margin: 0 0 5px; font-size: 9px; font-weight: bold; color: var(--primary-color); text-transform: uppercase;">
-                ผู้รับสั่งซื้อ / ร้านค้า
+                ข้อมูลโครงการ (Project Description)
             </p>
-            <h3 style="margin: 0; font-size: 14px; color: #0f172a;"><?= $data['customer_name'] ?></h3>
+            <h3 style="margin: 0; font-size: 14px; color: #0f172a;"><?= $first['project_name'] ?></h3>
 
             <div style="margin: 5px 0 0; font-size: 11px; color: #64748b; line-height: 1.5;">
-                <?= nl2br($data['cust_address']) ?><br>
+                <?= $first['project_no'] ?><br>
 
                 <?php if (!empty($data['cust_tax'])): ?>
-                    <b>เลขประจำตัวผู้เสียภาษี:</b> <?= $data['cust_tax'] ?><br>
+                    <b>ผู้รับจ้าง:</b> <?= $first['contractor_name'] ?: '-' ?><br>
                 <?php endif; ?>
 
-                <?php if (!empty($data['cust_phone'])): ?>
-                    <b>เบอร์โทร:</b> <?= $data['cust_phone'] ?><br>
-                <?php endif; ?>
+                <div
+                    style="border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; text-align: right;">
+                    <p style="margin: 0 0 5px; font-size: 10px; font-weight: bold; color: #64748b;">TOTAL CONTRACT VALUE
+                    </p>
+                    <h2 style="margin: 0; color: var(--primary-color);">฿
+                        <?= number_format($first['contract_value'], 2) ?>
+                    </h2>
+                    <div style="margin-top: 5px; font-size: 11px; color: #94a3b8;">
+                        ระยะเวลา: <?= date('d/m/Y', strtotime($first['start_date'])) ?> -
+                        <?= date('d/m/Y', strtotime($first['end_date'])) ?>
+                    </div>
+                </div>
 
 
                 <?php if (!empty($data['contact_person']) || !empty($data['cust_phone']) || !empty($data['cust_email'])): ?>
@@ -254,7 +252,7 @@ function ReadNumber($number)
                 <?php endif; ?>
             </div>
         </div>
-        <div style="width: 250px; font-size: 12px;">
+        <!-- <div style="width: 250px; font-size: 12px;">
             <div
                 style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b;">เลขที่ / No.</span>
@@ -279,7 +277,7 @@ function ReadNumber($number)
                 <span style="color: #64748b;">เลขที่อ้างอิง</span>
                 <span style="color: #0f172a; font-weight: bold;"><?= $data['reference_no'] ?></span>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <div class="item-section">
@@ -287,31 +285,29 @@ function ReadNumber($number)
             <thead>
                 <tr>
                     <th width="5%">#</th>
-                    <th align="left">รายการ / Description</th>
-                    <th width="5%" align="center">จำนวน</th>
-                    <th width="12%" align="right">หน่วย</th>
-                    <th width="12%" align="right">ราคา</th>
-                    <th width="12%" align="right">ยอดรวม</th>
+                    <th align="left">งวดงาน / รายละเอียด</th>
+                    <th width="15%" align="right">จำนวนเงิน</th>
+                    <th width="12%" align="right">VAT (7%)</th>
+                    <th width="12%" align="right">WHT (3%)</th>
+                    <th width="15%" align="right">ยอดสุทธิ</th>
                 </tr>
             </thead>
             <tbody>
-                <?php
-                $count = 1;
-                // รีเซ็ต pointer ถ้ามีการเรียก mysqli_num_rows ไปก่อนหน้านี้
-                mysqli_data_seek($res_items, 0);
-                while ($item = mysqli_fetch_assoc($res_items)):
-                    ?>
+                <?php foreach ($milestones as $index => $m): ?>
                     <tr>
-                        <td align="center" style="color: #64748b;"><?= $count++ ?></td>
-                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155;">
-                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+                        <td align="center"><?= $index + 1 ?></td>
+                        <td>
+                            <div style="font-weight: bold;"><?= htmlspecialchars($m['milestone_name']) ?></div>
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                <?= htmlspecialchars($m['remarks']) ?>
+                            </div>
                         </td>
-                        <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
-                        <td align="right"><?= htmlspecialchars($item['item_unit']) ?></td>
-                        <td align="right"><?= number_format($item['item_price'], 2) ?></td>
-                        <td align="right" style="font-weight: 600;"><?= number_format($item['total_price'], 2) ?></td>
+                        <td align="right"><?= number_format($m['amount'], 2) ?></td>
+                        <td align="right"><?= number_format($m['vat_amount'], 2) ?></td>
+                        <td align="right" style="color: #ef4444;">-<?= number_format($m['wht_amount'], 2) ?></td>
+                        <td align="right" style="font-weight: bold;"><?= number_format($m['net_amount'], 2) ?></td>
                     </tr>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             </tbody>
         </table>
     </div>
@@ -325,43 +321,27 @@ function ReadNumber($number)
             </div>
             <div style="width: 40%;">
                 <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
-                    <table width="100%" style="font-size: 13px;">
+                    <table width="100%" style="font-size: 14px; border-collapse: collapse;">
                         <tr>
-                            <td style="padding-bottom: 5px;">รวมเป็นเงิน</td>
-                            <td align="right" style="padding-bottom: 5px;"><?= number_format($data['subtotal'], 2) ?>
-                            </td>
+                            <td style="padding: 5px 0;">รวมเงินก่อนภาษี</td>
+                            <td align="right"><b><?= number_format($total_amount, 2) ?></b></td>
                         </tr>
-                        <?php if (($data['wht_amount'] ?? 0) > 0): ?>
-                            <tr>
-                                <td style="padding-bottom: 5px;">หัก ณ ที่จ่าย
-                                    <?= number_format($data['wht_percent'], 0) ?>%
-                                </td>
-                                <td align="right" style="padding-bottom: 5px;">-
-                                    <?= number_format($data['wht_amount'], 2) ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                         <tr>
-                            <td style="padding-bottom: 5px;">ภาษีมูลค่าเพิ่ม
-                                <?= number_format($data['vat_percent'], 0) ?>%
-                            </td>
-                            <td align="right" style="padding-bottom: 5px;"><?= number_format($data['vat_amount'], 2) ?>
-                            </td>
+                            <td style="padding: 5px 0;">ภาษีมูลค่าเพิ่ม (VAT)</td>
+                            <td align="right"><?= number_format($total_vat, 2) ?></td>
                         </tr>
-
-
-
-                        <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดชำระสุทธิ</td>
-                            <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
-                                <?= number_format($data['grand_total'], 2) ?>
-                            </td>
-                        </tr>
-
                         <tr>
-                            <td colspan="2" align="right"
-                                style="padding-top: 8px; font-size: 11px; color: #64748b; font-style: italic;">
-                                ( <?= BahtText($data['grand_total']) ?>ถ้วน)
+                            <td style="padding: 5px 0; color: #ef4444;">หัก ณ ที่จ่าย (WHT)</td>
+                            <td align="right" style="color: #ef4444;">-<?= number_format($total_wht, 2) ?></td>
+                        </tr>
+                        <tr style="font-size: 18px; color: var(--primary-color); font-weight: 900;">
+                            <td style="padding-top: 15px; border-top: 2px solid #cbd5e1;">ยอดรวมเบิกสุทธิ</td>
+                            <td align="right" style="padding-top: 15px; border-top: 2px solid #cbd5e1;">฿
+                                <?= number_format($total_net, 2) ?></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" align="right" style="font-size: 11px; color: #64748b; padding-top: 8px;">
+                                ( <?= BahtText($total_net) ?> )
                             </td>
                         </tr>
                     </table>
