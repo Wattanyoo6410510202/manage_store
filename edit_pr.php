@@ -54,10 +54,10 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
 <form action="api/update_pr.php" method="POST">
     <input type="hidden" name="pr_id" value="<?= $pr_id ?>">
-    <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
+    <input type="hidden" name="customer_id" value="<?= htmlspecialchars($pr_data['customer_id']) ?>">
 
     <div class="bg-slate-50">
-        <div class="max-w-[1400px] mx-auto px-4 py-6">
+        <div class="max-w-[1400px] mx-auto ">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
@@ -112,51 +112,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 ">
-                        <div
-                            class="bg-slate-800/50 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                            <h3
-                                class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
-                                <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
-                            </h3>
-
-                            <?php if (isset($customer['is_internal']) && $customer['is_internal']): ?>
-                                <span
-                                    class="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[10px] font-bold rounded-full border border-amber-500/20">
-                                    INTERNAL
-                                </span>
-                            <?php else: ?>
-                                <span
-                                    class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded-full border border-blue-500/20">
-                                    CUSTOMER PROJECT
-                                </span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <div class="text-white font-black text-lg flex items-center gap-2">
-                                    <?= htmlspecialchars($customer['customer_name'] ?? 'ไม่พบข้อมูล') ?>
-                                    <?php if (isset($customer['is_internal']) && $customer['is_internal']): ?>
-                                    <?php endif; ?>
-                                </div>
-
-                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1 uppercase">
-                                    <?php if (isset($customer['is_internal']) && $customer['is_internal']): ?>
-                                        <span class="opacity-50 italic">Internal Document - No Tax ID Required</span>
-                                    <?php else: ?>
-                                        Tax ID: <?= htmlspecialchars($customer['tax_id'] ?? '-') ?>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <div
-                                class="text-slate-400 text-xs leading-relaxed bg-slate-800/20 p-3 rounded-xl border border-slate-700/30">
-                                <i class="fas fa-info-circle mr-1 text-slate-600"></i>
-                                <?= nl2br(htmlspecialchars($customer['address'] ?? '-')) ?>
-                            </div>
-                        </div>
-                    </div>
+                    
 
                     <input type="hidden" name="customer_id" value="<?= $pr_data['customer_id'] ?>">
                 </div>
@@ -218,11 +174,33 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <option value="7" <?= $pr_data['vat_percent'] == 7 ? 'selected' : '' ?>>7%</option>
                                 <option value="0" <?= $pr_data['vat_percent'] == 0 ? 'selected' : '' ?>>0%</option>
                                 <option value="10" <?= $pr_data['vat_percent'] == 10 ? 'selected' : '' ?>>10%</option>
+                                <option value="5" <?= $pr_data['vat_percent'] == 5 ? 'selected' : '' ?>>5%</option>
+                                <option value="3" <?= $pr_data['vat_percent'] == 3 ? 'selected' : '' ?>>3%</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย</label>
+                            <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <option value="1" <?= $pr_data['wht_percent'] == 1 ? 'selected' : '' ?>>1%</option>
+                                <option value="0" <?= $pr_data['wht_percent'] == 0 ? 'selected' : '' ?>>0%</option>
+                                <option value="3" <?= $pr_data['wht_percent'] == 3 ? 'selected' : '' ?>>3%</option>
+                                <option value="5" <?= $pr_data['wht_percent'] == 5 ? 'selected' : '' ?>>5%</option>
                             </select>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-900 rounded-3xl border border-slate-800 p-6 space-y-3">
+    <div class="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-indigo-400">
+        <span><i class="fas fa-map-marker-alt mr-2"></i>Ship To</span>
+        <span class="px-2 py-0.5 rounded-full border border-current opacity-70"><?= ($customer['is_internal'] ?? 0) ? 'Internal' : 'Customer' ?></span>
+    </div>
+    <div class="text-white font-black text-lg truncate"><?= htmlspecialchars($customer['customer_name'] ?? 'N/A') ?></div>
+    <div class="text-indigo-300 text-[10px] font-mono opacity-60 italic leading-none"><?= ($customer['is_internal'] ?? 0) ? 'No Tax ID Required' : 'Tax ID: '.htmlspecialchars($customer['tax_id'] ?? '-') ?></div>
+    <div class="text-slate-400 text-xs leading-relaxed bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 italic line-clamp-2"><?= nl2br(htmlspecialchars($customer['address'] ?? '-')) ?></div>
+</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4">
                         <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                             <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
                                     class="fas fa-shopping-cart mr-2 text-indigo-500"></i> Order Items</span>
@@ -301,8 +279,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </table>
                         </div>
 
-                        <div
-                            class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
+                        <div class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                             <div class="w-full md:flex-grow">
                                 <label
                                     class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
@@ -315,7 +292,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="subtotal_display">0.00</span>
                                 </div>
                                 <div class="flex justify-between text-sm font-bold text-slate-500">
-                                    <span>ภาษีมูลค่าเพิ่ม (7%)</span>
+                                    <span>หัก ณ ที่จ่าย </span>
+                                    <span id="wht_display">0.00</span></span>
+                                </div>
+                                <div class="flex justify-between text-sm font-bold text-slate-500">
+                                    <span>ภาษี</span>
                                     <span id="vat_display">0.00</span>
                                 </div>
                                 <div
@@ -330,9 +311,8 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
         </div>
+        
     </div>
 </form>
 
@@ -391,39 +371,47 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         });
     }
 
-    // 3. คำนวณเงิน (รองรับส่วนลด + VAT จาก Select)
     function calculateTotal() {
-        let subtotal = 0;
+    let subtotal = 0;
+    // ดึงค่า % จาก Select
+    const vatPercent = parseFloat(document.getElementById('vat_percent')?.value) || 0;
+    const whtPercent = parseFloat(document.getElementById('wht_percent')?.value) || 0;
 
-        // ดึงค่า % ภาษีจาก Select
-        const vatSelect = document.getElementById('vat_percent');
-        const vatPercent = vatSelect ? parseFloat(vatSelect.value) : 7;
+    // 1. คำนวณยอดรวมสินค้าทุกแถว
+    document.querySelectorAll('.item-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
+        const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
+        const discount = parseFloat(row.querySelector('[name="item_discount[]"]').value) || 0;
+        
+        const rowTotal = (qty * price) - discount;
+        row.querySelector('.row-total').innerText = rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        subtotal += rowTotal;
+    });
 
-        document.querySelectorAll('.item-row').forEach(row => {
-            const qty = parseFloat(row.querySelector('[name="item_qty[]"]').value) || 0;
-            const price = parseFloat(row.querySelector('[name="item_price[]"]').value) || 0;
-            const discount = parseFloat(row.querySelector('[name="item_discount[]"]').value) || 0;
+    // 2. คำนวณยอดภาษีต่างๆ
+    const vatAmount = subtotal * (vatPercent / 100);
+    const whtAmount = subtotal * (whtPercent / 100); // คำนวณยอดหัก ณ ที่จ่ายจาก Subtotal
+    
+    // 3. ยอดรวมบิล (ราคาสินค้า + VAT)
+    const grandTotal = subtotal + vatAmount; 
+    
+    // 4. ยอดจ่ายจริง (Net Total) = ยอดรวมบิล - ยอดหัก ณ ที่จ่าย
+    const netTotal = grandTotal - whtAmount; 
 
-            // สูตร: (จำนวน * ราคา) - ส่วนลด
-            const total = (qty * price) - discount;
-
-            row.querySelector('.row-total').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            subtotal += total;
-        });
-
-        const vat = subtotal * (vatPercent / 100);
-        const grandtotal = subtotal + vat;
-
-        // อัปเดตการแสดงผล
-        document.getElementById('subtotal_display').innerText = subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-        // อัปเดตตัวเลขในวงเล็บตรงหมายเหตุภาษี (ถ้ามี)
-        const vatLabel = document.getElementById('vat_percent_label');
-        if (vatLabel) vatLabel.innerText = vatPercent;
-    }
-
+    // ฟังก์ชันช่วย Format ตัวเลข
+    const format = (num) => num.toLocaleString(undefined, { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    });
+    
+    // 5. แสดงผลลงหน้าจอ
+    document.getElementById('subtotal_display').innerText = format(subtotal);
+    document.getElementById('vat_display').innerText      = format(vatAmount);
+    document.getElementById('wht_display').innerText      = format(whtAmount);
+    
+    // *** จุดที่จารต้องการ: ให้ช่องรวมทั้งหมดโชว์ยอดที่หัก WHT แล้ว ***
+    document.getElementById('grandtotal_display').innerText = format(netTotal); 
+}
     // 4. ข้อมูล Supplier
     function updateSupplierInfo() {
         const select = document.getElementById('supplier_select');

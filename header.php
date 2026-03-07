@@ -10,12 +10,6 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-// ==========================================
-// [เพิ่มใหม่] ระบบจัดการสิทธิ์ (Role Management)
-// ==========================================
-// ==========================================
-// [อัปเดตใหม่] ระบบจัดการสิทธิ์ตามกลุ่มผู้ใช้งาน
-// ==========================================
 $user_role = $_SESSION['role'] ?? 'viewer'; // ดึงค่าจาก Session
 
 $permissions = [
@@ -155,7 +149,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
         onclick="toggleSidebar()"></div>
 
     <aside id="sidebar"
-        class="w-72 bg-slate-900 text-slate-300 flex flex-col shrink-0 h-full shadow-2xl md:shadow-none">
+        class="w-60 bg-slate-900 text-slate-300 flex flex-col shrink-0 h-full shadow-2xl md:shadow-none">
         <div class="p-6 bg-slate-950 flex items-center justify-between border-b border-slate-800">
             <div class="flex items-center gap-3">
                 <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
@@ -232,14 +226,6 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'compare.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
                     <span class="font-medium">เปรียบเทียบราคา</span>
-                </a>
-            <?php endif; ?>
-
-            <?php if (can('inventory')): ?>
-                <a href="inventory.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'inventory.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-boxes w-5 text-indigo-400"></i>
-                    <span class="font-medium">คลังสินค้า</span>
                 </a>
             <?php endif; ?>
 

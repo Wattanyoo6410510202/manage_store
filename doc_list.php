@@ -3,12 +3,15 @@ require_once 'config.php';
 include 'header.php';
 include('assets/alert.php');
 
-$sql = "SELECT q.*, c.customer_name, s.company_name as supplier_name 
+$sql = "SELECT q.*, c.customer_name, s.company_name as supplier_name,
+               (SELECT item_desc FROM quotation_items 
+                WHERE quotation_id = q.id 
+                ORDER BY id ASC LIMIT 1) as first_item_desc
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN suppliers s ON q.supplier_id = s.id
         WHERE q.deleted_at IS NULL 
-        ORDER BY q.created_at DESC";
+        ORDER BY q.updated_at DESC";
 
 $result = mysqli_query($conn, $sql);
 ?>
@@ -56,13 +59,14 @@ $result = mysqli_query($conn, $sql);
                             </th>
 
                             <th class="w-8 text-center">ID</th>
-                            <th>DOC NO.</th>
-                            <th>DATE</th>
-                            <th>CLIENT</th>
-                            <th>ISSUER</th>
-                            <th class="text-right">TOTAL AMOUNT</th>
-                            <th>STATUS</th>
-                            <th class="text-center w-24">ACTIONS</th>
+                            <th>เลขที่เอกสาร</th>
+                            <th>หน่วยงาน</th>
+                            <th>รายละเอียด</th>
+                            <th>ลูกค้า</th>
+                            <th class="text-right">ยอดรวม</th>
+                            <th>สถานะ</th>
+                            <th>วันที่</th>
+                            <th class="text-center w-24">ดำเนินการ</th>
                         </tr>
                     </thead>
                     <tbody class="text-slate-600">
@@ -76,46 +80,107 @@ $result = mysqli_query($conn, $sql);
                                         class="quote-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                                 <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
-                                <td class="font-bold text-slate-800 italic"><?= $row['doc_no'] ?></td>
-                                <td class="text-slate-500"><?= date('d/m/y', strtotime($row['doc_date'])) ?></td>
-                                <td>
+                                <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
+                                 <td>
                                     <div class="font-semibold text-slate-700">
-                                        <?= htmlspecialchars($row['customer_name'] ?: '-') ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="text-slate-500 font-medium">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
                                     </div>
                                 </td>
-                                <td class="text-right font-mono font-bold text-slate-900">
-                                    <?= number_format($row['grand_total'], 2) ?>
-                                </td>
-                                <td>
-                                    <div class="text-slate-500 font-medium">
-                                        <?= htmlspecialchars($row['status'] ?: '-') ?>
+                       <td>
+                                   <div class="font-semibold text-slate-700 truncate max-w-[250px]" title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
+                                      <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
                                     </div>
                                 </td>
                                 <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[250px]">
+                                        <?= htmlspecialchars($row['customer_name'] ?: '-') ?>
+                                    </div>
+                                </td>
+                               
+                                <td >
+    <div class="flex flex-col items-end gap-1">
+    <div class="flex items-center gap-1.5 opacity-80">
+        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Subtotal</span>
+        <i class="fas fa-calculator text-[9px] text-slate-300"></i>
+        <span class="text-[10px] text-slate-500 font-mono font-medium">
+            <?= number_format($row['subtotal'], 2) ?>
+        </span>
+    </div>
+
+    <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+        <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
+        <i class="fas fa-coins text-[10px] text-amber-500"></i>
+        <span class="text-[14px] font-mono font-black text-slate-900 leading-none">
+            <?= number_format($row['grand_total'], 2) ?>
+        </span>
+    </div>
+</div>
+</td>
+                               <td >
+    <?php
+    // กำหนดสีตามสถานะ (จารปรับชื่อสถานะให้ตรงกับใน DB นะครับ)
+    $status = $row['status'] ?: 'pending';
+    
+    $config = [
+        'pending'  => ['bg' => 'bg-amber-50',  'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
+        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+    ];
+
+    $style = $config[$status] ?? $config['pending'];
+    ?>
+
+    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
+        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
+        
+        <span class="text-[10px] font-bold uppercase tracking-wide">
+            <?= $style['label'] ?>
+        </span>
+    </div>
+</td>
+                                <td class="p-4">
+                                        <div class="flex flex-col">
+                                                  <span class="text-[15px] font-bold text-slate-800 mt-0.5 flex items-center gap-1">
+                                                     <i class="fas fa-calendar-alt text-[9px]"></i>
+                                               สร้างเมื่อ: <?= date('d/m/y H:i', strtotime($row['created_at'])) ?>
+                                           </span>
+        
+                                      <?php if (!empty($row['updated_at'])): ?>
+                                           <span class="text-[10px] text-slate-600  mt-0.5 flex items-center gap-1">
+                                                       <i class="fas fa-history text-[9px]"></i>
+                                     ปรับปรุงเมื่อ: <?= date('d/m/y H:i', strtotime($row['updated_at'])) ?>
+                                    </span>
+                                         <?php else: ?>
+                              <span class="text-[10px] text-slate-300  mt-0.5">
+                                         No updates yet
+                                                    </span>
+                                     <?php endif; ?>
+                               </div>
+                               </td>
+                                <td>
                                     <div class="flex justify-center gap-1">
-                                        <button onclick="approveQuote(<?= $row['id'] ?>)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-emerald-500 rounded-md hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all"
-                                            title="Approve">
-                                            <i class="fas fa-check-circle text-[10px]"></i>
-                                        </button>
+                                        <?php
+                                        // ตรวจสอบทั้งสถานะ pending และสิทธิ์การใช้งาน (สมมติว่าตัวแปร session ชื่อ $_SESSION['role'])
+                                        if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok')):
+                                            ?>
+                                            <button onclick="approveQuote(<?= $row['id'] ?>)"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-emerald-500 rounded-md hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all"
+                                                title="Approve">
+                                                <i class="fas fa-check-circle text-[10px]"></i>
+                                            </button>
+                                        <?php endif; ?>
 
                                         <a href="view_quotation.php?id=<?= $row['id'] ?>"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
                                             title="View">
                                             <i class="fas fa-eye text-[10px]"></i>
                                         </a>
-
-                                        <a href="edit_quotation.php?id=<?= $row['id'] ?>"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
-                                            title="Edit">
-                                            <i class="fas fa-edit text-[10px]"></i>
-                                        </a>
-
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <a href="edit_quotation.php?id=<?= $row['id'] ?>"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
+                                                title="Edit">
+                                                <i class="fas fa-edit text-[10px]"></i>
+                                            </a>
+                                        <?php endif; ?>
                                         <button onclick="deleteQuote(<?= $row['id'] ?>)"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
                                             title="Delete">
@@ -141,7 +206,7 @@ $result = mysqli_query($conn, $sql);
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[2, "desc"]], // เรียงตามวันที่ (Column 2)
-            "columnDefs": [{ "orderable": false, "targets": [0, 8] }], // ปิด sorting checkbox และ action
+            "columnDefs": [{ "orderable": false, "targets": [0, 9] }], // ปิด sorting checkbox และ action
             "drawCallback": function () {
                 updateBulkUI();
             }

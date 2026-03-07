@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
-if (session_status() === PHP_SESSION_NONE)
-    session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
@@ -13,72 +12,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_term = mysqli_real_escape_string($conn, $_POST['payment_term']);
     $notes = mysqli_real_escape_string($conn, $_POST['notes']);
 
-    // รับค่า VAT % จากฟอร์ม (ที่เราเพิ่มเข้าไปใหม่)
+    // รับค่า VAT และ WHT % จากฟอร์ม
     $vat_percent = floatval($_POST['vat_percent'] ?? 7);
+    $wht_percent = floatval($_POST['wht_percent'] ?? 0);
 
     $subtotal = 0;
-    // คำนวณยอดรวมใหม่ โดยหักส่วนลดรายบรรทัดออกก่อน
     if (isset($_POST['item_qty'])) {
         foreach ($_POST['item_qty'] as $key => $qty) {
             $price = floatval($_POST['item_price'][$key]);
-            $discount = floatval($_POST['item_discount'][$key] ?? 0); // รับค่าส่วนลดรายบรรทัด
+            $discount = floatval($_POST['item_discount'][$key] ?? 0);
             $line_total = (floatval($qty) * $price) - $discount;
             $subtotal += $line_total;
         }
     }
 
-    // คำนวณภาษีจากยอดที่หักส่วนลดแล้ว (Tax Base)
+    // คำนวณตามมาตรฐาน
     $vat_amount = $subtotal * ($vat_percent / 100);
-    $grand_total = $subtotal + $vat_amount;
+    $grand_total = $subtotal + $vat_amount; // ยอดรวมก่อนหักภาษี ณ ที่จ่าย
+    $wht_amount = $subtotal * ($wht_percent / 100);
+    $total_after_wht = $grand_total - $wht_amount; // ยอดสุทธิหลังหัก WHT
 
     mysqli_begin_transaction($conn);
 
     try {
-        // 1. บันทึกข้อมูลหลัก (เพิ่ม vat_percent ลงไปด้วย)
+        // บันทึกโดยใช้ชื่อ Column ตาม Schema ของจารเป๊ะๆ
         $sql_quotation = "INSERT INTO quotations (
                             doc_no, doc_date, supplier_id, customer_id, 
                             valid_until, payment_term, notes, subtotal, 
-                            vat_percent, vat, grand_total, created_by
+                            vat, grand_total, vat_percent, wht_percent, 
+                            wht_amount, total_after_wht, created_by
                           ) VALUES (
                             '', '$doc_date', '$supplier_id', '$customer_id', 
                             '$valid_until', '$payment_term', '$notes', '$subtotal', 
-                            '$vat_percent', '$vat_amount', '$grand_total', '$user_id'
+                            '$vat_amount', '$grand_total', '$vat_percent', '$wht_percent', 
+                            '$wht_amount', '$total_after_wht', '$user_id'
                           )";
 
-        if (!mysqli_query($conn, $sql_quotation))
-            throw new Exception(mysqli_error($conn));
+        if (!mysqli_query($conn, $sql_quotation)) throw new Exception(mysqli_error($conn));
 
         $quotation_id = mysqli_insert_id($conn);
-        // 1. ดึงวันที่ปัจจุบันมาทำ Prefix (YYMMDD)
-// ณ วั// 1. ตั้งค่าโซนเวลาเป็นประเทศไทย (สำคัญมาก!)
         date_default_timezone_set('Asia/Bangkok');
-
-        // 2. ดึงวันที่ปัจจุบัน (ตอนนี้จะเป็นวันที่ 05 แน่นอนครับจาร)
         $date_prefix = date('ymd');
-
-        // 3. สร้างเลขที่เอกสาร (Prefix + YYMMDD + ID 6 หลัก)
-// จารใส่ 6 หลักตามโค้ดล่าสุด ผลลัพธ์จะเป็น QTN-260305000084
         $new_doc_no = "QTN-" . $date_prefix . str_pad($quotation_id, 6, '0', STR_PAD_LEFT);
 
-        // 3. อัปเดตกลับลงฐานข้อมูล
         $update_doc_no = "UPDATE quotations SET doc_no = '$new_doc_no' WHERE id = $quotation_id";
+        if (!mysqli_query($conn, $update_doc_no)) throw new Exception(mysqli_error($conn));
 
-        $update_doc_no = "UPDATE quotations SET doc_no = '$new_doc_no' WHERE id = $quotation_id";
-        if (!mysqli_query($conn, $update_doc_no))
-            throw new Exception(mysqli_error($conn));
-
-        // 2. บันทึกรายการสินค้า (เพิ่ม item_discount ลงไปด้วย)
+        // ส่วนของรายการสินค้า (Items)
         if (isset($_POST['item_desc'])) {
             foreach ($_POST['item_desc'] as $key => $desc) {
-                if (trim($desc) == "")
-                    continue;
-
+                if (trim($desc) == "") continue;
                 $item_desc = mysqli_real_escape_string($conn, $desc);
                 $item_qty = floatval($_POST['item_qty'][$key]);
                 $item_price = floatval($_POST['item_price'][$key]);
-                $item_discount = floatval($_POST['item_discount'][$key] ?? 0); // รับค่าส่วนลด
-
-                // ยอดรวมต่อบรรทัด (หักส่วนลดแล้ว)
+                $item_discount = floatval($_POST['item_discount'][$key] ?? 0);
                 $item_total = ($item_qty * $item_price) - $item_discount;
 
                 $sql_item = "INSERT INTO quotation_items (
@@ -86,9 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              ) VALUES (
                                 '$quotation_id', '$item_desc', '$item_qty', '$item_price', '$item_discount', '$item_total'
                              )";
-
-                if (!mysqli_query($conn, $sql_item))
-                    throw new Exception(mysqli_error($conn));
+                if (!mysqli_query($conn, $sql_item)) throw new Exception(mysqli_error($conn));
             }
         }
 

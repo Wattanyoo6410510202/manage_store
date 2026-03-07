@@ -7,18 +7,20 @@ $id = isset($_GET['id']) ? mysqli_real_escape_string($conn, $_GET['id']) : '';
 if (empty($id)) {
     die("ไม่พบรหัสเอกสาร");
 }
-
 $sql = "SELECT q.*, 
-               c.customer_name, c.address as cust_address, c.tax_id as cust_tax, c.contact_person, c.phone as cust_phone, c.email as cust_email,
+               c.customer_name, c.address as cust_address, c.tax_id as cust_tax, 
+               c.contact_person, c.phone as cust_phone, c.email as cust_email,
                s.company_name as my_company, s.tax_id as my_tax, s.phone as my_phone, 
                s.email as my_email, s.address as my_address, s.logo_path,
-               -- ดึงชื่อพนักงานจากตาราง users
-               u.name as creator_name 
+               -- ดึงชื่อคนสร้าง
+               u1.name as creator_name,
+               -- ดึงชื่อผู้อนุมัติ (JOIN ตาราง users อีกรอบเป็น u2)
+               u2.name as approver_name
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN suppliers s ON q.supplier_id = s.id 
-        -- เชื่อมกับตาราง users โดยใช้ ID ของคนสร้าง
-        LEFT JOIN users u ON q.created_by = u.id 
+        LEFT JOIN users u1 ON q.created_by = u1.id 
+        LEFT JOIN users u2 ON q.approved_by = u2.id 
         WHERE q.id = '$id' LIMIT 1";
 
 $result = mysqli_query($conn, $sql);
@@ -26,7 +28,10 @@ $data = mysqli_fetch_assoc($result);
 $sql_items = "SELECT * FROM quotation_items WHERE quotation_id = '$id' ORDER BY id ASC";
 $res_items = mysqli_query($conn, $sql_items);
 $logo_path = !empty($data['logo_path']) ? 'uploads/' . $data['logo_path'] : '';
-
+// เพิ่มการคำนวณส่วนลดรวม เพื่อใช้ในการเช็คเปิด/ปิด คอลัมน์
+$sum_discount_res = mysqli_query($conn, "SELECT SUM(item_discount) as total_discount FROM quotation_items WHERE quotation_id = '$id'");
+$row_discount = mysqli_fetch_assoc($sum_discount_res);
+$total_discount = $row_discount['total_discount'] ?? 0;
 
 
 $prepared_by_id = $data['created_by'];
@@ -63,17 +68,20 @@ if ($data['status'] === 'approved' && !empty($data['approved_by'])) {
 <?php
 $num_rows = mysqli_num_rows($res_items);
 
+// --- Logic ปรับค่าตามที่จารจำไว้ ---
 if ($num_rows <= 5) {
-    $dynamic_padding = '20px 15px';
+    $dynamic_padding = '5px 8px';
     $dynamic_font_size = '14px';
 } elseif ($num_rows <= 10) {
-    $dynamic_padding = '12px 15px';
+    $dynamic_padding = '3px 10px';
     $dynamic_font_size = '13px';
 } else {
-    $dynamic_padding = '5px 15px';
+    // โหมดนี้จะครอบคลุมตั้งแต่ 11-20 รายการ (และมากกว่านั้นถ้าจารฝืนรันต่อ)
+    $dynamic_padding = '2px 12px';
     $dynamic_font_size = '12px';
 }
 ?>
+
 
 <style>
     /* ใช้ CSS Variable เพื่อความคลีน */
@@ -274,10 +282,13 @@ function ReadNumber($number)
         <table class="table-items">
             <thead>
                 <tr>
-                    <th width="5%">#</th>
+                    <th width="3%">#</th>
                     <th align="left">รายการ / Description</th>
                     <th width="5%" align="center">จำนวน</th>
-                    <th width="12%" align="right">ราคา/หน่วย</th>
+                    <th width="12%" align="right">ราคา</th>
+                    <?php if ($total_discount > 0): ?>
+                         <th width="10%" align="right">ส่วนลด</th>
+                    <?php endif; ?>
                     <th width="12%" align="right">ยอดรวม</th>
                 </tr>
             </thead>
@@ -290,11 +301,15 @@ function ReadNumber($number)
                     ?>
                     <tr>
                         <td align="center" style="color: #64748b;"><?= $count++ ?></td>
-                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155;">
-                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
-                        </td>
+                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
+           max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
+    <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+</td>
                         <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
                         <td align="right"><?= number_format($item['item_price'], 2) ?></td>
+                        <?php if ($total_discount > 0): ?>
+                            <td align="right" ><?= number_format($item['item_discount'], 2) ?></td>
+                        <?php endif; ?>
                         <td align="right" style="font-weight: 600;"><?= number_format($item['item_total'], 2) ?></td>
                     </tr>
                 <?php endwhile; ?>
@@ -325,8 +340,17 @@ function ReadNumber($number)
                                 <?= number_format($data['vat'], 2) ?>
                             </td>
                         </tr>
+
+                        <tr>
+                            <td style="padding-bottom: 5px;">
+                                หัก ณ ที่จ่าย <?= number_format($data['wht_percent'], 0) ?>%
+                            </td>
+                            <td align="right" style="padding-bottom: 5px;">
+                                <?= number_format($data['wht_amount'], 2) ?>
+                            </td>
+                        </tr>
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">รวมทั้งสิ้น</td>
+                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดสุทธิ</td>
                             <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
                                 <?= number_format($data['grand_total'], 2) ?>
                             </td>
@@ -381,11 +405,10 @@ function ReadNumber($number)
                     <?php endif; ?>
 
                 </div>
-                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนาม</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['my_company'] ?> )</p>
+                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนามอนุมัติ</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['approver_name'] ?> )</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                    วันที่
-                    <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : '......../......../........' ?>
+                    วันที่ <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : 'วันที่ ......../......../........' ?>
                 </p>
             </div>
 
@@ -412,7 +435,7 @@ function ReadNumber($number)
 
         const opt = {
             margin: 0,
-            filename: 'Quotation_<?php echo $data['doc_no']; ?>.pdf',
+            filename: '<?php echo $data['doc_no']; ?>.pdf',
             image: { type: 'jpeg', quality: 1.0 },
             html2canvas: {
                 scale: 3,
@@ -461,7 +484,7 @@ function ReadNumber($number)
         const fileDownload = document.createElement("a");
         document.body.appendChild(fileDownload);
         fileDownload.href = source;
-        fileDownload.download = 'Quotation_<?php echo $data["doc_no"]; ?>.doc';
+        fileDownload.download = '<?php echo $data["doc_no"]; ?>.doc';
         fileDownload.click();
         document.body.removeChild(fileDownload);
     }

@@ -13,6 +13,9 @@ $sql = "SELECT p.*,
                IF(p.is_internal = 1, u_creator.name, c.customer_name) as customer_name,
                IF(p.is_internal = 1, 'ภายในองค์กร', c.address) as cust_address,
                IF(p.is_internal = 1, '-', c.tax_id) as cust_tax,
+               -- เพิ่ม 2 บรรทัดนี้ครับ --
+               IF(p.is_internal = 1, '-', c.phone) as cust_phone,
+               IF(p.is_internal = 1, '-', c.email) as cust_email,
                
                -- ข้อมูลผู้จัดทำ (Created By)
                u_creator.name as creator_name,
@@ -56,17 +59,21 @@ $sum_discount_res = mysqli_query($conn, "SELECT SUM(item_discount) as total_disc
 $row_discount = mysqli_fetch_assoc($sum_discount_res);
 $total_discount = $row_discount['total_discount'] ?? 0;
 
-// คำนวณความแน่นของตารางตามจำนวนรายการ
+$num_rows = mysqli_num_rows($res_items);
+
+// --- Logic ปรับค่าตามที่จารจำไว้ ---
 if ($num_rows <= 5) {
-    $dynamic_padding = '20px 15px';
+    $dynamic_padding = '5px 8px';
     $dynamic_font_size = '14px';
 } elseif ($num_rows <= 10) {
-    $dynamic_padding = '12px 15px';
+    $dynamic_padding = '3px 10px';
     $dynamic_font_size = '13px';
 } else {
-    $dynamic_padding = '5px 15px';
+    // โหมดนี้จะครอบคลุมตั้งแต่ 11-20 รายการ (และมากกว่านั้นถ้าจารฝืนรันต่อ)
+    $dynamic_padding = '2px 12px';
     $dynamic_font_size = '12px';
 }
+
 ?>
 
 <style>
@@ -256,6 +263,14 @@ function ReadNumber($number)
                             </div>
                         <?php endif; ?>
 
+                         <?php if (!empty($data['cust_address'])): ?>
+                            <div>
+                                <b style="color: #64748b; min-width: 70px; display: inline-block;">ที่อยู่:</b>
+                                <span
+                                    style="color: #0f172a; text-decoration: none;"><?= htmlspecialchars($data['cust_address']) ?></span>
+                            </div>
+                        <?php endif; ?>
+
                     </div>
                 <?php endif; ?>
             </div>
@@ -277,8 +292,11 @@ function ReadNumber($number)
             <div
                 style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b;">วันที่ต้องการสินค้า</span>
-                <span
-                    style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['due_date'])) ?></span>
+                <span style="color: #0f172a; font-weight: bold;">
+    <?= (!empty($data['due_date']) && $data['due_date'] !== '0000-00-00') 
+        ? date('d/m/Y', strtotime($data['due_date'])) 
+        : '-' ?>
+</span>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding: 6px 0;">
@@ -292,11 +310,14 @@ function ReadNumber($number)
         <table class="table-items">
             <thead>
                 <tr>
-                    <th width="5%">#</th>
+                    <th width="3%">#</th>
                     <th align="left">รายการ / Description</th>
                     <th width="5%" align="center">จำนวน</th>
-                    <th width="12%" align="right">หน่วย</th>
+                    <th width="8%" align="right">หน่วย</th>
                     <th width="12%" align="right">ราคา</th>
+                    <?php if ($total_discount > 0): ?>
+                         <th width="10%" align="right">ส่วนลด</th>
+                    <?php endif; ?>
                     <th width="12%" align="right">ยอดรวม</th>
                 </tr>
             </thead>
@@ -309,12 +330,16 @@ function ReadNumber($number)
                     ?>
                     <tr>
                         <td align="center" style="color: #64748b;"><?= $count++ ?></td>
-                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155;">
-                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
-                        </td>
+                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
+           max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
+    <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+</td>
                         <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
                         <td align="right"><?= htmlspecialchars($item['item_unit']) ?></td>
                         <td align="right"><?= number_format($item['item_price'], 2) ?></td>
+                        <?php if ($total_discount > 0): ?>
+                            <td align="right" ><?= number_format($item['item_discount'], 2) ?></td>
+                        <?php endif; ?>
                         <td align="right" style="font-weight: 600;"><?= number_format($item['item_total'], 2) ?></td>
                     </tr>
                 <?php endwhile; ?>
@@ -337,25 +362,24 @@ function ReadNumber($number)
                             <td align="right" style="padding-bottom: 5px;"><?= number_format($data['subtotal'], 2) ?>
                             </td>
                         </tr>
-                        <?php if ($total_discount > 0): ?>
-                            <tr>
-                                <td style="padding-bottom: 8px; color: #f59e0b; font-weight: 700;">ส่วนลดรวม</td>
-                                <td align="right" style="padding-bottom: 8px; font-weight: 700; color: #d97706;">
-                                    -
-                                    <?= number_format($total_discount, 2) ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                         <tr>
-                            <td style="padding-bottom: 5px; color: #64748b;">
+                            <td style="padding-bottom: 5px; ">
                                 ภาษีมูลค่าเพิ่ม <?= (float) ($data['vat_percent'] ?? 7) ?>%
                             </td>
                             <td align="right" style="padding-bottom: 5px; font-weight: 600;">
                                 <?= number_format($data['vat'], 2) ?>
                             </td>
                         </tr>
+                         <tr>
+                            <td style="padding-bottom: 5px;">
+                                หัก ณ ที่จ่าย <?= number_format($data['wht_percent'], 0) ?>%
+                            </td>
+                            <td align="right" style="padding-bottom: 5px;">
+                                <?= number_format($data['wht_amount'], 2) ?>
+                            </td>
+                        </tr>
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">รวมทั้งสิ้น</td>
+                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดสุทธิ</td>
                             <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
                                 <?= number_format($data['grand_total'], 2) ?>
                             </td>

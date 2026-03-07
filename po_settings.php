@@ -135,86 +135,89 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </select>
                         </div>
                     </div>
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800">
-                        <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
-                            <h3
-                                class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
-                                <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
-                            </h3>
+                    <div class="bg-slate-900 rounded-xl border border-slate-800 p-4 ">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="bg-indigo-500/20 p-1.5 rounded-lg">
+                                <i class="fas fa-user-tie text-indigo-400 text-xs"></i>
+                            </div>
+                            <span class="text-white font-black text-base truncate"
+                                title="<?= htmlspecialchars($customer['customer_name']) ?>">
+                                <?= htmlspecialchars($customer['customer_name']) ?>
+                            </span>
                         </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <div class="text-white font-black text-lg">
-                                    <?= htmlspecialchars($customer['customer_name']) ?>
-                                </div>
-                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
-                                    <?= $customer['tax_id'] ?: '-' ?>
-                                </div>
-                            </div>
-                            <div class="text-slate-400 text-xs leading-relaxed">
-                                <?= nl2br(htmlspecialchars($customer['address'])) ?>
-                            </div>
+
+                        <div
+                            class="text-[11px] text-slate-400 mb-2 flex items-center gap-2 pb-2 border-b border-slate-800/50">
+                            <i class="fas fa-phone text-[9px] text-slate-600 w-3"></i>
+                            <span class="text-slate-300"><?= htmlspecialchars($customer['phone'] ?: '-') ?></span>
+                        </div>
+
+                        <div class="text-[11px] text-slate-500 truncate italic"
+                            title="<?= htmlspecialchars($customer['address']) ?>">
+                            <i class="fas fa-map-marker-alt text-[9px] mr-1"></i>
+                            <?= str_replace(["\r", "\n"], ' ', htmlspecialchars($customer['address'])) ?>
                         </div>
                     </div>
 
                 </div>
 
             </div>
-            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
-                            class="fas fa-shopping-cart mr-2 text-indigo-500"></i> Order Items</span>
+            <div class="bg-white rounded-2xl border border-slate-200  overflow-hidden mt-4">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <span class="text-sm font-black text-slate-700 uppercase"><i
+                            class="fas fa-list mr-2 text-indigo-500"></i> Items List</span>
+
                     <button type="button" onclick="addItemRow()"
-                        class="px-4 py-2 bg-indigo-600 text-white text-[11px] font-black rounded-xl hover:bg-indigo-700 transition-all"><i
-                            class="fas fa-plus mr-1"></i> เพิ่มรายการ</button>
+                        class="px-4 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all">
+                        <i class="fas fa-plus mr-1"></i> เพิ่มรายการ
+                    </button>
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50/80 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 w-12 text-center">#</th>
-                                <th class="px-2 py-4">รายละเอียดสินค้า</th>
-                                <th class="px-2 py-4 w-24 text-center">จำนวน</th>
-                                <th class="px-2 py-4 w-24 text-center">หน่วย</th>
-                                <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
-                                <th class="px-2 py-4 w-32 text-right">ส่วนลด (บาท)</th>
-                                <th class="px-6 py-4 w-32 text-right">รวมเงิน</th>
-                                <th class="px-4 py-4 w-10"></th>
+                                <th class="px-4 py-3 w-12 text-center">#</th>
+                                <th class="px-4 py-3">รายละเอียดสินค้า</th>
+                                <th class="px-4 py-3 w-24 text-center">จำนวน</th>
+                                <th class="px-4 py-3 w-24 text-center">หน่วย</th>
+                                <th class="px-4 py-3 w-32 text-right">ราคา/หน่วย</th>
+                                <th class="px-4 py-3 w-32 text-right">ส่วนลด (บาท)</th>
+                                <th class="px-4 py-3 w-32 text-right">รวมเงิน</th>
+                                <th class="px-4 py-3 w-10"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-50">
+                        <tbody class="divide-y divide-slate-100">
                             <tr class="item-row group">
-                                <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">1
+                                <td class="px-4 py-3 text-center text-xs font-bold text-slate-400">1</td>
+                                <td class="px-4 py-3">
+                                    <textarea name="item_desc[]" placeholder="ระบุรายละเอียดสินค้า..." rows="1"
+                                        oninput="autoResize(this)"
+                                        class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-medium resize-none block overflow-hidden"><?= htmlspecialchars($item['item_desc'] ?? '') ?></textarea>
                                 </td>
-                                <td class="px-2 py-4">
-                                    <textarea name="item_desc[]" oninput="autoResize(this)"
-                                        placeholder="ระบุรายละเอียด..."
-                                        class="w-full bg-transparent border-none outline-none text-sm font-bold resize-none block overflow-hidden focus:ring-0"></textarea>
-                                </td>
-                                <td class="px-2 py-4">
+                                <td class="px-4 py-3">
                                     <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
                                         oninput="calculateTotal()"
                                         class="w-full bg-slate-50 border-none rounded-lg p-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50 outline-none">
                                 </td>
-                                <td class="px-2 py-4">
+                                <td class="px-4 py-3">
                                     <input type="text" name="item_unit[]" placeholder="หน่วย"
                                         class="w-full bg-transparent border-b border-slate-100 text-center text-sm font-bold outline-none focus:border-indigo-400">
                                 </td>
-                                <td class="px-2 py-4">
+                                <td class="px-4 py-3">
                                     <input type="number" name="item_price[]" value="0.00" step="0.01"
                                         oninput="calculateTotal()"
                                         class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
                                 </td>
-                                <td class="px-2 py-4">
+                                <td class="px-4 py-3">
                                     <input type="number" name="item_discount[]" value="0.00" step="0.01"
                                         oninput="calculateTotal()"
                                         class="w-full bg-amber-50/50 border-none rounded-lg p-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
                                 </td>
-                                <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
+                                <td class="px-4 py-3 text-right text-sm font-mono font-black text-slate-700 row-total">
                                     0.00</td>
-                                <td class="px-4 py-4 text-center">
+                                <td class="px-4 py-3 text-center">
                                     <button type="button" onclick="removeRow(this)"
                                         class="text-slate-200 hover:text-red-500 transition-colors">
                                         <i class="fas fa-times-circle"></i>
@@ -230,7 +233,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     <div class="w-full md:flex-grow">
                         <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
-                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none shadow-sm focus:border-indigo-300 transition-all"
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-300 transition-all"
                             placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)..."></textarea>
                     </div>
                     <div class="w-full md:w-80 space-y-2">
@@ -273,30 +276,31 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         const tbody = document.querySelector('#itemsTable tbody');
         const rowCount = tbody.querySelectorAll('.item-row').length + 1;
         const newRow = `
-        <tr class="item-row group border-t border-slate-100">
-            <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">${rowCount}</td>
-            <td class="px-2 py-4">
-                <textarea name="item_desc[]" oninput="autoResize(this)" placeholder="รายละเอียด..."
-                    class="w-full bg-transparent border-none outline-none text-sm font-bold resize-none block overflow-hidden focus:ring-0"></textarea>
-            </td>
-            <td class="px-2 py-4">
+        <tr class="item-row group border-t border-slate-100"> 
+            <td class="px-4 py-3 text-center text-xs font-bold text-slate-400">${rowCount}</td>
+            <td class="px-4 py-3">
+                                    <textarea name="item_desc[]" placeholder="ระบุรายละเอียดสินค้า..." rows="1"
+                                        oninput="autoResize(this)"
+                                        class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-medium resize-none block overflow-hidden"><?= htmlspecialchars($item['item_desc'] ?? '') ?></textarea>
+                                </td>
+            <td class="px-4 py-3">
                 <input type="number" name="item_qty[]" value="1" min="0" step="0.01" oninput="calculateTotal()" 
                     class="w-full bg-slate-50 border-none rounded-lg p-2 text-center text-sm font-black text-indigo-600 outline-none">
             </td>
-            <td class="px-2 py-4">
+            <td class="px-4 py-3">
                 <input type="text" name="item_unit[]" placeholder="หน่วย" 
                     class="w-full bg-transparent border-b border-slate-100 text-center text-sm font-bold outline-none">
             </td>
-            <td class="px-2 py-4">
+            <td class="px-4 py-3">
                 <input type="number" name="item_price[]" value="0.00" step="0.01" oninput="calculateTotal()" 
                     class="w-full bg-transparent border-none text-right text-sm font-mono font-black outline-none">
             </td>
-            <td class="px-2 py-4">
+            <td class="px-4 py-3">
                 <input type="number" name="item_discount[]" value="0.00" step="0.01" oninput="calculateTotal()" 
                     class="w-full bg-amber-50/50 border-none rounded-lg p-2 text-right text-sm font-mono font-black text-amber-600 outline-none">
             </td>
-            <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
-            <td class="px-4 py-4 text-center">
+            <td class="px-4 py-3 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
+            <td class="px-4 py-3 text-center">
                 <button type="button" onclick="removeRow(this)" class="text-slate-200 hover:text-red-500 transition-colors">
                     <i class="fas fa-times-circle"></i>
                 </button>
@@ -404,6 +408,13 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     document.addEventListener('DOMContentLoaded', () => {
         updateSupplierInfo();
         calculateTotal();
+    });
+
+    // สั่งให้คำนวณความสูงใหม่ทุกครั้งที่เพิ่มแถว หรือโหลดหน้าเสร็จ
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => {
+            autoResize(el);
+        });
     });
 </script>
 <?php include 'footer.php'; ?>

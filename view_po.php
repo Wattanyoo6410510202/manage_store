@@ -56,17 +56,24 @@ $sql_items = "SELECT * FROM po_items WHERE po_id = '$id' ORDER BY id ASC";
 $res_items = mysqli_query($conn, $sql_items);
 $num_rows = mysqli_num_rows($res_items);
 
+$sum_discount_res = mysqli_query($conn, "SELECT SUM(item_discount) as total_discount FROM pr_items WHERE pr_id = '" . $data['id'] . "'");
+$row_discount = mysqli_fetch_assoc($sum_discount_res);
+$total_discount = $row_discount['total_discount'] ?? 0;
+
 $logo_path = !empty($data['logo_path']) ? 'uploads/' . $data['logo_path'] : '';
 
-// คำนวณความแน่นของตารางตามจำนวนรายการ
+$num_rows = mysqli_num_rows($res_items);
+
+// --- Logic ปรับค่าตามที่จารจำไว้ ---
 if ($num_rows <= 5) {
-    $dynamic_padding = '20px 15px';
+    $dynamic_padding = '5px 8px';
     $dynamic_font_size = '14px';
 } elseif ($num_rows <= 10) {
-    $dynamic_padding = '12px 15px';
+    $dynamic_padding = '3px 10px';
     $dynamic_font_size = '13px';
 } else {
-    $dynamic_padding = '5px 15px';
+    // โหมดนี้จะครอบคลุมตั้งแต่ 11-20 รายการ (และมากกว่านั้นถ้าจารฝืนรันต่อ)
+    $dynamic_padding = '2px 12px';
     $dynamic_font_size = '12px';
 }
 ?>
@@ -286,11 +293,14 @@ function ReadNumber($number)
         <table class="table-items">
             <thead>
                 <tr>
-                    <th width="5%">#</th>
+                    <th width="3%">#</th>
                     <th align="left">รายการ / Description</th>
                     <th width="5%" align="center">จำนวน</th>
-                    <th width="12%" align="right">หน่วย</th>
+                    <th width="8%" align="right">หน่วย</th>
                     <th width="12%" align="right">ราคา</th>
+                    <?php if ($total_discount > 0): ?>
+                         <th width="10%" align="right">ส่วนลด</th>
+                    <?php endif; ?>
                     <th width="12%" align="right">ยอดรวม</th>
                 </tr>
             </thead>
@@ -303,12 +313,16 @@ function ReadNumber($number)
                     ?>
                     <tr>
                         <td align="center" style="color: #64748b;"><?= $count++ ?></td>
-                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155;">
-                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
-                        </td>
+                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
+           max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
+    <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+</td>
                         <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
                         <td align="right"><?= htmlspecialchars($item['item_unit']) ?></td>
                         <td align="right"><?= number_format($item['item_price'], 2) ?></td>
+                        <?php if ($total_discount > 0): ?>
+                            <td align="right" ><?= number_format($item['item_discount'], 2) ?></td>
+                        <?php endif; ?>
                         <td align="right" style="font-weight: 600;"><?= number_format($item['total_price'], 2) ?></td>
                     </tr>
                 <?php endwhile; ?>
@@ -352,7 +366,7 @@ function ReadNumber($number)
 
 
                         <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดชำระสุทธิ</td>
+                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดสุทธิ</td>
                             <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
                                 <?= number_format($data['grand_total'], 2) ?>
                             </td>
@@ -361,7 +375,7 @@ function ReadNumber($number)
                         <tr>
                             <td colspan="2" align="right"
                                 style="padding-top: 8px; font-size: 11px; color: #64748b; font-style: italic;">
-                                ( <?= BahtText($data['grand_total']) ?>ถ้วน)
+                                ( <?= BahtText($data['grand_total']) ?>)
                             </td>
                         </tr>
                     </table>

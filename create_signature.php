@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['signature_data'])) {
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             ctx.scale(ratio, ratio);
-            ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+            ctx.strokeStyle = "#063970"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
         }
         window.addEventListener('resize', resize);
         resize();

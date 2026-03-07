@@ -165,7 +165,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
             </div>
 
             <div class="space-y-6">
-                <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-xl">
+                <div class="bg-slate-900 rounded-2xl p-6 text-white">
                     <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2 gap-4">
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
 
