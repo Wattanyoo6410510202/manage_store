@@ -52,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $quotation_id = mysqli_insert_id($conn);
         date_default_timezone_set('Asia/Bangkok');
-        $date_prefix = date('ymd');
-        $new_doc_no = "QTN-" . $date_prefix . str_pad($quotation_id, 6, '0', STR_PAD_LEFT);
+         $date_prefix = (date('y') + 43) . date('m');
+        $new_doc_no = "QTN-" . $date_prefix . str_pad($quotation_id, 4, '0', STR_PAD_LEFT);
 
         $update_doc_no = "UPDATE quotations SET doc_no = '$new_doc_no' WHERE id = $quotation_id";
         if (!mysqli_query($conn, $update_doc_no)) throw new Exception(mysqli_error($conn));

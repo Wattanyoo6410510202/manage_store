@@ -3,19 +3,30 @@ require_once 'config.php';
 include 'header.php';
 include('assets/alert.php');
 
-$sql = "SELECT q.*, c.customer_name, s.company_name as supplier_name,
+$sql = "SELECT q.*, 
+               c.customer_name, 
+               s.company_name as supplier_name,
+               u1.username as creator_name,  -- ดึงชื่อคนสร้าง
+               u2.username as approver_name, -- ดึงชื่อคนอนุมัติ
                (SELECT item_desc FROM quotation_items 
                 WHERE quotation_id = q.id 
                 ORDER BY id ASC LIMIT 1) as first_item_desc
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN suppliers s ON q.supplier_id = s.id
+        LEFT JOIN users u1 ON q.created_by = u1.id  -- Join หาคนสร้าง
+        LEFT JOIN users u2 ON q.approved_by = u2.id -- Join หาคนอนุมัติ
         WHERE q.deleted_at IS NULL 
         ORDER BY q.updated_at DESC";
 
 $result = mysqli_query($conn, $sql);
+
+// ดึงรายชื่อ Supplier ทั้งหมดมาทำตัวกรอง
+$supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
+$supplier_res = mysqli_query($conn, $supplier_sql);
+$suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 ?>
-<style>
+<!-- <style>
     /* บังคับให้ Body นิ่งสนิทแม้ SweetAlert จะทำงาน */
     body.swal2-shown:not(.swal2-no-backdrop):not(.swal2-toast-shown) {
         overflow: unset !important;
@@ -35,21 +46,76 @@ $result = mysqli_query($conn, $sql);
     .w-full {
         width: 100% !important;
     }
-</style>
+</style> -->
 <div class="w-full ">
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-4">
             <div class="overflow-x-auto">
-                <div id="bulkActions"
-                    class="hidden mb-3 p-2 bg-indigo-50 border border-indigo-100 rounded-lg flex justify-between items-center transition-all">
-                    <span class="text-xs font-bold text-indigo-700 ml-2">
-                        เลือกอยู่ <span id="selectedCount">0</span> รายการ
-                    </span>
-                    <button onclick="bulkDelete()"
-                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
-                        <i class="fas fa-trash-alt"></i> ลบรายการที่เลือก
+                <div class="flex flex-wrap items-center gap-3 mb-4 w-full">
+
+                    <div class="relative min-w-[200px]">
+                        <label
+                            class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                        <select id="filterSupplier"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            <option value="">ทั้งหมด (Show All)</option>
+                            <?php foreach ($suppliers as $s): ?>
+                                <option value="<?= htmlspecialchars($s['company_name']) ?>">
+                                    <?= htmlspecialchars($s['company_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="relative min-w-[150px]">
+                        <label
+                            class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                        <input type="date" id="minDate"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                    </div>
+
+                    <div class="relative min-w-[150px]">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">ถึงวันที่</label>
+                        <input type="date" id="maxDate"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                    </div>
+
+                    <button onclick="filterToday()"
+                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[10px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
+                        <i class="fas fa-calendar-day text-indigo-500"></i> รายการวันนี้
                     </button>
+
+                    <div class="relative min-w-[120px]">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">สถานะ</label>
+                        <select id="filterStatus"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            <option value="">ทั้งหมด</option>
+                            <option value="รอ">รออนุมัติ (Pending)</option>
+                            <option value="อนุมัติ">อนุมัติแล้ว (Approved)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="resetFilter()"
+                        class="self-end mb-2.5 text-[10px] text-slate-400 hover:text-indigo-600 transition-colors">
+                        <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
+                    </button>
+
+                    <div id="bulkActions"
+                        class="hidden ml-auto self-end p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in">
+                        <span class="text-[11px] font-bold text-red-700 ml-2">
+                            เลือกอยู่ <span id="selectedCount" class="underline">0</span> รายการ
+                        </span>
+                        <button onclick="bulkDelete()"
+                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+
                 </div>
+
+
+
+
                 <table id="quoteTable" class="w-full display hover border-none">
                     <thead>
                         <tr class="bg-slate-50">
@@ -57,7 +123,6 @@ $result = mysqli_query($conn, $sql);
                                 <input type="checkbox" id="selectAll"
                                     class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                             </th>
-
                             <th class="w-8 text-center">ID</th>
                             <th>เลขที่เอกสาร</th>
                             <th>หน่วยงาน</th>
@@ -66,6 +131,8 @@ $result = mysqli_query($conn, $sql);
                             <th class="text-right">ยอดรวม</th>
                             <th>สถานะ</th>
                             <th>วันที่</th>
+                            <th>ผู้สร้าง</th>
+                            <th>ผู้อนุมัติ</th>
                             <th class="text-center w-24">ดำเนินการ</th>
                         </tr>
                     </thead>
@@ -81,81 +148,89 @@ $result = mysqli_query($conn, $sql);
                                 </td>
                                 <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
-                                 <td>
-                                    <div class="font-semibold text-slate-700">
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[200px]">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
                                     </div>
                                 </td>
-                       <td>
-                                   <div class="font-semibold text-slate-700 truncate max-w-[250px]" title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
-                                      <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[250px]"
+                                        title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
+                                        <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="font-semibold text-slate-700 truncate max-w-[250px]">
+                                    <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars($row['customer_name'] ?: '-') ?>
                                     </div>
                                 </td>
-                               
-                                <td >
-    <div class="flex flex-col items-end gap-1">
-    <div class="flex items-center gap-1.5 opacity-80">
-        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Subtotal</span>
-        <i class="fas fa-calculator text-[9px] text-slate-300"></i>
-        <span class="text-[10px] text-slate-500 font-mono font-medium">
-            <?= number_format($row['subtotal'], 2) ?>
-        </span>
-    </div>
 
-    <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
-        <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
-        <i class="fas fa-coins text-[10px] text-amber-500"></i>
-        <span class="text-[14px] font-mono font-black text-slate-900 leading-none">
-            <?= number_format($row['grand_total'], 2) ?>
-        </span>
-    </div>
-</div>
-</td>
-                               <td >
-    <?php
-    // กำหนดสีตามสถานะ (จารปรับชื่อสถานะให้ตรงกับใน DB นะครับ)
-    $status = $row['status'] ?: 'pending';
-    
-    $config = [
-        'pending'  => ['bg' => 'bg-amber-50',  'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
-    ];
+                                <td>
+                                    <div class="flex flex-col items-end gap-1">
+                                        <div class="flex items-center gap-1.5 opacity-80">
+                                            <span
+                                                class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Subtotal</span>
+                                            <i class="fas fa-calculator text-[9px] text-slate-300"></i>
+                                            <span class="text-[10px] text-slate-500 font-mono font-medium">
+                                                <?= number_format($row['subtotal'], 2) ?>
+                                            </span>
+                                        </div>
 
-    $style = $config[$status] ?? $config['pending'];
-    ?>
+                                        <div
+                                            class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+                                            <span
+                                                class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
+                                            <i class="fas fa-coins text-[10px] text-amber-500"></i>
+                                            <span class="text-[14px] font-mono font-black text-slate-900 leading-none">
+                                                <?= number_format($row['grand_total'], 2) ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?php
+                                    // กำหนดสีตามสถานะ (จารปรับชื่อสถานะให้ตรงกับใน DB นะครับ)
+                                    $status = $row['status'] ?: 'pending';
 
-    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
-        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
-        
-        <span class="text-[10px] font-bold uppercase tracking-wide">
-            <?= $style['label'] ?>
-        </span>
-    </div>
-</td>
-                                <td class="p-4">
-                                        <div class="flex flex-col">
-                                                  <span class="text-[15px] font-bold text-slate-800 mt-0.5 flex items-center gap-1">
-                                                     <i class="fas fa-calendar-alt text-[9px]"></i>
-                                               สร้างเมื่อ: <?= date('d/m/y H:i', strtotime($row['created_at'])) ?>
-                                           </span>
-        
-                                      <?php if (!empty($row['updated_at'])): ?>
-                                           <span class="text-[10px] text-slate-600  mt-0.5 flex items-center gap-1">
-                                                       <i class="fas fa-history text-[9px]"></i>
-                                     ปรับปรุงเมื่อ: <?= date('d/m/y H:i', strtotime($row['updated_at'])) ?>
-                                    </span>
-                                         <?php else: ?>
-                              <span class="text-[10px] text-slate-300  mt-0.5">
-                                         No updates yet
-                                                    </span>
-                                     <?php endif; ?>
-                               </div>
-                               </td>
+                                    $config = [
+                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                    ];
+
+                                    $style = $config[$status] ?? $config['pending'];
+                                    ?>
+
+                                    <div
+                                        class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
+                                        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
+
+                                        <span class="text-[10px] font-bold uppercase tracking-wide">
+                                            <?= $style['label'] ?>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="p-4" data-order="<?= $row['created_at'] ?>">
+                                    <div class="flex flex-col">
+                                        <span class="text-[15px] font-bold text-slate-700 mt-0.5 flex items-center gap-1">
+                                            <i class="fas fa-calendar-alt text-[9px]"></i>
+                                            <?= date('d/m/y', strtotime($row['created_at'])) ?>
+                                        </span>
+
+                                        <?php if (!empty($row['updated_at'])): ?>
+                                            <span class="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                                <i class="fas fa-history text-[9px]"></i>
+                                                <?= date('d/m/y', strtotime($row['updated_at'])) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-[10px] text-slate-300 mt-0.5">
+                                                No updates yet
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['creator_name'] ?: '-') ?></td>
+                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
+                                </td>
                                 <td>
                                     <div class="flex justify-center gap-1">
                                         <?php
@@ -199,30 +274,101 @@ $result = mysqli_query($conn, $sql);
 <script>
     let quoteTable;
 
+    // --- 1. ฟังก์ชันสนับสนุน (Helper Functions) อยู่นอกได้เลย ---
+    function parseDate(dateStr) {
+        if (!dateStr || dateStr.trim() === '-' || dateStr.trim() === '') return null;
+        const cleanDate = dateStr.trim().split(/\s+/)[0];
+        const parts = cleanDate.split('/');
+        if (parts.length !== 3) return null;
+        let year = parseInt(parts[2], 10);
+        if (year < 100) year += 2000;
+        return new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+    }
+
     $(document).ready(function () {
-        // 1. Initialize DataTable
+        // 1. Initialize DataTable ก่อน
         quoteTable = $('#quoteTable').DataTable({
             "pageLength": 10,
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
-            "order": [[2, "desc"]], // เรียงตามวันที่ (Column 2)
-            "columnDefs": [{ "orderable": false, "targets": [0, 9] }], // ปิด sorting checkbox และ action
+            "order": [[8, "desc"]], // แก้ตรงนี้: ถ้าจะเรียงตามวันที่ ต้องเป็น Column 8 ครับ (เดิมจารใส่ 2)
+            "columnDefs": [{ "orderable": false, "targets": [0, 11] }],
             "drawCallback": function () {
                 updateBulkUI();
             }
         });
 
-        // 2. เลือกทั้งหมด (Select All) - รองรับ Pagination
-        $(document).on('change', '#selectAll', function () {
-            const isChecked = $(this).prop('checked');
-            // เลือกเฉพาะ checkbox ที่มองเห็นในหน้านั้นๆ
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            const minStr = $('#minDate').val();
+            const maxStr = $('#maxDate').val();
+
+            if (!minStr && !maxStr) return true;
+
+            const rowNode = settings.aoData[dataIndex].nTr;
+            const dateRaw = $(rowNode).find('td:eq(8)').attr('data-order'); // ดึงจาก data-order ที่เราเพิ่มตะกี้
+
+            let date;
+            if (dateRaw) {
+                date = new Date(dateRaw);
+            } else {
+                date = parseDate(data[8]);
+            }
+
+            if (!date || isNaN(date)) return false;
+
+            // สร้าง Date Object สำหรับเปรียบเทียบ
+            const min = minStr ? new Date(minStr) : null;
+            const max = maxStr ? new Date(maxStr) : null;
+
+            // Reset เวลาให้เป็น 00:00 เพื่อเทียบแค่วันที่ (ป้องกันเรื่องเวลาใน DB มาเกี่ยว)
+            date.setHours(0, 0, 0, 0);
+            if (min) min.setHours(0, 0, 0, 0);
+            if (max) max.setHours(0, 0, 0, 0);
+
+            if (min && date < min) return false;
+            if (max && date > max) return false;
+
+            return true;
+        });
+
+        // 3. Event Listener สำหรับวันที่
+        $('#minDate, #maxDate').on('change', function () {
+            quoteTable.draw(); // สั่งวาดตารางใหม่เพื่อรัน search function ข้างบน
+        });
+
+        // 4. กรอง Supplier (Column 3)
+        $('#filterSupplier').on('change', function () {
+            const val = $(this).val();
+            quoteTable.column(3).search(val).draw();
+        });
+
+        $('#filterStatus').on('change', function () {
+            const val = $(this).val();
+            // ใช้ smart search เป็น false เพื่อให้ตรงตัวเป๊ะๆ หรือ search ธรรมดาก็ได้ครับ
+            quoteTable.column(7).search(val).draw();
+        });
+
+        // 1. เมื่อติ๊กที่ Checkbox บนหัวตาราง (เลือกทั้งหมด)
+        $('#selectAll').on('change', function () {
+            const isChecked = $(this).is(':checked');
+            // เลือกเฉพาะ checkbox ที่มองเห็นอยู่ในหน้าปัจจุบัน (filtered results)
             $('.quote-checkbox').prop('checked', isChecked);
             updateBulkUI();
         });
 
-        // 3. เลือกรายตัว
+        // 2. เมื่อติ๊กที่ Checkbox รายตัว
         $(document).on('change', '.quote-checkbox', function () {
             updateBulkUI();
+
+            // ถ้าติ๊กออกตัวเดียว ให้ Checkbox หัวตารางติ๊กออกด้วย
+            if (!$(this).is(':checked')) {
+                $('#selectAll').prop('checked', false);
+            }
+
+            // ถ้าติ๊กครบทุกตัว ให้ Checkbox หัวตารางติ๊กด้วย
+            if ($('.quote-checkbox:checked').length === $('.quote-checkbox').length) {
+                $('#selectAll').prop('checked', true);
+            }
         });
     });
 
@@ -410,5 +556,37 @@ $result = mysqli_query($conn, $sql);
             }
         })
     }
+
+
+
+
+
+    function filterToday() {
+        // 1. ดึงวันที่ปัจจุบันของไทย (YYYY-MM-DD)
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+
+        // 2. ใส่ค่าลงในช่อง Input
+        $('#minDate').val(today);
+        $('#maxDate').val(today);
+
+        // 3. สั่งให้ตารางวาดใหม่ (เพื่อให้ Custom Search ทำงาน)
+        if (typeof quoteTable !== 'undefined') {
+            quoteTable.draw();
+        } else {
+            console.error("หาตัวแปร quoteTable ไม่เจอครับ");
+        }
+    }
+    function resetFilter() {
+        $('#filterSupplier').val('');
+        $('#filterStatus').val(''); // ล้างค่าใน select status
+        $('#minDate').val('');
+        $('#maxDate').val('');
+
+        // สั่งล้างการ search ทุกคอลัมน์แล้ววาดใหม่
+        quoteTable.column(3).search('');
+        quoteTable.column(7).search('');
+        quoteTable.draw();
+    }
+
 </script>
 <?php include 'footer.php'; ?>

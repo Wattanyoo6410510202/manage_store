@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าจาก Form
@@ -91,7 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
+        $_SESSION['flash_msg'] = 'add_success';
         header("Location: ../projects.php");
+        exit();
     } else {
         echo "Error: " . mysqli_error($conn);
     }

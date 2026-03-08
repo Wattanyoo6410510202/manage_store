@@ -73,8 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        // สำเร็จ! กลับไปหน้าเดิมพร้อม Alert
-        header("Location: ../projects.php?msg=update_success");
+        $_SESSION['flash_msg'] = 'update_success';
+        header("Location: ../projects.php");
+        exit;
     } else {
         echo "Error: " . mysqli_error($conn);
     }

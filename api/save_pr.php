@@ -83,8 +83,8 @@ try {
     ("Inserted PR ID: $pr_id");
 
     // 4. สร้างเลขที่เอกสารใหม่ (PR-260305XXXXXX)
-    $date_prefix = date('ymd'); 
-    $new_doc_no = "PR-" . $date_prefix . str_pad($pr_id, 6, '0', STR_PAD_LEFT);
+     $date_prefix = (date('y') + 43) . date('m');
+    $new_doc_no = "PR-" . $date_prefix . str_pad($pr_id, 4, '0', STR_PAD_LEFT);
     $conn->query("UPDATE pr SET doc_no = '$new_doc_no' WHERE id = $pr_id");
     ("Generated Doc No: $new_doc_no");
 

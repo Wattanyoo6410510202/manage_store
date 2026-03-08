@@ -131,27 +131,40 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                                 </tr>
                             </thead>
                             <tbody id="docBody">
-                                <tr class="border-b border-slate-50">
-                                    <td class="py-3 pr-2">
-                                        <select name="doc_type[]"
-                                            class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-indigo-500">
-                                            <option value="quotation">Quotation (ใบเสนอราคา)</option>
-                                            <option value="pr">PR (ใบขอซื้อ)</option>
-                                            <option value="po">PO (ใบสั่งซื้อ)</option>
-                                        </select>
-                                    </td>
-                                    <td class="py-3 pr-2">
-                                        <input type="text" name="doc_no[]" required
-                                            class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-indigo-500"
-                                            placeholder="ระบุเลขที่เอกสาร...">
-                                    </td>
-                                    <td class="py-3 text-center">
-                                        <button type="button" onclick="deleteDocRow(this)"
-                                            class="text-slate-300 hover:text-red-500 transition-all">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                <?php
+                                // 1. เช็คก่อนว่ามีข้อมูลเอกสารเชื่อมโยงใน DB ไหม
+                                if (isset($res_docs) && mysqli_num_rows($res_docs) > 0):
+                                    while ($d = mysqli_fetch_assoc($res_docs)):
+                                        ?>
+                                        <tr class="border-b border-slate-50">
+                                            <td class="py-3 pr-2">
+                                                <select name="doc_type[]"
+                                                    class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-indigo-500">
+                                                    <option value="quotation" <?= $d['doc_type'] == 'quotation' ? 'selected' : '' ?>>Quotation (ใบเสนอราคา)</option>
+                                                    <option value="pr" <?= $d['doc_type'] == 'pr' ? 'selected' : '' ?>>PR
+                                                        (ใบขอซื้อ)</option>
+                                                    <option value="po" <?= $d['doc_type'] == 'po' ? 'selected' : '' ?>>PO
+                                                        (ใบสั่งซื้อ)</option>
+                                                </select>
+                                            </td>
+                                            <td class="py-3 pr-2">
+                                                <input type="text" name="doc_no[]" required
+                                                    value="<?= htmlspecialchars($d['doc_no']) ?>"
+                                                    class="w-full border border-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-indigo-500"
+                                                    placeholder="ระบุเลขที่เอกสาร...">
+                                            </td>
+                                            <td class="py-3 text-center">
+                                                <button type="button" onclick="deleteDocRow(this)"
+                                                    class="text-slate-300 hover:text-red-500 transition-all">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php
+                                    endwhile;
+                                endif;
+                                // ถ้าไม่มีข้อมูลใน DB เลย loop นี้จะไม่ทำงาน และ <tbody> จะว่างเปล่าตามที่จารต้องการครับ
+                                ?>
                             </tbody>
                         </table>
                     </div>

@@ -33,7 +33,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
             </div>
             <div class="flex gap-3">
                 <button type="submit"
-                    class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-2.5 rounded-xl font-bold  transition-all">
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold  transition-all">
                     <i class="fas fa-sync-alt mr-2"></i> อัปเดตข้อมูล
                 </button>
             </div>
@@ -194,14 +194,18 @@ $res_docs = mysqli_query($conn, $sql_docs);
                     <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2">
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
                         <label class="inline-flex items-center cursor-pointer">
-                            <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
-                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
-                                    onchange="calculateNetValue()" class="hidden peer">
-                                <div
-                                    class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
-                                </div>
-                            </label>
+                            <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
+                            <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
+                                onchange="calculateNetValue()" class="hidden peer" <?php
+                                // เช็คว่ามีตัวแปร และค่ามากกว่า 0 จริงๆ
+                                if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) {
+                                    echo 'checked';
+                                }
+                                ?>>
+
+                            <div
+                                class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
+                            </div>
                         </label>
                     </div>
 

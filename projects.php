@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 include('header.php');
+include('assets/alert.php');
 
 // ดึงข้อมูลโปรเจกต์
 $sql = "SELECT p.*, 
@@ -26,79 +27,129 @@ $result = mysqli_query($conn, $sql);
             $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
             $pj_id = $row['id'];
             ?>
-            <div class="group bg-white rounded-2xl border border-slate-200 p-5  transition-all">
-                <div class="flex justify-between items-start mb-4">
-                    <span
-                        class="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md uppercase tracking-wider"><?= $row['project_no'] ?></span>
-                    <div class="flex gap-2">
-                        <button onclick="viewProjectDetails(<?= $pj_id ?>)"
-                            class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-indigo-600 hover:text-white transition-all"
-                            title="ดูด่วน">
-                            <i class="fas fa-search-plus text-xs"></i>
-                        </button>
+            <div class="group bg-white rounded-2xl border border-slate-200 p-4 transition-all ">
+                <div class="flex gap-4">
 
-                        <a href="view_project.php?id=<?= $pj_id ?>"
-                            class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all"
-                            title="ดูหน้าเต็ม/พิมพ์เอกสาร">
-                            <i class="fas fa-eye text-xs"></i>
-                        </a>
+                    <div class="w-[40%] flex flex-col">
+                        <?php if ($row['attachment_path']):
+                            $ext = strtolower(pathinfo($row['attachment_path'], PATHINFO_EXTENSION));
+                            ?>
+                            <a href="uploads/projects/<?= $row['attachment_path'] ?>" target="_blank"
+                                class="block group/preview">
 
-                        <a href="edit_project.php?id=<?= $pj_id ?>"
-                            class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all"
-                            title="แก้ไขโครงการ">
-                            <i class="fas fa-edit text-xs"></i>
-                        </a>
+                                <div
+                                    class=" overflow-hidden relative flex items-center justify-center p-2 transition-all duration-300 ">
 
-                        <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
-                            class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all"
-                            title="ลบโครงการ">
-                            <i class="fas fa-trash-alt text-xs"></i>
-                        </button>
+                                    <?php if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])): ?>
+                                        <img src="uploads/projects/<?= $row['attachment_path'] ?>"
+                                            class="w-full h-full object-contain transition-transform duration-500 "
+                                            alt="Image Preview">
+
+                                    <?php elseif ($ext === 'pdf'): ?>
+                                        <iframe src="uploads/projects/<?= $row['attachment_path'] ?>#toolbar=0&navpanes=0&view=Fit"
+                                            class="w-full h-full border-0 pointer-events-none" frameborder="0">
+                                        </iframe>
+                                        <div class="absolute inset-0 z-10"></div>
+
+                                    <?php else: ?>
+                                        <div class="text-center transition-transform duration-300 ">
+                                            <?php
+                                            $icon = 'fa-file-alt';
+                                            $color = 'text-slate-300';
+                                            if (in_array($ext, ['doc', 'docx'])) {
+                                                $icon = 'fa-file-word';
+                                                $color = 'text-blue-500';
+                                            } elseif (in_array($ext, ['xls', 'xlsx'])) {
+                                                $icon = 'fa-file-excel';
+                                                $color = 'text-emerald-500';
+                                            } elseif (in_array($ext, ['zip', 'rar'])) {
+                                                $icon = 'fa-file-archive';
+                                                $color = 'text-amber-500';
+                                            }
+                                            ?>
+                                            <i class="fas <?= $icon ?> <?= $color ?> text-5xl mb-2 opacity-50"></i>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase"><?= $ext ?> FILE</p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </a>
+                        <?php else: ?>
+                            <div
+                                class="h-[220px] flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                                <i class="fas fa-file-circle-exclamation text-slate-200 text-3xl mb-2"></i>
+                                <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">No Attachment</p>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                </div>
 
-                <h3 class="font-bold text-slate-800 mb-1 truncate"><?= $row['project_name'] ?></h3>
-                <p class="text-xs text-slate-400 mb-4"><i class="far fa-calendar-alt mr-1"></i> จบงาน:
-                    <?= date('d/m/Y', strtotime($row['end_date'])) ?>
-                </p>
+                    <div class="w-[60%] flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <span
+                                    class="text-[9px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-md uppercase tracking-wider">
+                                    <?= $row['project_no'] ?>
+                                </span>
+                                <div class="flex gap-1">
+                                    <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-indigo-600 hover:text-white transition-all">
+                                        <i class="fas fa-search-plus text-[10px]"></i>
+                                    </button>
+                                    <a href="view_project.php?id=<?= $pj_id ?>"
+                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all">
+                                        <i class="fas fa-eye text-[10px]"></i>
+                                    </a>
+                                    <a href="edit_project.php?id=<?= $pj_id ?>"
+                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-amber-500 hover:bg-amber-500 hover:text-white transition-all">
+                                        <i class="fas fa-edit text-[10px]"></i>
+                                    </a>
+                                    <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-rose-400 hover:bg-rose-600 hover:text-white transition-all">
+                                        <i class="fas fa-trash-alt text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
 
-                <div class="space-y-3">
-                    <div>
-                        <div class="flex justify-between text-xs mb-1">
-                            <span class="text-slate-500">การเบิกเงิน</span>
-                            <span class="font-bold text-indigo-600"><?= number_format($progress, 1) ?>%</span>
-                        </div>
-                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div class="bg-indigo-500 h-full transition-all duration-1000" style="width: <?= $progress ?>%">
+                            <h3 class="font-bold text-slate-800 text-sm mb-0.5 truncate"
+                                title="<?= $row['project_name'] ?>"><?= $row['project_name'] ?></h3>
+                            <p class="text-[10px] text-slate-400 mb-3"><i class="far fa-calendar-alt mr-1"></i> จบงาน:
+                                <?= date('d/m/Y', strtotime($row['end_date'])) ?>
+                            </p>
+
+                            <div class="space-y-2.5">
+                                <div>
+                                    <div class="flex justify-between text-[10px] mb-1">
+                                        <span class="text-slate-500">การเบิกเงิน</span>
+                                        <span class="font-bold text-indigo-600"><?= number_format($progress, 1) ?>%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-500 h-full transition-all duration-1000"
+                                            style="width: <?= $progress ?>%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-slate-50 rounded-xl p-2.5 space-y-1">
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-[9px] text-slate-400 uppercase font-medium">สัญญา</p>
+                                        <p class="text-[11px] font-bold text-slate-700">
+                                            <?= number_format($row['contract_value'], 2) ?>
+                                        </p>
+                                    </div>
+                                    <div class="flex justify-between items-center border-t border-slate-100 pt-1">
+                                        <p class="text-[9px] text-slate-400 uppercase font-medium">รับแล้ว</p>
+                                        <p class="text-[11px] font-bold text-emerald-600">
+                                            <?= number_format($row['collected_money'], 2) ?>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="bg-slate-50 rounded-xl p-3 flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-slate-400 uppercase">ยอดสัญญา</p>
-                            <p class="text-sm font-bold text-slate-700"><?= number_format($row['contract_value'], 2) ?></p>
+                        <div class="mt-3 flex justify-end">
+                            <span
+                                class="text-[9px] px-2 py-0.5 rounded-md <?= $row['project_status'] == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500' ?> font-bold uppercase border border-slate-200/50">
+                                <?= $row['project_status'] ?>
+                            </span>
                         </div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-slate-400 uppercase">รับแล้ว</p>
-                            <p class="text-sm font-bold text-emerald-600"><?= number_format($row['collected_money'], 2) ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
-                    <span
-                        class="text-[10px] px-2 py-1 rounded-lg <?= $row['project_status'] == 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500' ?> font-bold uppercase">
-                        <?= $row['project_status'] ?>
-                    </span>
-                    <div class="flex gap-1">
-                        <?php if ($row['attachment_path']): ?>
-                            <a href="uploads/projects/<?= $row['attachment_path'] ?>" target="_blank"
-                                class="text-slate-400 hover:text-indigo-600 text-sm">
-                                <i class="fas fa-paperclip mr-1"></i> ไฟล์ประกอบ
-                            </a>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -159,6 +210,14 @@ $result = mysqli_query($conn, $sql);
                 window.location.href = `api/delete_project.php?id=${id}`;
             }
         })
+    }
+    function togglePreview() {
+        const container = document.getElementById('preview_container');
+        if (container.classList.contains('hidden')) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
     }
 </script>
 
