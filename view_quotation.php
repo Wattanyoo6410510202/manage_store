@@ -287,7 +287,7 @@ function ReadNumber($number)
                     <th width="5%" align="center">จำนวน</th>
                     <th width="12%" align="right">ราคา</th>
                     <?php if ($total_discount > 0): ?>
-                         <th width="10%" align="right">ส่วนลด</th>
+                        <th width="10%" align="right">ส่วนลด</th>
                     <?php endif; ?>
                     <th width="12%" align="right">ยอดรวม</th>
                 </tr>
@@ -303,12 +303,12 @@ function ReadNumber($number)
                         <td align="center" style="color: #64748b;"><?= $count++ ?></td>
                         <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
            max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
-    <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
-</td>
+                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+                        </td>
                         <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
                         <td align="right"><?= number_format($item['item_price'], 2) ?></td>
                         <?php if ($total_discount > 0): ?>
-                            <td align="right" ><?= number_format($item['item_discount'], 2) ?></td>
+                            <td align="right"><?= number_format($item['item_discount'], 2) ?></td>
                         <?php endif; ?>
                         <td align="right" style="font-weight: 600;"><?= number_format($item['item_total'], 2) ?></td>
                     </tr>
@@ -399,16 +399,19 @@ function ReadNumber($number)
                         <img src="<?= $approved_sig ?>?v=<?= time() ?>"
                             style="max-height: 50px; max-width: 100%; object-fit: contain;">
                     <?php elseif ($data['status'] === 'approved'): ?>
-                        <span style="font-size: 10px; color: #94a3b8; font-style: italic;">( ลายเซ็นสูญหาย )</span>
+                        <span style="font-size: 10px; color: #94a3b8; font-style: italic;"></span>
                     <?php else: ?>
-                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;">( รออนุมัติ )</span>
+                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;"></span>
                     <?php endif; ?>
 
                 </div>
                 <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนามอนุมัติ</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['approver_name'] ?> )</p>
+                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">
+                    ( <?= !empty($data['approver_name']) ? $data['approver_name'] : '...................................' ?> )
+                </p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                    วันที่ <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : 'วันที่ ......../......../........' ?>
+                    วันที่
+                    <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : 'วันที่ ......../......../........' ?>
                 </p>
             </div>
 

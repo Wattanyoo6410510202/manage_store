@@ -416,13 +416,9 @@ function ReadNumber($number)
             <div style="width: 33%; text-align: center;">
                 <div class="sig-box"
                     style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-                    <?php if ($data['status'] === 'approved' && !empty($data['approver_signature'])): ?>
+                    <?php if (!empty($data['approver_signature'])): ?>
                         <img src="uploads/signatures/<?= $data['approver_signature'] ?>"
                             style="max-height: 50px; object-fit: contain;">
-                    <?php elseif ($data['status'] === 'approved'): ?>
-                        <span style="font-weight: bold; color: #10b981;">APPROVED</span>
-                    <?php else: ?>
-                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;">( รออนุมัติ )</span>
                     <?php endif; ?>
                 </div>
                 <p style="margin: 0; font-weight: bold; font-size: 12px;">แผนกบัญชี / จัดซื้อ</p>
@@ -488,22 +484,12 @@ function ReadNumber($number)
     }
 </script>
 <script>
-    // 1. ลูกเล่นเปิด-ปิดลายเซ็น
     function toggleSignature() {
-        const sigBox = document.querySelectorAll('.sig-box');
-        const btn = document.getElementById('sigBtn');
+        // 1. ถ้าจารต้องการให้กดแล้วเด้งไปหน้าสร้างเลย
+        window.location.href = 'create_signature.php';
 
-        sigBox.forEach(el => {
-            el.style.opacity = (el.style.opacity === '0') ? '1' : '0';
-        });
-
-        btn.classList.toggle('active');
-
-        // แจ้งเตือนเล็กน้อย
-        if (typeof renderAlert === 'function') {
-            const status = btn.classList.contains('active') ? 'แสดงลายเซ็น' : 'ซ่อนลายเซ็น';
-            renderAlert('success', status);
-        }
+        // หรือถ้าอยากให้เปิด Tab ใหม่ (จะได้ไม่หลุดจากหน้า PR)
+        // window.open('create_signature.php', '_blank');
     }
 
     // 2. ส่งออกเป็น Word (.doc)

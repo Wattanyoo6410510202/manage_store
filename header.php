@@ -19,7 +19,7 @@ $permissions = [
     // 2. GM (General Manager): ดูและจัดการได้เกือบหมด ยกเว้นการตั้งค่าระบบ/API/ลบขยะ
     'gm' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
 
-    // 3. GMHOK: สิทธิ์ระดับบริหารเฉพาะส่วน (เน้นดูโครงการและเอกสาร)
+    // 3. GMHOK: สิทธิ์ระดับบริหารเฉพาะส่วน (เน้นดูงานและเอกสาร)
     'gmhok' => ['dashboard', 'docs', 'projects', 'compare'],
 
     // 4. HOK: สิทธิ์ระดับหัวหน้าส่วนงาน
@@ -29,7 +29,9 @@ $permissions = [
     'staff' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
 
     // 6. Viewer: ดูได้อย่างเดียว (Dashboard และรายการเอกสาร)
-    'viewer' => ['dashboard', 'docs']
+    'viewer' => ['dashboard', 'docs'],
+    'procure' => ['dashboard', 'docs', 'projects', 'compare'],
+    'fin' => ['dashboard', 'docs', 'projects', 'compare']
 ];
 
 // ฟังก์ชันเช็คสิทธิ์สำหรับใช้ใน Side Bar และปุ่มต่างๆ
@@ -215,9 +217,9 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 
             <?php if (can('projects')): ?>
                 <a href="projects.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'view_milstones.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-project-diagram w-5 text-indigo-400"></i>
-                    <span class="font-medium">จัดการโครงการ</span>
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php'|| $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-tasks w-5 text-indigo-400"></i>
+                    <span class="font-medium">จัดการงวดงาน</span>
                 </a>
             <?php endif; ?>
 
@@ -305,12 +307,18 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                         'add_po.php' => 'สร้างใบสั่งซื้อใหม่',
                         'po_settings.php' => 'ตั้งค่าใบสั่งซื้อ',
                         'compare.php' => 'เปรียบเทียบราคาสินค้า',
-                        'projects.php' => 'จัดการโครงการ',
+                        'projects.php' => 'จัดการงาน',
                         'inventory.php' => 'ระบบจัดการคลังสินค้า',
                         'settings.php' => 'ตั้งค่าข้อมูลบริษัท',
                         'user_settings.php' => 'จัดการสิทธิ์ผู้ใช้งาน',
                         'settings_api.php' => 'ตั้งค่าการเชื่อมต่อ API',
-                        'all_trash.php' => 'ถังขยะระบบ'
+                        'all_trash.php' => 'ถังขยะระบบ',
+                        'add_project.php' => 'สร้างงานใหม่',
+                        'edit_project.php' => 'แก้ไขงาน',
+                        'detail_project.php' => 'รายละเอียดงาน',
+                        'view_milestones.php' => 'ดูงวดงาน',
+                        'add_milestone.php' => 'เพิ่มงวดงาน',
+                        'edit_milestone.php' => 'แก้ไขงวดงาน',
                     ];
                     echo $titles[$current_page] ?? 'ProSystem Management';
                     ?>

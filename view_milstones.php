@@ -391,10 +391,11 @@ if ($num_rows <= 5) {
                         <?php endif; ?>
                     </div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
-                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(
-                        <?= $first['creator_name'] ?? '........................................' ?> )
+                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">
+                         (<?= $_SESSION['user_name'] ?? '................................' ?>)
                     </p>
-                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
+                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
+                        วันที่:
                         <?= isset($first['created_at']) ? date('d/m/Y', strtotime($first['created_at'])) : '......../......../........' ?>
                     </p>
                 </div>

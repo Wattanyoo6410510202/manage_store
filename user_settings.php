@@ -55,6 +55,8 @@ include('assets/alert.php');
                             <option value="gm">GM (ผู้จัดการ)</option>
                              <option value="gmhok">GM HOK (ผู้จัดการ HOK)</option>
                             <option value="hok">HOK (ผู้ปฏิบัติงานพิเศษ)</option>
+                            <option value="procure">Procurement (ผู้จัดซื้อ)</option>
+                            <option value="fin">Finance (ผู้จัดการการเงิน)</option>
                             <option value="viewer">Viewer (ผู้ชม)</option>
                         </select>
                     </div>
@@ -103,8 +105,10 @@ include('assets/alert.php');
                                     $role_styles = [
                                         'admin' => 'bg-purple-100 text-purple-600',   // ผู้ดูแลระบบ (สีม่วง) - เหมือนเดิม
                                         'gm' => 'bg-amber-100 text-amber-600',     // ผู้จัดการ (สีส้ม/ทอง) - เหมือนเดิม
-                                        'staff' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า) - เหมือนเดิม
-                                
+                                        'staff' => 'bg-blue-100 text-blue-600', 
+                                         'procure' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า) - เหมือนเดิม
+                                         'fin' => 'bg-green-100 text-green-600',       // ผู้จัดการการเงิน (สีเขียว) - เพิ่มใหม่
+
                                         // --- จุดที่เปลี่ยนใหม่ให้ต่างกันครับจาร ---
                                 
                                         'gmhok' => 'bg-rose-100 text-rose-600',       // GM HOK (สีชมพูเข้ม/แดง) - ให้ดูเด่นระดับผู้บริหาร

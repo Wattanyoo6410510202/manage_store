@@ -249,9 +249,37 @@ foreach ($data as $item) {
             <h1 style="margin: 0; font-size: 20px; font-weight: 900;">รายงานการเปรียบเทียบราคา</h1>
             <p style="margin: 0; font-size: 10px; font-weight: 700; color: #64748b;">COMPARATIVE QUOTATION ANALYSIS</p>
         </div>
-        <div style="text-align: right; font-size: 12px;">
-            วันที่ <input type="text" id="docDate" class="dotted-line" style="min-width: 100px; text-align: center;"
-                value="<?= date('d/m/Y') ?>">
+        <div
+            style="display: flex; align-items: flex-start; gap: 20px; margin-bottom: 25px; border-bottom: 3px solid #0f172a; padding-bottom: 15px;">
+            <div style="flex: 1;">
+                <h2 style="margin: 0; font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">SHotel
+                    Hatyai</h2>
+                <p style="margin: 2px 0; font-size: 12px; color: #334155; line-height: 1.4;">
+                    220 ถนนประชาธิปัตย์ ตำบลหาดใหญ่ อำเภอหาดใหญ่ จังหวัดสงขลา 90110
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600;">
+                    <i class="fas fa-file-invoice" style="margin-right: 4px;"></i> Tax ID: 0905566000446
+                    <span style="margin: 0 10px; color: #cbd5e1;">|</span>
+                    <i class="fas fa-phone-alt" style="margin-right: 4px;"></i> Tel: 088-899-0743
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <div
+                    style="background: #0f172a; color: white; padding: 5px 15px; border-radius: 4px; font-size: 14px; font-weight: 800; display: inline-block; margin-bottom: 5px;">
+                    รายงานเปรียบเทียบราคา
+                </div>
+                <p style="margin: 0; font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">
+                    Comparative Quotation Analysis</p>
+            </div>
+        </div>
+
+        <div class="doc-title-box" style="border: none; margin-bottom: 15px;">
+            <div
+                style="font-size: 12px; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 5px;">
+                <strong>วันที่ออกเอกสาร:</strong>
+                <input type="text" id="docDate" class="dotted-line" style="min-width: 100px; text-align: center;"
+                    value="<?= date('d/m/Y') ?>">
+            </div>
         </div>
     </div>
 
@@ -267,7 +295,7 @@ foreach ($data as $item) {
 
     <table class="table-compare" id="compareTable">
         <thead>
-            
+
         <tbody>
             <tr>
                 <td class="row-label">ชื่อผู้ขาย / ร้านค้า</td>

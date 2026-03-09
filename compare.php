@@ -87,8 +87,8 @@ include('header.php');
 <script>
     async function askAI() {
         const productName = document.getElementById('productSearch').value;
-        if (!productName) return Swal.fire('กรุณาระบุชื่อสินค้า', '', 'warning');
-
+        if (!productName) return ;
+             
         const selectedApi = document.querySelector('input[name="ai_model"]:checked').value;
         const btnText = document.getElementById('btnText');
         const loading = document.getElementById('loading');
@@ -99,6 +99,7 @@ include('header.php');
         btnText.disabled = true;
         loading.classList.remove('hidden');
         resultDiv.innerHTML = '';
+        
 
         try {
             const response = await fetch(selectedApi, {
