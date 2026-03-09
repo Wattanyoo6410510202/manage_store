@@ -1,7 +1,7 @@
 <?php
 require_once 'config.php';
 include('header.php');
-
+include('assets/alert.php');
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 // 1. ดึงข้อมูลโครงการ
@@ -207,15 +207,16 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                         <?php endif; ?>
                                     </td>
                                     <td class="px-4 py-4">
-                                        <p class="font-black text-slate-700 uppercase text-sm"><?= $m['milestone_name'] ?></p>
+                                        <p class="font-black text-slate-700 uppercase text-sm truncate max-w-[250px]">
+                                            <?= $m['milestone_name'] ?></p>
                                     </td>
                                     <td class="px-4 py-4 text-sm text-slate-500 font-bold">
                                         <?= date('d/m/Y', strtotime($m['claim_date'])) ?>
                                     </td>
                                     <td class="px-4 py-4 text-center">
                                         <span
-                                            class="text-[9px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600' ?>">
-                                            <?= $m['status'] ?>
+                                            class="text-[10px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
+                                            <?= $m['status'] == 'paid' ? 'ชำระเงินแล้ว' : 'ค้างชำระ' ?>
                                         </span>
                                     </td>
                                     <td class="px-4 py-4 text-right">
@@ -249,7 +250,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                                 <div class="flex items-center gap-2 py-1.5">
                                                     <span
                                                         class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[10px] font-black border border-emerald-100 uppercase tracking-tighter">
-                                                        <i class="fas fa-check-double mr-1"></i> Finalized
+                                                        <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
                                                     </span>
                                                 </div>
                                             <?php endif; ?>

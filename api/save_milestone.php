@@ -13,21 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $amount = floatval($_POST['amount']); // ยอดเงินต้น
     $vat_amount = floatval($_POST['vat_amount']);
     $wht_amount = floatval($_POST['wht_amount']);
-    
+
     // ยอดรวมก่อนหักภาษี (ตาม Comment ใน DB)
-    $total_request_amount = floatval($_POST['total_request_amount']); 
-    
+    $total_request_amount = floatval($_POST['total_request_amount']);
+
     // ยอดสุทธิ (ต้องมีเพื่อเก็บลง net_amount)
     $net_amount = isset($_POST['net_amount']) ? floatval($_POST['net_amount']) : $total_request_amount;
-    
+
     $remaining_balance = floatval($_POST['remaining_balance']);
 
     // 3. จัดการไฟล์แนบ (ถ้ามี)
     $attachment_name = "";
     if (isset($_FILES['claim_attachment']) && $_FILES['claim_attachment']['error'] == 0) {
         $target_dir = "../uploads/claims/";
-        if (!file_exists($target_dir)) { 
-            mkdir($target_dir, 0777, true); 
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
         }
         $file_ext = pathinfo($_FILES["claim_attachment"]["name"], PATHINFO_EXTENSION);
         $attachment_name = "CLAIM_" . $project_id . "_" . time() . "." . $file_ext;
@@ -74,7 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
             echo "success"; // ตอบกลับสำหรับ AJAX
         } else {
-            header("Location: ../detail_project.php?id=$project_id&save=success");
+            $_SESSION['flash_msg'] = 'add_success';
+            header("Location: ../detail_project.php?id=$project_id");
+            exit();
         }
     } else {
         http_response_code(500);

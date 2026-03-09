@@ -53,25 +53,25 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-slate-700 mb-1">งวดที่ / รายละเอียดงาน <span class="text-red-500">*</span></label>
-                            <input type="text" name="milestone_name" required value="งวดที่ <?= $count ?>: " class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="text" name="milestone_name" required value="งวดที่ <?= $count ?>: " class="w-full border border-slate-200 rounded-xl p-2.5 ">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1 text-indigo-600">ยอดเงินตั้งเบิก (ก่อนภาษี)</label>
                             <div class="relative">
-                                <input type="number" step="0.01" name="amount" id="amount" oninput="calculateMoney()" required class="w-full border-2 border-indigo-100 rounded-xl p-2.5 pl-8 focus:border-indigo-500 focus:ring-0 outline-none font-bold text-lg text-indigo-700" placeholder="0.00">
+                                <input type="number" step="0.01" name="amount" id="amount" oninput="calculateMoney()" required class="w-full border-2 border-indigo-100 rounded-xl p-2.5 pl-8 " placeholder="0.00">
                                 <span class="absolute left-3 top-3 text-slate-400">฿</span>
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เรียกเก็บ</label>
-                            <input type="date" name="claim_date" value="<?= date('Y-m-d') ?>" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="date" name="claim_date" value="<?= date('Y-m-d') ?>" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
                         </div>
 
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (เพิ่มเติม)</label>
-                            <textarea name="remarks" rows="2" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ระบุรายละเอียดเพิ่มเติม เช่น หักค่าของ, จ่ายล่วงหน้า..."></textarea>
+                            <textarea name="remarks" rows="2" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none " placeholder="ระบุรายละเอียดเพิ่มเติม เช่น หักค่าของ, จ่ายล่วงหน้า..."></textarea>
                         </div>
                     </div>
 
@@ -118,7 +118,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
             <div class="space-y-6">
                 <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
                     <label class="block text-sm font-bold text-slate-700 mb-2">สถานะการจ่ายเงิน</label>
-                    <select name="status" class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                    <select name="status" class="w-full border border-slate-200 rounded-xl p-3 outline-none ">
                         <option value="pending">⏳ รอชำระเงิน (Pending)</option>
                         <option value="paid">✅ ชำระเงินแล้ว (Paid)</option>
                     </select>

@@ -46,11 +46,9 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                 </p>
             </div>
             <div class="flex gap-3">
-                <button type="button" onclick="history.back()"
-                    class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">ยกเลิก</button>
                 <button type="submit"
-                    class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-100 transition-all">
-                    <i class="fas fa-save mr-2"></i> บันทึกการแก้ไข
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all">
+                    <i class="fas fa-save mr-2"></i> อัพเดทการแก้ไข
                 </button>
             </div>
         </div>
@@ -59,7 +57,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white rounded-2xl border border-slate-200 p-6">
                     <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-edit text-amber-500"></i> รายละเอียดที่ต้องการแก้ไข
+                        <i class="fas fa-edit text-indigo-500"></i> รายละเอียดที่ต้องการแก้ไข
                     </h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -68,7 +66,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                                     class="text-red-500">*</span></label>
                             <input type="text" name="milestone_name" required
                                 value="<?= htmlspecialchars($m_data['milestone_name']) ?>"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                class="w-full border border-slate-200 rounded-xl p-2.5 ">
                         </div>
 
                         <div>
@@ -77,7 +75,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                             <div class="relative">
                                 <input type="number" step="0.01" name="amount" id="amount" oninput="calculateMoney()"
                                     required value="<?= $m_data['amount'] ?>"
-                                    class="w-full border-2 border-indigo-100 rounded-xl p-2.5 pl-8 focus:border-indigo-500 focus:ring-0 outline-none font-bold text-lg text-indigo-700">
+                                    class="w-full border-2 border-indigo-100 rounded-xl p-2.5 pl-8 ">
                                 <span class="absolute left-3 top-3 text-slate-400">฿</span>
                             </div>
                         </div>
@@ -85,13 +83,13 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เรียกเก็บ</label>
                             <input type="date" name="claim_date" value="<?= $m_data['claim_date'] ?>"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
                         </div>
 
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (เพิ่มเติม)</label>
                             <textarea name="remarks" rows="2"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500"><?= htmlspecialchars($m_data['remarks']) ?></textarea>
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none "><?= htmlspecialchars($m_data['remarks']) ?></textarea>
                         </div>
                     </div>
 
@@ -143,7 +141,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                 <div class="bg-white rounded-2xl border border-slate-200 p-6">
                     <label class="block text-sm font-bold text-slate-700 mb-2">สถานะการจ่ายเงิน</label>
                     <select name="status"
-                        class="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        class="w-full border border-slate-200 rounded-xl p-3 outline-none  font-bold text-slate-700">
                         <option value="pending" <?= $m_data['status'] == 'pending' ? 'selected' : '' ?>>⏳ รอชำระเงิน
                             (Pending)</option>
                         <option value="paid" <?= $m_data['status'] == 'paid' ? 'selected' : '' ?>>✅ ชำระเงินแล้ว (Paid)

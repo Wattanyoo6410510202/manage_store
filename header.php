@@ -215,7 +215,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 
             <?php if (can('projects')): ?>
                 <a href="projects.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'view_milstones.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-project-diagram w-5 text-indigo-400"></i>
                     <span class="font-medium">จัดการโครงการ</span>
                 </a>

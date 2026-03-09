@@ -2,8 +2,11 @@
 require_once 'config.php';
 include('header.php');
 
-// ดึงรายชื่อลูกค้ามาใส่ใน Select
+// ดึงรายชื่อลูกค้า
 $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER BY customer_name ASC");
+
+// เพิ่ม: ดึงรายชื่อผู้รับจ้าง / ร้านค้า (Suppliers)
+$suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
 ?>
 
 <div>
@@ -34,7 +37,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                             <label class="block text-sm font-bold text-slate-700 mb-1">ชื่องาน <span
                                     class="text-red-500">*</span></label>
                             <input type="text" name="project_name" required
-                                class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 f"
                                 placeholder="เช่น งานพ่นผนัง ">
                         </div>
                         <div>
@@ -43,16 +46,53 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                                 class="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50"
                                 placeholder="PJ-XXXX (เว้นว่างเพื่อ Auto)">
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
-                            <select name="customer_id"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
-                                <option value="">-- เลือกบริษัทลูกค้า --</option>
-                                <?php while ($c = mysqli_fetch_assoc($customers)): ?>
-                                    <option value="<?= $c['id'] ?>"><?= $c['customer_name'] ?></option>
-                                <?php endwhile; ?>
-                            </select>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า (Customer)</label>
+                                <select name="customer_id" id="customer_select"
+                                    class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
+                                    <option value="">-- เลือกบริษัทลูกค้า --</option>
+                                    <?php
+                                    mysqli_data_seek($customers, 0);
+                                    while ($c = mysqli_fetch_assoc($customers)):
+                                        ?>
+                                        <option value="<?= $c['id'] ?>"><?= $c['customer_name'] ?></option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">
+                                    (Supplier)</label>
+                                <select name="supplier_id" id="supplier_select"
+                                    class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
+                                    <option value="">-- เลือก Supplier / ร้านค้า --</option>
+                                    <?php
+                                    // สมมติว่าจารมีตัวแปร $suppliers ที่ดึงข้อมูลมาจากฐานข้อมูลไว้แล้ว
+                                    if (isset($suppliers)):
+                                        mysqli_data_seek($suppliers, 0);
+                                        while ($s = mysqli_fetch_assoc($suppliers)):
+                                            ?>
+                                            <option value="<?= $s['id'] ?>"><?= $s['company_name'] ?></option>
+                                            <?php
+                                        endwhile;
+                                    endif;
+                                    ?>
+                                </select>
+                                <p class="mt-1 text-[10px] text-slate-400 font-medium">*
+                                    หัวกระดาษ</p>
+                            </div>
                         </div>
+
+                        <script>
+                            $(document).ready(function () {
+                                $('#customer_select').select2({
+                                    placeholder: '-- เลือกบริษัทลูกค้า --',
+                                    allowClear: true,
+                                    width: '100%'
+                                });
+                            });
+                        </script>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">
 
@@ -160,7 +200,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                                                 </button>
                                             </td>
                                         </tr>
-                                    <?php
+                                        <?php
                                     endwhile;
                                 endif;
                                 // ถ้าไม่มีข้อมูลใน DB เลย loop นี้จะไม่ทำงาน และ <tbody> จะว่างเปล่าตามที่จารต้องการครับ
@@ -172,7 +212,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                 <div class="bg-white rounded-2xl --sm border border-slate-200 p-6 mt-6">
                     <label class="block text-sm font-bold text-slate-700 mb-1">หมายเหตุเพิ่มเติม (Remarks)</label>
                     <textarea name="project_remarks" rows="3"
-                        class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                        class="w-full border border-slate-200 rounded-xl p-2.5 outline-none "
                         placeholder="ระบุเงื่อนไขพิเศษหรือบันทึกเพิ่มเติม..."></textarea>
                 </div>
             </div>
@@ -186,7 +226,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                             <label class="inline-flex items-center cursor-pointer">
                                 <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">คิดภาษี VAT
                                     (7%)</span>
-                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes" checked
+                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
                                     class="hidden peer" onchange="calculateNetValue()">
                                 <div
                                     class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative">
@@ -196,7 +236,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
                             <label class="inline-flex items-center cursor-pointer">
                                 <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
                                     (3%)</span>
-                                <input type="checkbox" id="wht_toggle" name="include_wht" value="yes" checked
+                                <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
                                     class="hidden peer" onchange="calculateNetValue()">
                                 <div
                                     class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 relative">

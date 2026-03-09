@@ -15,6 +15,7 @@ if (!$pj) {
 
 // ดึงรายชื่อลูกค้า
 $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER BY customer_name ASC");
+$suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
 
 // ดึงเอกสารเชื่อมโยงเดิม
 $sql_docs = "SELECT * FROM project_documents WHERE project_id = '$pj_id'";
@@ -57,17 +58,46 @@ $res_docs = mysqli_query($conn, $sql_docs);
                             <input type="text" name="project_no" value="<?= $pj['project_no'] ?>" readonly
                                 class="w-full border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-500 cursor-not-allowed">
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
-                            <select name="customer_id"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
-                                <?php while ($c = mysqli_fetch_assoc($customers)): ?>
-                                    <option value="<?= $c['id'] ?>" <?= ($c['id'] == $pj['customer_id']) ? 'selected' : '' ?>>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
+                                <select name="customer_id"
+                                    class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                                    <?php while ($c = mysqli_fetch_assoc($customers)): ?>
+                                    <option value="<?= $c['id'] ?>"
+                                        <?= ($c['id'] == $pj['customer_id']) ? 'selected' : '' ?>>
                                         <?= $c['customer_name'] ?>
                                     </option>
-                                <?php endwhile; ?>
-                            </select>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">
+                                    (Supplier)</label>
+                                <select name="supplier_id" id="supplier_select"
+                                    class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:border-indigo-500">
+                                    <option value="">-- เลือก Supplier / ร้านค้า --</option>
+                                    <?php
+    if (isset($suppliers)):
+        mysqli_data_seek($suppliers, 0);
+        while ($s = mysqli_fetch_assoc($suppliers)):
+    ?>
+                                    <option value="<?= $s['id'] ?>"
+                                        <?= ($s['id'] == $pj['supplier_id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($s['company_name']) ?>
+                                    </option>
+                                    <?php
+        endwhile;
+    endif;
+    ?>
+                                </select>
+                                <p class="mt-1 text-[10px] text-slate-400 font-medium">*
+                                    หัวกระดาษ</p>
+                            </div>
                         </div>
+
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">มูลค่างาน (Base)</label>
                             <input type="number" step="0.01" name="contract_value" id="contract_value"
@@ -134,48 +164,52 @@ $res_docs = mysqli_query($conn, $sql_docs);
                         <table class="w-full">
                             <tbody id="docBody">
                                 <?php if (mysqli_num_rows($res_docs) > 0): ?>
-                                    <?php while ($d = mysqli_fetch_assoc($res_docs)): ?>
-                                        <tr class="border-b border-slate-50">
-                                            <td class="py-3 pr-2">
-                                                <select name="doc_type[]"
-                                                    class="w-full border border-slate-200 rounded-lg p-2 outline-none">
-                                                    <option value="quotation" <?= $d['doc_type'] == 'quotation' ? 'selected' : '' ?>>Quotation</option>
-                                                    <option value="pr" <?= $d['doc_type'] == 'pr' ? 'selected' : '' ?>>PR</option>
-                                                    <option value="po" <?= $d['doc_type'] == 'po' ? 'selected' : '' ?>>PO</option>
-                                                </select>
-                                            </td>
-                                            <td class="py-3 pr-2">
-                                                <input type="text" name="doc_no[]" value="<?= htmlspecialchars($d['doc_no']) ?>"
-                                                    required class="w-full border border-slate-200 rounded-lg p-2 outline-none"
-                                                    placeholder="ระบุเลขที่เอกสาร...">
-                                            </td>
-                                            <td class="py-3 text-center">
-                                                <button type="button" onclick="deleteDocRow(this)"
-                                                    class="text-rose-400 hover:text-rose-600"><i
-                                                        class="fas fa-times"></i></button>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
+                                <?php while ($d = mysqli_fetch_assoc($res_docs)): ?>
+                                <tr class="border-b border-slate-50">
+                                    <td class="py-3 pr-2">
+                                        <select name="doc_type[]"
+                                            class="w-full border border-slate-200 rounded-lg p-2 outline-none">
+                                            <option value="quotation"
+                                                <?= $d['doc_type'] == 'quotation' ? 'selected' : '' ?>>Quotation
+                                            </option>
+                                            <option value="pr" <?= $d['doc_type'] == 'pr' ? 'selected' : '' ?>>PR
+                                            </option>
+                                            <option value="po" <?= $d['doc_type'] == 'po' ? 'selected' : '' ?>>PO
+                                            </option>
+                                        </select>
+                                    </td>
+                                    <td class="py-3 pr-2">
+                                        <input type="text" name="doc_no[]" value="<?= htmlspecialchars($d['doc_no']) ?>"
+                                            required class="w-full border border-slate-200 rounded-lg p-2 outline-none"
+                                            placeholder="ระบุเลขที่เอกสาร...">
+                                    </td>
+                                    <td class="py-3 text-center">
+                                        <button type="button" onclick="deleteDocRow(this)"
+                                            class="text-rose-400 hover:text-rose-600"><i
+                                                class="fas fa-times"></i></button>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr class="border-b border-slate-50">
-                                        <td class="py-3 pr-2">
-                                            <select name="doc_type[]"
-                                                class="w-full border border-slate-200 rounded-lg p-2 outline-none">
-                                                <option value="quotation">Quotation</option>
-                                                <option value="pr">PR</option>
-                                                <option value="po">PO</option>
-                                            </select>
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <input type="text" name="doc_no[]"
-                                                class="w-full border border-slate-200 rounded-lg p-2 outline-none"
-                                                placeholder="ระบุเลขที่เอกสาร...">
-                                        </td>
-                                        <td class="py-3 text-center">
-                                            <button type="button" onclick="deleteDocRow(this)" class="text-rose-400"><i
-                                                    class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
+                                <tr class="border-b border-slate-50">
+                                    <td class="py-3 pr-2">
+                                        <select name="doc_type[]"
+                                            class="w-full border border-slate-200 rounded-lg p-2 outline-none">
+                                            <option value="quotation">Quotation</option>
+                                            <option value="pr">PR</option>
+                                            <option value="po">PO</option>
+                                        </select>
+                                    </td>
+                                    <td class="py-3 pr-2">
+                                        <input type="text" name="doc_no[]"
+                                            class="w-full border border-slate-200 rounded-lg p-2 outline-none"
+                                            placeholder="ระบุเลขที่เอกสาร...">
+                                    </td>
+                                    <td class="py-3 text-center">
+                                        <button type="button" onclick="deleteDocRow(this)" class="text-rose-400"><i
+                                                class="fas fa-times"></i></button>
+                                    </td>
+                                </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -193,32 +227,52 @@ $res_docs = mysqli_query($conn, $sql_docs);
                 <div class="bg-slate-900 rounded-2xl p-6 text-white ">
                     <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2">
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
-                        <label class="inline-flex items-center cursor-pointer">
-                            <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
-                            <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
-                                onchange="calculateNetValue()" class="hidden peer" <?php
-                                // เช็คว่ามีตัวแปร และค่ามากกว่า 0 จริงๆ
-                                if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) {
-                                    echo 'checked';
-                                }
-                                ?>>
+                        <div class="flex items-center gap-4"> <label class="inline-flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
+                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
+                                    onchange="calculateNetValue()" class="hidden peer"
+                                    <?php if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) echo 'checked'; ?>>
+                                <div
+                                    class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
+                                </div>
+                            </label>
 
-                            <div
-                                class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
-                            </div>
-                        </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400">WHT 3%</span>
+                                <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
+                                    onchange="calculateNetValue()" class="hidden peer"
+                                    <?php if (isset($pj['total_wht_amount']) && floatval($pj['total_wht_amount']) > 0) echo 'checked'; ?>>
+                                <div
+                                    class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-rose-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
+                                </div>
+                            </label>
+
+                        </div>
                     </div>
 
                     <div class="space-y-3 text-sm">
-                        <div class="flex justify-between"><span class="text-slate-400">มูลค่างาน:</span> <span
-                                id="display_base">0.00</span></div>
-                        <div id="vat_row" class="flex justify-between transition-all"><span class="text-slate-400">VAT
-                                (7%):</span> <span id="display_vat">0.00</span></div>
-                        <div class="flex justify-between border-t border-slate-800 pt-2"><span
-                                class="font-bold">มูลค่าสุทธิ:</span> <span id="display_net"
-                                class="font-bold text-lg text-indigo-400">0.00</span></div>
-                    </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">มูลค่างาน:</span>
+                            <span id="display_base">0.00</span>
+                        </div>
 
+                        <div id="vat_row" class="flex justify-between transition-all">
+                            <span class="text-slate-400">VAT (7%):</span>
+                            <span id="display_vat" class="text-emerald-400">+ 0.00</span>
+                        </div>
+
+                        <div id="wht_row" class="flex justify-between transition-all">
+                            <span class="text-slate-400">หัก ณ ที่จ่าย (3%):</span>
+                            <span id="display_wht" class="text-rose-400">- 0.00</span>
+                        </div>
+
+                        <div class="flex justify-between border-t border-slate-800 pt-2">
+                            <span class="font-bold">มูลค่าสุทธิ:</span>
+                            <span id="display_net" class="font-bold text-lg text-indigo-400">0.00</span>
+                        </div>
+                    </div>
+                    <input type="hidden" name="total_wht_amount" id="total_wht_amount"
+                        value="<?= $pj['total_wht_amount'] ?? 0 ?>">
                     <input type="hidden" name="total_vat_amount" id="total_vat_amount"
                         value="<?= $pj['total_vat_amount'] ?>">
                     <input type="hidden" name="net_contract_value" id="net_contract_value"
@@ -275,33 +329,65 @@ $res_docs = mysqli_query($conn, $sql_docs);
 </div>
 
 <script>
-    // 1. ฟังก์ชันคำนวณ (ใช้ Logic จากหน้าสร้างงาน)
-    function calculateNetValue() {
-        const base = parseFloat(document.getElementById('contract_value').value) || 0;
-        const isVatEnabled = document.getElementById('vat_toggle').checked;
-        const vat = isVatEnabled ? base * 0.07 : 0;
-        const net = base + vat;
+// 1. ฟังก์ชันคำนวณ (ใช้ Logic จากหน้าสร้างงาน)
+function calculateNetValue() {
+    // 1. ดึงค่าพื้นฐาน
+    const base = parseFloat(document.getElementById('contract_value').value) || 0;
 
-        document.getElementById('total_vat_amount').value = vat.toFixed(2);
-        document.getElementById('net_contract_value').value = net.toFixed(2);
+    // 2. เช็คสถานะ Toggle
+    const isVatEnabled = document.getElementById('vat_toggle').checked;
+    const isWhtEnabled = document.getElementById('wht_toggle').checked; // เพิ่มเช็ค WHT
 
-        document.getElementById('display_base').innerText = base.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('display_vat').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('display_net').innerText = net.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('vat_row').style.opacity = isVatEnabled ? '1' : '0.3';
+    // 3. คำนวณยอดภาษีแต่ละประเภท
+    const vat = isVatEnabled ? base * 0.07 : 0;
+    const wht = isWhtEnabled ? base * 0.03 : 0; // คำนวณ WHT 3%
+
+    // 4. ยอดสุทธิ = มูลค่างาน + VAT - WHT
+    const net = base + vat - wht;
+
+    // 5. อัปเดตค่าลงใน Hidden Input (สำหรับส่งไป Save ใน PHP)
+    document.getElementById('total_vat_amount').value = vat.toFixed(2);
+    if (document.getElementById('total_wht_amount')) {
+        document.getElementById('total_wht_amount').value = wht.toFixed(2);
     }
+    document.getElementById('net_contract_value').value = net.toFixed(2);
 
-    // 2. จัดการหน้าจอเมื่อโหลดเสร็จ
-    document.addEventListener('DOMContentLoaded', () => {
-        calculateNetValue(); // คำนวณยอดทันทีที่เข้าหน้า
+    // 6. อัปเดตการแสดงผลบน UI (Display)
+    document.getElementById('display_base').innerText = base.toLocaleString(undefined, {
+        minimumFractionDigits: 2
+    });
+    document.getElementById('display_vat').innerText = vat.toLocaleString(undefined, {
+        minimumFractionDigits: 2
     });
 
-    // 3. จัดการไฟล์ และ Doc Rows (ใช้ฟังก์ชันเดิมที่จารมีในหน้าสร้างงานได้เลย)
-    function addDocRow() {
-        const tbody = document.getElementById('docBody');
-        const newRow = document.createElement('tr');
-        newRow.className = "border-b border-slate-50";
-        newRow.innerHTML = `
+    // เพิ่มการแสดงผลยอด WHT (ถ้ามี id นี้ในหน้า HTML)
+    if (document.getElementById('display_wht')) {
+        document.getElementById('display_wht').innerText = wht.toLocaleString(undefined, {
+            minimumFractionDigits: 2
+        });
+    }
+
+    document.getElementById('display_net').innerText = net.toLocaleString(undefined, {
+        minimumFractionDigits: 2
+    });
+
+    // 7. ปรับความจางของแถวเพื่อให้รู้ว่าใช้งานหรือไม่
+    document.getElementById('vat_row').style.opacity = isVatEnabled ? '1' : '0.3';
+    if (document.getElementById('wht_row')) {
+        document.getElementById('wht_row').style.opacity = isWhtEnabled ? '1' : '0.3';
+    }
+}
+// 2. จัดการหน้าจอเมื่อโหลดเสร็จ
+document.addEventListener('DOMContentLoaded', () => {
+    calculateNetValue(); // คำนวณยอดทันทีที่เข้าหน้า
+});
+
+// 3. จัดการไฟล์ และ Doc Rows (ใช้ฟังก์ชันเดิมที่จารมีในหน้าสร้างงานได้เลย)
+function addDocRow() {
+    const tbody = document.getElementById('docBody');
+    const newRow = document.createElement('tr');
+    newRow.className = "border-b border-slate-50";
+    newRow.innerHTML = `
             <td class="py-3 pr-2">
                 <select name="doc_type[]" class="w-full border border-slate-200 rounded-lg p-2 outline-none">
                     <option value="quotation">Quotation</option>
@@ -316,24 +402,26 @@ $res_docs = mysqli_query($conn, $sql_docs);
                 <button type="button" onclick="deleteDocRow(this)" class="text-rose-400 hover:text-rose-600"><i class="fas fa-times"></i></button>
             </td>
         `;
-        tbody.appendChild(newRow);
-    }
+    tbody.appendChild(newRow);
+}
 
-    function deleteDocRow(btn) { btn.closest('tr').remove(); }
+function deleteDocRow(btn) {
+    btn.closest('tr').remove();
+}
 
-    function updateFileName() {
-        const fileInput = document.getElementById('attachment');
-        if (fileInput.files && fileInput.files[0]) {
-            document.getElementById('upload-placeholder').classList.add('hidden');
-            document.getElementById('file-info').classList.remove('hidden');
-            document.getElementById('file-name-display').innerText = fileInput.files[0].name;
-        }
+function updateFileName() {
+    const fileInput = document.getElementById('attachment');
+    if (fileInput.files && fileInput.files[0]) {
+        document.getElementById('upload-placeholder').classList.add('hidden');
+        document.getElementById('file-info').classList.remove('hidden');
+        document.getElementById('file-name-display').innerText = fileInput.files[0].name;
     }
+}
 
-    function resetFile(event) {
-        event.stopPropagation();
-        document.getElementById('attachment').value = '';
-        document.getElementById('upload-placeholder').classList.remove('hidden');
-        document.getElementById('file-info').classList.add('hidden');
-    }
+function resetFile(event) {
+    event.stopPropagation();
+    document.getElementById('attachment').value = '';
+    document.getElementById('upload-placeholder').classList.remove('hidden');
+    document.getElementById('file-info').classList.add('hidden');
+}
 </script>

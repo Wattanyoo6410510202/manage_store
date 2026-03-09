@@ -19,6 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
     $wht_percent = floatval($_POST['wht_percent'] ?? 3);
 
+    $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
+
     // --- ส่วนที่แก้ไขให้ครบ: คำนวณ VAT และ WHT ---
 
     // เช็ค Toggle VAT 7%
@@ -55,12 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $sql = "INSERT INTO projects (
                 project_name, contractor_name, bank_name, bank_account_no, bank_account_name,
                 project_no, customer_id, contract_value, total_vat_amount, total_wht_amount, 
-                net_contract_value, start_date, end_date, attachment_path, retention_percent, 
+                net_contract_value, start_date, end_date, attachment_path, retention_percent,supplier_id, 
                 wht_percent, project_remarks, created_at
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
-                '$net_contract_value', '$start_date', '$end_date', '$attachment_name', '$retention_percent', 
+                '$net_contract_value', '$start_date', '$end_date', '$attachment_name', '$retention_percent', '$supplier_id',
                 '$wht_percent', '$project_remarks', NOW()
             )";
 

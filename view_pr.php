@@ -263,7 +263,7 @@ function ReadNumber($number)
                             </div>
                         <?php endif; ?>
 
-                         <?php if (!empty($data['cust_address'])): ?>
+                        <?php if (!empty($data['cust_address'])): ?>
                             <div>
                                 <b style="color: #64748b; min-width: 70px; display: inline-block;">ที่อยู่:</b>
                                 <span
@@ -293,10 +293,10 @@ function ReadNumber($number)
                 style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b;">วันที่ต้องการสินค้า</span>
                 <span style="color: #0f172a; font-weight: bold;">
-    <?= (!empty($data['due_date']) && $data['due_date'] !== '0000-00-00') 
-        ? date('d/m/Y', strtotime($data['due_date'])) 
-        : '-' ?>
-</span>
+                    <?= (!empty($data['due_date']) && $data['due_date'] !== '0000-00-00')
+                        ? date('d/m/Y', strtotime($data['due_date']))
+                        : '-' ?>
+                </span>
             </div>
 
             <div style="display: flex; justify-content: space-between; padding: 6px 0;">
@@ -316,7 +316,7 @@ function ReadNumber($number)
                     <th width="8%" align="right">หน่วย</th>
                     <th width="12%" align="right">ราคา</th>
                     <?php if ($total_discount > 0): ?>
-                         <th width="10%" align="right">ส่วนลด</th>
+                        <th width="10%" align="right">ส่วนลด</th>
                     <?php endif; ?>
                     <th width="12%" align="right">ยอดรวม</th>
                 </tr>
@@ -332,13 +332,13 @@ function ReadNumber($number)
                         <td align="center" style="color: #64748b;"><?= $count++ ?></td>
                         <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
            max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
-    <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
-</td>
+                            <?= nl2br(htmlspecialchars($item['item_desc'])) ?>
+                        </td>
                         <td align="center"><?= number_format($item['item_qty'], 0) ?></td>
                         <td align="right"><?= htmlspecialchars($item['item_unit']) ?></td>
                         <td align="right"><?= number_format($item['item_price'], 2) ?></td>
                         <?php if ($total_discount > 0): ?>
-                            <td align="right" ><?= number_format($item['item_discount'], 2) ?></td>
+                            <td align="right"><?= number_format($item['item_discount'], 2) ?></td>
                         <?php endif; ?>
                         <td align="right" style="font-weight: 600;"><?= number_format($item['item_total'], 2) ?></td>
                     </tr>
@@ -370,7 +370,7 @@ function ReadNumber($number)
                                 <?= number_format($data['vat'], 2) ?>
                             </td>
                         </tr>
-                         <tr>
+                        <tr>
                             <td style="padding-bottom: 5px;">
                                 หัก ณ ที่จ่าย <?= number_format($data['wht_percent'], 0) ?>%
                             </td>

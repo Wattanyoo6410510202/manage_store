@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $customer_id = mysqli_real_escape_string($conn, $_POST['customer_id']);
     $contract_value = floatval($_POST['contract_value']);
     $total_vat_amount = floatval($_POST['total_vat_amount']);
+    $total_wht_amount = floatval($_POST['total_wht_amount'] ?? 0);
     $net_contract_value = floatval($_POST['net_contract_value']);
     $start_date = mysqli_real_escape_string($conn, $_POST['start_date']);
     $end_date = mysqli_real_escape_string($conn, $_POST['end_date']);
@@ -18,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $bank_account_no = mysqli_real_escape_string($conn, $_POST['bank_account_no']);
     $bank_account_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
+    $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
 
     // 2. จัดการไฟล์แนบ (ถ้ามีการอัปโหลดใหม่)
     $file_sql = "";
@@ -46,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     customer_id = '$customer_id',
                     contract_value = '$contract_value',
                     total_vat_amount = '$total_vat_amount',
+                    total_wht_amount = '$total_wht_amount',
                     net_contract_value = '$net_contract_value',
                     start_date = '$start_date',
                     end_date = '$end_date',
@@ -53,7 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     bank_name = '$bank_name',
                     bank_account_no = '$bank_account_no',
                     bank_account_name = '$bank_account_name',
-                    project_remarks = '$project_remarks'
+                    project_remarks = '$project_remarks',
+                    supplier_id = '$supplier_id'
                     $file_sql
                   WHERE id = '$project_id'";
 

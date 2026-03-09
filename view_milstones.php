@@ -14,12 +14,15 @@ $ids_string = implode(',', $ids);
 // 1. Query ดึงข้อมูลโครงการและงวดงานทั้งหมดที่เลือก
 $sql = "SELECT m.*, 
                p.project_name, p.project_no, p.contractor_name, p.contract_value, 
-               p.total_vat_amount, p.total_wht_amount, p.net_contract_value, -- เพิ่ม 3 ตัวนี้
+               p.total_vat_amount, p.total_wht_amount, p.net_contract_value,
+               -- เพิ่ม 3 ฟิลด์นี้ครับจาร (เช็คชื่อคอลัมน์ใน DB ของจารอีกทีนะครับ)
+               p.bank_name, p.bank_account_name, p.bank_account_no, 
                p.start_date, p.end_date, p.project_remarks,
-               s.company_name as my_company, s.address as my_address, s.tax_id as my_tax, s.phone as my_phone, s.logo_path
+               s.company_name as my_company, s.address as my_address, 
+               s.tax_id as my_tax, s.phone as my_phone, s.logo_path
         FROM project_milestones m
         LEFT JOIN projects p ON m.project_id = p.id
-        LEFT JOIN suppliers s ON s.id = 1 
+        LEFT JOIN suppliers s ON p.supplier_id = s.id 
         WHERE m.id IN ($ids_string)
         ORDER BY m.id ASC";
 $result = mysqli_query($conn, $sql);
@@ -102,13 +105,14 @@ function ReadNumber($number)
 
 $num_rows = count($milestones); // เพิ่มบรรทัดนี้เพื่อแก้ Error ครับ
 if ($num_rows <= 5) {
-    $dynamic_padding = '20px 15px';
+    $dynamic_padding = '5px 8px';
     $dynamic_font_size = '14px';
 } elseif ($num_rows <= 10) {
-    $dynamic_padding = '12px 15px';
+    $dynamic_padding = '3px 10px';
     $dynamic_font_size = '13px';
 } else {
-    $dynamic_padding = '5px 15px';
+    // โหมดนี้จะครอบคลุมตั้งแต่ 11-20 รายการ (และมากกว่านั้นถ้าจารฝืนรันต่อ)
+    $dynamic_padding = '2px 12px';
     $dynamic_font_size = '12px';
 }
 ?>
@@ -189,21 +193,39 @@ if ($num_rows <= 5) {
 
 <div id="quotation-content" class="page-container">
     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-        <div style="display: flex; gap: 15px;">
-            <!-- <?php if ($logo_path): ?>
-                <img src="<?= $logo_path ?>" style="width: 70px; height: 70px; object-fit: contain;">
-            <?php else: ?>
-                <div
-                    style="width: 70px; height: 70px; background: #0f172a; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;">
-                    <?= mb_substr($data['my_company'], 0, 1, 'UTF-8') ?>
-                </div>
+        <div style="display: flex; gap: 15px; align-items: flex-start;">
+            <?php
+            $header = !empty($milestones) ? $milestones[0] : null;
+            ?>
+
+            <?php if (!empty($header['logo_path']) && file_exists('uploads/' . $header['logo_path'])): ?>
+                <img src="uploads/<?= $header['logo_path'] ?>"
+                    style="width: 70px; height: 70px; object-fit: contain; flex-shrink: 0;">
             <?php endif; ?>
+
             <div style="font-size: 11px; line-height: 1.4;">
-                <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= $data['my_company'] ?></h1>
-                <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
-                <p style="margin: 2px 0 0; color: #64748b;"><b>Tax ID:</b> <?= $data['my_tax'] ?> | <b>Tel:</b>
-                    <?= $data['my_phone'] ?></p>
-            </div> -->
+                <?php if (!empty($header['my_company'])): ?>
+                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;">
+                        <?= $header['my_company'] ?>
+                    </h1>
+                <?php endif; ?>
+
+                <?php if (!empty($header['my_address'])): ?>
+                    <p style="margin: 0; color: #64748b;"><?= $header['my_address'] ?></p>
+                <?php endif; ?>
+
+                <?php if (!empty($header['my_tax']) || !empty($header['my_phone'])): ?>
+                    <p style="margin: 2px 0 0; color: #64748b;">
+                        <?php if (!empty($header['my_tax'])): ?>
+                            <b>Tax ID:</b> <?= $header['my_tax'] ?>
+                        <?php endif; ?>
+
+                        <?php if (!empty($header['my_phone'])): ?>
+                            <span style="margin-left: 10px;"><b>Tel:</b> <?= $header['my_phone'] ?></span>
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+            </div>
         </div>
         <div style="text-align: right;">
             <h2 style="margin: 0; font-size: 25px; color: var(--primary-color); font-weight: 900;">ใบสรุปงวดงาน</h2>
@@ -213,85 +235,62 @@ if ($num_rows <= 5) {
         </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
         <div
-            style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; background: #f8fafc;">
-            <p
-                style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                ข้อมูลโครงการ (Project Description)
+            style="flex: 1.2; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc;">
+            <p style="margin: 0 0 2px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                ข้อมูลโครงการ
             </p>
-            <h3 style="margin: 0; font-size: 15px; color: #0f172a; line-height: 1.4;"><?= $first['project_name'] ?></h3>
+            <h3 style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.3;"><?= $first['project_name'] ?></h3>
 
-            <div style="margin-top: 8px; font-size: 12px; color: #64748b; line-height: 1.6;">
+            <div
+                style="margin-top: 4px; font-size: 11px; color: #64748b; display: flex; flex-wrap: wrap; gap: 4px 12px;">
                 <div><strong>เลขที่:</strong> <?= $first['project_no'] ?: '-' ?></div>
                 <div><strong>ผู้รับจ้าง:</strong> <?= $first['contractor_name'] ?: '-' ?></div>
-                <?php if (!empty($data['cust_email'])): ?>
-                    <div><strong>อีเมล:</strong> <?= htmlspecialchars($data['cust_email']) ?></div>
-                <?php endif; ?>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <div style="width: 8px; height: 8px; background: #cbd5e1; border-radius: 50%;"></div>
-                        <span
-                            style="font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">ระยะเวลาโครงการ</span>
-                    </div>
-                    <div
-                        style="font-size: 12px; color: #475569; font-weight: 800; background: #f8fafc; padding: 4px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
-                        <?= ($first['start_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['start_date'])) : 'รอกำหนด' ?>
-                        <span style="color: #cbd5e1; margin: 0 4px;">-</span>
-                        <?= ($first['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['end_date'])) : 'รอกำหนด' ?>
-                    </div>
+
+                <div
+                    style="flex-basis: 100%; display: flex; gap: 10px; margin-top: 2px; padding-top: 2px; border-top: 1px dashed #e2e8f0; font-size: 10px;">
+                    <div><strong>ธนาคาร:</strong> <?= $first['bank_name'] ?: '-' ?></div>
+                    <div><strong>ชื่อบัญชี:</strong> <?= $first['bank_account_name'] ?: '-' ?></div>
+                    <div><strong>เลขบัญชี:</strong> <?= $first['bank_account_no'] ?: '-' ?></div>
+                </div>
+            </div>
+
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 4px; border-top: 1px solid #f1f5f9;">
+                <span style="font-size: 10px; color: #94a3b8; font-weight: 700;">ระยะเวลาโครงการ</span>
+                <div
+                    style="font-size: 11px; color: #475569; font-weight: 800; background: #fff; padding: 2px 8px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                    <?= ($first['start_date'] != '0000-00-00' && $first['start_date']) ? date('d/m/Y', strtotime($first['start_date'])) : 'รอกำหนด' ?>
+                    <span style="color: #cbd5e1; margin: 0 4px;">-</span>
+                    <?= ($first['end_date'] != '0000-00-00' && $first['end_date']) ? date('d/m/Y', strtotime($first['end_date'])) : 'รอกำหนด' ?>
                 </div>
             </div>
         </div>
 
         <div
-            style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; background: #f8fafc;">
-
-            <div style="text-align: right;">
-                <p
-                    style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                    มูลค่าสัญญาทั้งหมด (ฐานเงินต้น)
-                </p>
-
+            style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc; display: flex; flex-direction: column; justify-content: center;">
+            <div style="text-align: right; margin-bottom: 4px;">
+                <p style="margin: 0; font-size: 10px; font-weight: 700; color: #64748b;">มูลค่าสัญญา (ฐานเงินต้น)</p>
+                <h2 style="margin: 0; color: #1e293b; font-size: 16px; font-weight: 900;">
+                    <?= number_format($first['contract_value'], 2) ?>
+                </h2>
             </div>
 
             <div
-                style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px; font-family: 'Sarabun', sans-serif;">
-
-                <div style="text-align: right; margin-bottom: 2px;">
-                    <h2
-                        style="margin: 0; color: #1e293b; font-size: 18px; font-weight: 900; letter-spacing: -1px; line-height: 1;">
-                        <span
-                            style="font-size: 14px; font-weight: 600; color: #94a3b8; margin-right: 1px;"></span><?= number_format($first['contract_value'], 2) ?> 
-                    </h2>
-                </div>
-
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #f8fafc;">
-                    <span style="font-size: 10px; font-weight: 500; color: #64748b;">ภาษีมูลค่าเพิ่ม (7%)</span>
-                    <span style="font-size: 11px; font-weight: 700; color: #475569;">
-                        +<?= number_format($first['total_vat_amount'], 2) ?>
-                    </span>
-                </div>
-
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid #f8fafc;">
-                    <span style="font-size: 10px; font-weight: 500; color: #64748b;">หัก ณ ที่จ่าย (3%)</span>
-                    <span style="font-size: 11px; font-weight: 700; color: #475569;">
-                        -<?= number_format($first['total_wht_amount'], 2) ?>
-                    </span>
-                </div>
-
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; margin-top: 2px;">
-                    <span style="font-size: 10px; font-weight: 800; color: #1e293b;">ยอดรวมสุทธิ</span>
-                    <span style="font-size: 15px; font-weight: 900; color: #1e293b; line-height: 1;">
-                        <?= number_format($first['net_contract_value'], 2) ?> <span style="font-size: 9px;"> บาท</span>
-                    </span>
-                </div>
+                style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; margin: 2px 0;">
+                <span><b style="color: #64748b;">VAT:</b> <span
+                        style="color: #475569;">+<?= number_format($first['total_vat_amount'], 2) ?></span></span>
+                <span><b style="color: #64748b;">หัก ณ ที่จ่าย:</b> <span
+                        style="color: #475569;">-<?= number_format($first['total_wht_amount'], 2) ?></span></span>
             </div>
 
-
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+                <span style="font-size: 10px; font-weight: 800; color: #1e293b;">รวมสุทธิ</span>
+                <span style="font-size: 16px; font-weight: 900; color: #1e293b;">
+                    <?= number_format($first['net_contract_value'], 2) ?> <span style="font-size: 9px;"> THB</span>
+                </span>
+            </div>
         </div>
     </div>
 
@@ -304,8 +303,9 @@ if ($num_rows <= 5) {
                         <th align="left">งวดงาน / รายละเอียด</th>
                         <th width="15%" align="right">จำนวนเงิน</th>
                         <th width="12%" align="right">VAT (7%)</th>
-                        <th width="12%" align="right">WHT (3%)</th>
+                        <th width="12%" align="right">หัก (3%)</th>
                         <th width="15%" align="right">ยอดสุทธิ</th>
+                        <th width="10%" align="right">สถานะ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -313,15 +313,24 @@ if ($num_rows <= 5) {
                         <tr>
                             <td align="center"><?= date('d/m/Y', strtotime($m['claim_date'])) ?></td>
                             <td>
-                                <div style="font-weight: bold;"><?= htmlspecialchars($m['milestone_name']) ?></div>
-                                <div style="font-size: 11px; color: #94a3b8;">
+                                <div
+                                    style="font-weight: bold;  max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
+                                    <?= htmlspecialchars($m['milestone_name']) ?>
+                                </div>
+                                <div
+                                    style="font-size: 11px; color: #94a3b8;  max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
                                     <?= htmlspecialchars($m['remarks']) ?>
                                 </div>
                             </td>
                             <td align="right"><?= number_format($m['amount'], 2) ?></td>
                             <td align="right"><?= number_format($m['vat_amount'], 2) ?></td>
-                            <td align="right" style="color: #ef4444;">-<?= number_format($m['wht_amount'], 2) ?></td>
+                            <td align="right" style="color: #1e293b;">-<?= number_format($m['wht_amount'], 2) ?></td>
                             <td align="right" style="font-weight: bold;"><?= number_format($m['net_amount'], 2) ?></td>
+                            <td class="px-4 py-4 text-right">
+                                <span class="font-bold <?= $m['status'] == 'paid' ?>">
+                                    <?= $m['status'] == 'paid' ? 'ชำระแล้ว' : 'ค้างชำระ' ?>
+                                </span>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -331,7 +340,7 @@ if ($num_rows <= 5) {
         <div class="doc-footer">
             <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
                 <div style="width: 55%; padding-right: 30px;">
-                    <p style="font-size: 11px; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">
+                    <p style="font-size: 11px; font-weight: bold;  margin-bottom: 5px;">
                         คำอธิบาย / หมายเหตุ:
                     </p>
                     <p style="font-size: 11px; color: #64748b; line-height: 1.6;"><?= $first['project_remarks'] ?>
@@ -346,17 +355,16 @@ if ($num_rows <= 5) {
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding: 2px 0; color: #64748b;">ภาษีมูลค่าเพิ่ม (VAT)</td>
+                                <td style="padding: 2px 0; color: #64748b;">ภาษีมูลค่าเพิ่ม</td>
                                 <td align="right" style="color: #1e293b;"><?= number_format($total_vat, 2) ?></td>
                             </tr>
                             <tr>
-                                <td style="padding: 2px 0; color: #94a3b8;">หัก ณ ที่จ่าย (WHT)</td>
-                                <td align="right" style="color: #ef4444;">-<?= number_format($total_wht, 2) ?></td>
+                                <td style="padding: 2px 0; color: #64748b;">หัก ณ ที่จ่าย</td>
+                                <td align="right" style="color: #1e293b;">-<?= number_format($total_wht, 2) ?></td>
                             </tr>
                             <tr style="font-size: 14px; color: #1e293b; font-weight: 900;">
-                                <td style="padding-top: 8px; border-top: 1px solid #e2e8f0;">ยอดรวมเบิกสุทธิ</td>
+                                <td style="padding-top: 8px; border-top: 1px solid #e2e8f0;">ยอดสุทธิ</td>
                                 <td align="right" style="padding-top: 8px; border-top: 1px solid #e2e8f0;">
-                                    <span style="font-size: 10px; font-weight: 600;">฿</span>
                                     <?= number_format($total_net, 2) ?>
                                 </td>
                             </tr>
@@ -372,54 +380,47 @@ if ($num_rows <= 5) {
             </div>
 
             <div
-                style="display: flex; justify-content: space-between; margin-top: 60px; text-align: center; gap: 20px;">
+                style="position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-between; text-align: center; gap: 20px; padding: 0 40px;">
 
                 <div style="width: 32%;">
                     <div
-                        style="height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; margin-bottom: 10px;">
+                        style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
                         <?php if (!empty($first['creator_signature'])): ?>
                             <img src="uploads/signatures/<?= $first['creator_signature'] ?>"
-                                style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                                style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
-                        <div style="border-bottom: 1px solid #cbd5e1; width: 180px;"></div>
                     </div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
-                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">
-                        ( <?= $first['creator_name'] ?? '................................' ?> )
+                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(
+                        <?= $first['creator_name'] ?? '........................................' ?> )
                     </p>
-                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                        วันที่
+                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
                         <?= isset($first['created_at']) ? date('d/m/Y', strtotime($first['created_at'])) : '......../......../........' ?>
                     </p>
                 </div>
 
                 <div style="width: 32%;">
                     <div
-                        style="height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; margin-bottom: 10px;">
+                        style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
                         <?php if (($first['status'] ?? '') === 'approved' && !empty($first['approver_signature'])): ?>
                             <img src="uploads/signatures/<?= $first['approver_signature'] ?>"
-                                style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                                style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
-                        <div style="border-bottom: 1px solid #cbd5e1; width: 180px;"></div>
                     </div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้อนุมัติ</p>
-                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">
-                        ( <?= $first['approver_name'] ?? '................................' ?> )
+                    <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">(
+                        <?= $first['approver_name'] ?? '.......................................' ?> )
                     </p>
-                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                        วันที่
+                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
                         <?= !empty($first['approved_at']) ? date('d/m/Y', strtotime($first['approved_at'])) : '......../......../........' ?>
                     </p>
                 </div>
 
                 <div style="width: 32%;">
-                    <div
-                        style="height: 80px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; margin-bottom: 10px;">
-                        <div style="border-bottom: 1px solid #cbd5e1; width: 180px;"></div>
-                    </div>
+                    <div style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง / ร้านค้า</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">
-                        ( <?= $first['contractor_name'] ?? '................................' ?> )
+                        <?= !empty($first['contractor_name']) ? $first['contractor_name'] : '(.........................................)' ?>
                     </p>
                     <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
                 </div>
