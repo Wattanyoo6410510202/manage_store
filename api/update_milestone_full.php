@@ -2,19 +2,28 @@
 require_once '../config.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // 1. รับค่าพื้นฐาน
+    // 1. รับค่าพื้นฐานและจัดการความปลอดภัย
     $id = intval($_POST['id']);
     $project_id = intval($_POST['project_id']);
     $milestone_name = mysqli_real_escape_string($conn, $_POST['milestone_name']);
     $amount = floatval($_POST['amount']);
+
+    // รับค่าภาษี
     $vat_amount = floatval($_POST['vat_amount']);
     $wht_amount = floatval($_POST['wht_amount']);
 
-    // ใช้ยอดสุทธิที่คำนวณจาก JS ส่งมา (หรือจะคำนวณใหม่ใน PHP ก็ได้เพื่อความชัวร์)
+    // --- ส่วนที่เพิ่มมาใหม่: เงินประกัน / หักอื่นๆ ---
+    $retention_percent = floatval($_POST['retention_percent'] ?? 0);
+    $retention_amount = floatval($_POST['retention_amount'] ?? 0);
+    $other_deduction_amount = floatval($_POST['other_deduction_amount'] ?? 0);
+    $deduction_note = mysqli_real_escape_string($conn, $_POST['deduction_note'] ?? '');
+
+    // ยอดสุทธิและยอดคงเหลือจาก JS
     $net_amount = floatval($_POST['total_request_amount']);
+    $total_request_amount = $net_amount; // ใช้ตัวเดียวกัน
     $remaining_balance = floatval($_POST['remaining_balance']);
 
-    $claim_date = $_POST['claim_date'];
+    $claim_date = mysqli_real_escape_string($conn, $_POST['claim_date']);
     $status = mysqli_real_escape_string($conn, $_POST['status']);
     $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
 
@@ -23,19 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_FILES['claim_attachment']) && $_FILES['claim_attachment']['error'] == 0) {
         $target_dir = "../uploads/claims/";
 
-        // สร้าง Folder ถ้ายังไม่มี
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
 
-        // ดึงชื่อไฟล์เก่ามาลบทิ้งก่อน (ถ้ามี)
+        // ดึงชื่อไฟล์เก่ามาลบทิ้ง
         $old_file_res = mysqli_query($conn, "SELECT claim_attachment FROM project_milestones WHERE id = $id");
         $old_file_row = mysqli_fetch_assoc($old_file_res);
         if (!empty($old_file_row['claim_attachment'])) {
             @unlink($target_dir . $old_file_row['claim_attachment']);
         }
 
-        // ตั้งชื่อไฟล์ใหม่
         $file_ext = pathinfo($_FILES["claim_attachment"]["name"], PATHINFO_EXTENSION);
         $new_file_name = "UPD_CLAIM_" . $id . "_" . time() . "." . $file_ext;
 
@@ -44,14 +51,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // 3. ยิง SQL Update (ครอบคลุมทุก Field)
+    // 3. ยิง SQL Update (เพิ่มฟิลด์เกี่ยวกับ Retention เข้าไป)
     $sql = "UPDATE project_milestones SET 
                 milestone_name = '$milestone_name',
                 amount = '$amount',
+                retention_percent = '$retention_percent',
+                retention_amount = '$retention_amount',
+                other_deduction_amount = '$other_deduction_amount',
+                deduction_note = '$deduction_note',
                 vat_amount = '$vat_amount',
                 wht_amount = '$wht_amount',
                 net_amount = '$net_amount',
-                total_request_amount = '$net_amount',
+                total_request_amount = '$total_request_amount',
                 remaining_balance = '$remaining_balance',
                 claim_date = '$claim_date',
                 status = '$status',
@@ -60,12 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             WHERE id = $id";
 
     if (mysqli_query($conn, $sql)) {
-        // อัพเดตสำเร็จ กลับไปที่หน้าหลักโปรเจกต์ พร้อมส่ง Alert
+        // อัปเดตสำเร็จ
         $_SESSION['flash_msg'] = 'update_success';
         header("Location: ../detail_project.php?id=$project_id");
         exit();
     } else {
-        // ถ้าพัง ให้แจ้ง Error
         echo "Database Error: " . mysqli_error($conn);
     }
 } else {

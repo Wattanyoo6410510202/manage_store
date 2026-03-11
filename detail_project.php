@@ -15,9 +15,10 @@ if (!$pj) {
 // 2. คำนวณยอดเบิกสะสม (ดึงมาครบทั้ง ฐานเงินต้น, VAT, และ WHT)
 $collected_sql = mysqli_query($conn, "
     SELECT 
-        SUM(amount) as total_base, 
+        SUM(total_request_amount) as total_base, 
         SUM(vat_amount) as total_vat, 
         SUM(wht_amount) as total_wht,
+        SUM(other_deduction_amount) as total_other,
         SUM(net_amount) as total_net
     FROM project_milestones 
     WHERE project_id = $id AND status = 'paid'
@@ -28,6 +29,7 @@ $collected_data = mysqli_fetch_assoc($collected_sql);
 $total_paid_base = $collected_data['total_base'] ?? 0;
 $total_paid_vat = $collected_data['total_vat'] ?? 0;
 $total_paid_wht = $collected_data['total_wht'] ?? 0;
+$total_paid_other = $collected_data['total_other'] ?? 0;
 $total_paid_net = $collected_data['total_net'] ?? 0;
 
 // คำนวณยอดคงเหลือ (อ้างอิงจากฐานสัญญาหลัก)
@@ -81,7 +83,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
                         <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">VAT สะสมที่จ่ายแล้ว
                         </p>
@@ -94,6 +96,12 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                         <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">WHT สะสมที่หักแล้ว</p>
                         <p class="text-lg font-black text-rose-500">
                             - <?= number_format($total_paid_wht, 2) ?>
+                        </p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">อื่นๆ สะสมที่หักแล้ว</p>
+                        <p class="text-lg font-black text-rose-500">
+                            - <?= number_format($total_paid_other, 2) ?>
                         </p>
                     </div>
                 </div>
@@ -173,7 +181,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                             <th class="px-4 py-3 text-left">งวดงาน</th>
                             <th class="px-4 py-3 text-left">วันที่เบิก</th>
                             <th class="px-4 py-3 text-center">สถานะ</th>
-                            <th class="px-4 py-3 text-right">ยอดรับสุทธิ</th>
+                            <th class="px-4 py-3 text-right">ยอดสุทธิ</th>
                             <th class="px-4 py-3 text-center">จัดการ</th>
                         </tr>
                     </thead>

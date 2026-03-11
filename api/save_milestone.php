@@ -8,19 +8,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $claim_date = !empty($_POST['claim_date']) ? mysqli_real_escape_string($conn, $_POST['claim_date']) : date('Y-m-d');
     $status = isset($_POST['status']) ? mysqli_real_escape_string($conn, $_POST['status']) : 'pending';
     $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
-
-    // 2. รับค่าตัวเลข (คำนวณจากหน้าบ้านส่งมา)
     $amount = floatval($_POST['amount']); // ยอดเงินต้น
     $vat_amount = floatval($_POST['vat_amount']);
     $wht_amount = floatval($_POST['wht_amount']);
-
-    // ยอดรวมก่อนหักภาษี (ตาม Comment ใน DB)
     $total_request_amount = floatval($_POST['total_request_amount']);
-
-    // ยอดสุทธิ (ต้องมีเพื่อเก็บลง net_amount)
     $net_amount = isset($_POST['net_amount']) ? floatval($_POST['net_amount']) : $total_request_amount;
+    $remaining_balance = floatval($_POST['remaining_balance']);
+    // ... (หลังบรรทัด $wht_amount)
+    $retention_percent = floatval($_POST['retention_percent']);
+    $retention_amount = floatval($_POST['retention_amount']);
+
+    // เพิ่มส่วนหักอื่นๆ ตามโครงสร้างตารางใหม่
+    $other_deduction_amount = floatval($_POST['other_deduction_amount'] ?? 0);
+    $deduction_note = mysqli_real_escape_string($conn, $_POST['deduction_note']);
+
+    // ยอดจ่ายสุทธิ (net_amount) คือยอดที่หักทุกอย่างแล้ว
+    $net_amount = floatval($_POST['total_request_amount']);
 
     $remaining_balance = floatval($_POST['remaining_balance']);
+
 
     // 3. จัดการไฟล์แนบ (ถ้ามี)
     $attachment_name = "";
@@ -34,40 +40,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         move_uploaded_file($_FILES["claim_attachment"]["tmp_name"], $target_dir . $attachment_name);
     }
 
-    // 4. บันทึกลงตาราง (เพิ่ม net_amount และจัดระเบียบฟิลด์)
     $sql = "INSERT INTO project_milestones (
-                project_id, 
-                milestone_name, 
-                amount, 
-                vat_percent, 
-                vat_amount, 
-                wht_percent, 
-                wht_amount, 
-                total_request_amount, 
-                net_amount,
-                remaining_balance, 
-                claim_date, 
-                status, 
-                claim_attachment, 
-                remarks, 
-                created_at
-            ) VALUES (
-                '$project_id', 
-                '$milestone_name', 
-                '$amount', 
-                '7.00', 
-                '$vat_amount', 
-                '3.00', 
-                '$wht_amount', 
-                '$total_request_amount', 
-                '$net_amount',
-                '$remaining_balance', 
-                '$claim_date', 
-                '$status', 
-                '$attachment_name', 
-                '$remarks', 
-                NOW()
-            )";
+            project_id, 
+            milestone_name, 
+            amount, 
+            retention_percent, 
+            retention_amount, 
+            net_amount, 
+            claim_date, 
+            status, 
+            claim_attachment, 
+            remarks, 
+            deduction_note, 
+            other_deduction_amount, 
+            vat_percent, 
+            vat_amount, 
+            wht_percent, 
+            wht_amount, 
+            total_request_amount, 
+            remaining_balance, 
+            created_at
+        ) VALUES (
+            '$project_id', 
+            '$milestone_name', 
+            '$amount', 
+            '$retention_percent', 
+            '$retention_amount', 
+            '$net_amount', 
+            '$claim_date', 
+            '$status', 
+            '$attachment_name', 
+            '$remarks', 
+            '$deduction_note', 
+            '$other_deduction_amount', 
+            '7.00', 
+            '$vat_amount', 
+            '3.00', 
+            '$wht_amount', 
+            '$net_amount', -- ตรงกับยอดสุทธิที่คำนวณจากหน้าบ้าน
+            '$remaining_balance', 
+            NOW()
+        )";
 
     if (mysqli_query($conn, $sql)) {
         // บันทึกสำเร็จ ส่งกลับไปหน้าเดิม (ถ้าเรียกผ่าน AJAX ฟังก์ชัน JS จะตรวจเช็ค Location เอง)

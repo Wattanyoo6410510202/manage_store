@@ -36,6 +36,14 @@ if (empty($milestones)) {
 }
 
 $first = $milestones[0]; // ใช้ข้อมูลโครงการจากแถวแรก
+
+
+// แก้บรรทัดนี้: เปลี่ยนจาก $pj['id'] เป็น $first['project_id']
+$sql_history = "SELECT milestone_name, retention_percent, retention_amount, deduction_note 
+                FROM project_milestones 
+                WHERE project_id = " . intval($first['project_id']) . " 
+                ORDER BY id ASC";
+$res_history = mysqli_query($conn, $sql_history);
 $logo_path = (!empty($first['logo_path']) && file_exists('uploads/' . $first['logo_path']))
     ? 'uploads/' . $first['logo_path'] : '';
 
@@ -44,12 +52,15 @@ $total_amount = 0;
 $total_vat = 0;
 $total_wht = 0;
 $total_net = 0;
+$total_other = 0; // เพิ่มตัวแปรสำหรับยอดหักอื่นๆ
 
 foreach ($milestones as $m) {
     $total_amount += $m['amount'];
     $total_vat += $m['vat_amount'];
     $total_wht += $m['wht_amount'];
+    $total_other += $m['other_deduction_amount'];
     $total_net += $m['net_amount'];
+
 }
 
 // ฟังก์ชันอ่านเลขเงินไทย
@@ -340,11 +351,37 @@ if ($num_rows <= 5) {
         <div class="doc-footer">
             <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
                 <div style="width: 55%; padding-right: 30px;">
-                    <p style="font-size: 11px; font-weight: bold;  margin-bottom: 5px;">
-                        คำอธิบาย / หมายเหตุ:
-                    </p>
-                    <p style="font-size: 11px; color: #64748b; line-height: 1.6;"><?= $first['project_remarks'] ?>
-                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <?php
+                        // รีเซ็ตตัวชี้ข้อมูลเพื่อให้วนลูปใหม่ได้
+                        mysqli_data_seek($res_history, 0);
+                        while ($row = mysqli_fetch_assoc($res_history)):
+                            // เช็คว่ามีรายการหักไหม
+                            $has_deduction = ($row['retention_percent'] > 0 || !empty($row['deduction_note']));
+
+                            // ถ้าไม่มีการหักเงิน ให้ข้ามงวดนี้ไปเลย ไม่ต้องแสดงผล
+                            if (!$has_deduction)
+                                continue;
+                            ?>
+                            <div style="margin-bottom: 2px; font-size: 10px; line-height: 1.4; color: #000;">
+                                <strong>- <?= htmlspecialchars($row['milestone_name']) ?></strong>
+                                <?php if ($row['retention_percent'] > 0): ?>
+                                    หัก<?= !empty($row['deduction_note']) ? htmlspecialchars($row['deduction_note']) : 'เงินประกัน' ?>
+                                    <?= number_format($row['retention_percent'], 0) ?>%
+                                    (<?= number_format($row['retention_amount'], 2) ?> บาท)
+                                <?php elseif (!empty($row['deduction_note'])): ?>
+                                    หมายเหตุ: <?= htmlspecialchars($row['deduction_note']) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php endwhile; ?>
+                    </div>
+
+                    <div style="margin-top: 8px;">
+                        <p style="font-size: 10px; font-weight: bold; margin-bottom: 2px;">หมายเหตุ:</p>
+                        <p style="font-size: 10px; color: #64748b; line-height: 1.4; margin: 0;">
+                            <?= !empty($pj['project_remarks']) ? $pj['project_remarks'] : '' ?>
+                        </p>
+                    </div>
                 </div>
                 <div style="width: 40%;">
                     <div style="background: #f8fafc; padding: 10px; border-radius: 12px; border: 1px solid #f1f5f9;">
@@ -361,6 +398,10 @@ if ($num_rows <= 5) {
                             <tr>
                                 <td style="padding: 2px 0; color: #64748b;">หัก ณ ที่จ่าย</td>
                                 <td align="right" style="color: #1e293b;">-<?= number_format($total_wht, 2) ?></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2px 0; color: #64748b;">หัก อื่นๆ (เช่นประกันผลงาน)</td>
+                                <td align="right" style="color: #1e293b;">-<?= number_format($total_other, 2) ?></td>
                             </tr>
                             <tr style="font-size: 14px; color: #1e293b; font-weight: 900;">
                                 <td style="padding-top: 8px; border-top: 1px solid #e2e8f0;">ยอดสุทธิ</td>
@@ -392,7 +433,7 @@ if ($num_rows <= 5) {
                     </div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #64748b;">
-                         (<?= $_SESSION['user_name'] ?? '................................' ?>)
+                        (<?= $_SESSION['user_name'] ?? '................................' ?>)
                     </p>
                     <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
                         วันที่:

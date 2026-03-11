@@ -19,7 +19,7 @@ $sql_count = "SELECT COUNT(*) as total FROM project_milestones WHERE project_id 
 $count = mysqli_fetch_assoc(mysqli_query($conn, $sql_count))['total'] + 1;
 
 // 3. คำนวณหายอดรวมที่เบิกไปแล้ว (Gross Amount)
-$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
+$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
 ?>
 
 <div>
@@ -29,6 +29,8 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
         <input type="hidden" name="wht_amount" id="wht_amount_val">
         <input type="hidden" name="total_request_amount" id="total_request_amount_val">
         <input type="hidden" name="remaining_balance" id="remaining_balance_val">
+        <input type="hidden" name="retention_amount" id="retention_amount_val">
+        <input type="hidden" name="other_deduction_amount" id="other_deduction_amount_val">
 
         <div class="flex justify-between items-center mb-6">
             <div>
@@ -84,7 +86,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
                                 <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
@@ -98,9 +100,41 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
                             <div class="flex justify-between items-center mb-1">
                                 <label class="text-[10px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
                                 <input type="checkbox" id="use_wht" checked onchange="calculateMoney()"
-                                    class="rounded text-rose-500">
+                                    class="rounded ">
                             </div>
-                            <p class="text-lg font-bold text-rose-500" id="wht_display">0.00 ฿</p>
+                            <p class="text-lg font-bold " id="wht_display">0.00 ฿</p>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 relative overflow-hidden transition-all"
+                            id="deduction_card">
+                            <div class="flex justify-between items-center mb-1">
+
+
+                                <div class="flex gap-2">
+                                    <div
+                                        class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                        <span class="text-[9px] font-bold text-slate-400">หัก</span>
+                                        <input type="number" id="retention_percent" name="retention_percent"
+                                            value="<?= $m_data['retention_percent'] ?? 0 ?>" oninput="calculateMoney()"
+                                            class="w-8 text-center bg-transparent text-[10px] font-bold text-slate-600 focus:outline-none"
+                                            placeholder="0">
+                                        <span class="text-[9px] font-bold text-slate-400">%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
+                                        class="rounded text-slate-500 w-3 h-3 focus:ring-0 cursor-pointer">
+                                    <label for="use_deduction"
+                                        class="text-[10px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
+                                        / หักอื่นๆ</label>
+                                </div>
+                            </div>
+
+                            <p class="text-lg font-bold text-slate-700" id="deduction_total_display">0.00 ฿</p>
+
+                            <input type="text" id="deduction_note" name="deduction_note"
+                                value="<?= $m_data['deduction_note'] ?? '' ?>" placeholder="เงินประกัน/ หักอื่นๆ"
+                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[10px] text-slate-500 focus:outline-none placeholder:text-slate-300">
                         </div>
 
                         <div class="p-4 bg-indigo-600 rounded-xl -md text-white">
@@ -195,26 +229,51 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
 
 <script>
     function calculateMoney() {
+        // 1. ดึงค่าพื้นฐาน
         let amount = parseFloat(document.getElementById('amount').value) || 0;
-        let contractValue = <?= $pj['contract_value'] ?>;
-        let collectedBefore = <?= $collected ?>;
+        let contractValue = <?= (float) $pj['contract_value'] ?>;
+        let collectedBefore = <?= (float) $collected ?>;
 
+        // 2. คำนวณภาษี
         let vat = document.getElementById('use_vat').checked ? (amount * 0.07) : 0;
         let wht = document.getElementById('use_wht').checked ? (amount * 0.03) : 0;
-        let totalRequest = (amount + vat) - wht;
+
+        // 3. คำนวณเงินประกัน / หักอื่นๆ
+        let useDeduction = document.getElementById('use_deduction').checked;
+        let retPercent = parseFloat(document.getElementById('retention_percent').value) || 0;
+        let deductionAmount = useDeduction ? (amount * (retPercent / 100)) : 0;
+
+        // 4. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือ
+        let totalRequest = (amount + vat) - wht - deductionAmount;
         let remaining = contractValue - (collectedBefore + amount);
 
+        // 5. แสดงผลบน UI
         document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
         document.getElementById('wht_display').innerText = '- ' + wht.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
+        document.getElementById('deduction_total_display').innerText = '- ' + deductionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
         document.getElementById('total_request_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('current_claim_display').innerText = amount.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('current_claim_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 });
         document.getElementById('remaining_balance_display').innerText = remaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
 
-        document.getElementById('vat_amount_val').value = vat.toFixed(2);
-        document.getElementById('wht_amount_val').value = wht.toFixed(2);
-        document.getElementById('total_request_amount_val').value = totalRequest.toFixed(2);
-        document.getElementById('remaining_balance_val').value = remaining.toFixed(2);
+        // 6. อัปเดตค่าลง Hidden Inputs (ต้องมี ID ใน HTML ให้ครบ)
+        if (document.getElementById('vat_amount_val')) document.getElementById('vat_amount_val').value = vat.toFixed(2);
+        if (document.getElementById('wht_amount_val')) document.getElementById('wht_amount_val').value = wht.toFixed(2);
+        if (document.getElementById('total_request_amount_val')) document.getElementById('total_request_amount_val').value = totalRequest.toFixed(2);
+        if (document.getElementById('remaining_balance_val')) document.getElementById('remaining_balance_val').value = remaining.toFixed(2);
+
+        // บันทึกเงินประกัน
+        if (document.getElementById('retention_amount_val')) {
+            document.getElementById('retention_amount_val').value = deductionAmount.toFixed(2);
+        }
+        // บันทึกยอดหักอื่นๆ (ใน DB จารมีคอลัมน์นี้ด้วย)
+        if (document.getElementById('other_deduction_amount_val')) {
+            document.getElementById('other_deduction_amount_val').value = deductionAmount.toFixed(2);
+        }
+
+        document.getElementById('deduction_card').style.opacity = useDeduction ? '1' : '0.6';
     }
+
+    // เรียกทำงานทันทีที่โหลดหน้า
     calculateMoney();
 </script>
 
