@@ -244,42 +244,38 @@ foreach ($data as $item) {
 </div>
 
 <div class="paper-a4" id="printableArea">
-    <div class="doc-title-box">
-        <div>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 900;">รายงานการเปรียบเทียบราคา</h1>
-            <p style="margin: 0; font-size: 10px; font-weight: 700; color: #64748b;">COMPARATIVE QUOTATION ANALYSIS</p>
-        </div>
-        <div
-            style="display: flex; align-items: flex-start; gap: 20px; margin-bottom: 25px; border-bottom: 3px solid #0f172a; padding-bottom: 15px;">
+    <div class="doc-header-container" style="font-family: 'Sarabun', sans-serif; color: #1e293b;">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
             <div style="flex: 1;">
-                <h2 style="margin: 0; font-size: 24px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">SHotel
+                <h2 style="margin: 0; font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">SHotel
                     Hatyai</h2>
-                <p style="margin: 2px 0; font-size: 12px; color: #334155; line-height: 1.4;">
+                <p style="margin: 0; font-size: 11px; color: #475569; line-height: 1.3;">
                     220 ถนนประชาธิปัตย์ ตำบลหาดใหญ่ อำเภอหาดใหญ่ จังหวัดสงขลา 90110
                 </p>
-                <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600;">
-                    <i class="fas fa-file-invoice" style="margin-right: 4px;"></i> Tax ID: 0905566000446
-                    <span style="margin: 0 10px; color: #cbd5e1;">|</span>
-                    <i class="fas fa-phone-alt" style="margin-right: 4px;"></i> Tel: 088-899-0743
-                </p>
-            </div>
-            <div style="text-align: right;">
-                <div
-                    style="background: #0f172a; color: white; padding: 5px 15px; border-radius: 4px; font-size: 14px; font-weight: 800; display: inline-block; margin-bottom: 5px;">
-                    รายงานเปรียบเทียบราคา
+                <div style="font-size: 10px; color: #64748b; display: flex; gap: 10px; margin-top: 2px;">
+                    <span><b>Tax ID:</b> 0905566000446</span>
+                    <span style="color: #cbd5e1;">|</span>
+                    <span><b>Tel:</b> 088-899-0743</span>
                 </div>
-                <p style="margin: 0; font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">
-                    Comparative Quotation Analysis</p>
+            </div>
+
+            <div style="text-align: right; font-size: 11px;">
+                <div style="padding-left: 5px;">
+                    <h1
+                        style="margin: 0; font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase;">
+                        รายงานการเปรียบเทียบราคา</h1>
+                    <p style="margin: 0; font-size: 9px; font-weight: 700; color: #64748b; letter-spacing: 0.5px;">
+                        COMPARATIVE QUOTATION ANALYSIS</p>
+                </div>
+                <strong>วันที่ออกเอกสาร:</strong><br>
+                <input type="text" id="docDate"
+                    style="border:none; border-bottom: 1px dotted #94a3b8; width: 85px; text-align: center; outline: none; font-weight: bold; background: transparent;"
+                    value="<?= date('d/m/Y') ?>">
             </div>
         </div>
 
-        <div class="doc-title-box" style="border: none; margin-bottom: 15px;">
-            <div
-                style="font-size: 12px; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 5px;">
-                <strong>วันที่ออกเอกสาร:</strong>
-                <input type="text" id="docDate" class="dotted-line" style="min-width: 100px; text-align: center;"
-                    value="<?= date('d/m/Y') ?>">
-            </div>
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid  #0f172a; padding: 2px 0; background-color: #f8fafc;">
         </div>
     </div>
 

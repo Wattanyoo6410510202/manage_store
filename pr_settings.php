@@ -67,8 +67,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
 
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm
-                        focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all
-                        cursor-pointer">
+    focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all
+    cursor-pointer">
+
+                            <option value="0">ไม่ระบุ / อื่นๆ</option>
+
                             <?php foreach ($suppliers as $sup): ?>
                                 <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'>
                                     <?= htmlspecialchars($sup['company_name']) ?>
@@ -162,9 +165,9 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <option value="3">3%</option>
                             </select>
                         </div>
-                         <div>
+                        <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย
-                                </label>
+                            </label>
                             <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                                 <option value="0">0% </option>

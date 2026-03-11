@@ -300,6 +300,9 @@ function createDoc(type) {
     case "po":
       targetPage = "po_settings.php";
       break;
+    case "invoice":
+      targetPage = "invoice_settings.php";
+      break;
     default:
       targetPage = "other.php";
   }

@@ -4,7 +4,7 @@ include 'header.php';
 include('assets/alert.php');
 ?>
 
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
     <button onclick="createDoc('quotation')"
         class="flex items-center justify-center gap-3 p-4 bg-indigo-600 text-white rounded-2xl shadow-sm hover:bg-indigo-700 hover:-translate-y-1 transition-all">
         <i class="fas fa-file-invoice text-xl"></i>
@@ -20,10 +20,15 @@ include('assets/alert.php');
         <i class="fas fa-shopping-basket text-xl"></i>
         <span class="font-bold">ใบสั่งซื้อ</span>
     </button>
-    <button onclick="createDoc('other')"
+    <button onclick="createDoc('invoice')"
         class="flex items-center justify-center gap-3 p-4 bg-slate-700 text-white rounded-2xl shadow-sm hover:bg-slate-800 hover:-translate-y-1 transition-all">
         <i class="fas fa-folder-plus text-xl"></i>
         <span class="font-bold">ใบแจ้งหนี้</span>
+    </button>
+     <button onclick="createDoc('billing')"
+        class="flex items-center justify-center gap-3 p-4 bg-yellow-600 text-white rounded-2xl shadow-sm hover:bg-yellow-700 hover:-translate-y-1 transition-all">
+        <i class="fas fa-folder-plus text-xl"></i>
+        <span class="font-bold">ใบวางบิล</span>
     </button>
 </div>
 

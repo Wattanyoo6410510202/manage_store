@@ -147,7 +147,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="font-semibold text-slate-700 truncate max-w-[250px]"
+                                    <div class="font-semibold text-slate-700 truncate max-w-[220px]"
                                         title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
                                         <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
                                     </div>

@@ -61,7 +61,13 @@ $doc_list_pages = [
     'view_po.php',
     'edit_po.php',
     'add_po.php',
-    'po_settings.php'
+    'po_settings.php',
+    'invoice_list.php',
+    'view_invoice.php',
+    'edit_invoice.php',
+    'add_invoice.php',
+    'invoice_settings.php'
+    
 ];
 $is_list_active = in_array($current_page, $doc_list_pages);
 
@@ -69,7 +75,7 @@ $is_list_active = in_array($current_page, $doc_list_pages);
 $is_quotation_active = in_array($current_page, ['doc_list.php', 'view_quotation.php', 'edit_quotation.php', 'add_quotation.php', 'quotation_settings.php']);
 $is_pr_active = in_array($current_page, ['pr_list.php', 'view_pr.php', 'edit_pr.php', 'add_pr.php', 'pr_settings.php']);
 $is_po_active = in_array($current_page, ['po_list.php', 'view_po.php', 'edit_po.php', 'add_po.php', 'po_settings.php']);
-
+$is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.php', 'edit_invoice.php', 'add_invoice.php', 'invoice_settings.php']);
 // 3. กลุ่ม "ตั้งค่า"
 $is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php']);
 
@@ -211,6 +217,13 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                             <i class="fas fa-file-signature text-[12px]"></i>
                             <span class="text-sm font-medium">ใบสั่งซื้อ (PO)</span>
                         </a>
+                          <a href="invoice_list.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_invoice_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <span
+                                class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_invoice_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            <i class="fas fa-file-invoice text-[12px]"></i>
+                            <span class="text-sm font-medium">ใบแจ้งหนี้</span>
+                        </a>
                     </div>
                 </div>
             <?php endif; ?>
@@ -319,6 +332,8 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                         'view_milestones.php' => 'ดูงวดงาน',
                         'add_milestone.php' => 'เพิ่มงวดงาน',
                         'edit_milestone.php' => 'แก้ไขงวดงาน',
+                        'invoice_settings.php' => 'ตั้งค่าใบแจ้งหนี้',
+                        'billing_settings.php' => 'ตั้งค่าใบวางบิล'
                     ];
                     echo $titles[$current_page] ?? 'ProSystem Management';
                     ?>

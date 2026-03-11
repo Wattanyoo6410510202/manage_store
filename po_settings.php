@@ -40,17 +40,18 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     class="h-10 w-10 object-contain">
                             </div>
                         </div>
+                        <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm
+    focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all
+    cursor-pointer">
 
-                        <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
-                            class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
+                            <option value="0">ไม่ระบุ / อื่นๆ</option>
+
                             <?php foreach ($suppliers as $sup): ?>
-                                <option value="<?= $sup['id'] ?>"
-                                    data-info='<?= json_encode($sup, JSON_HEX_APOS | JSON_HEX_QUOT) ?>'>
+                                <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'>
                                     <?= htmlspecialchars($sup['company_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-
                         <div
                             class="p-5 bg-gradient-to-br from-indigo-50/50 to-slate-50 rounded-2xl border border-indigo-100/50 space-y-4">
                             <div>

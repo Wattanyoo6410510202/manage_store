@@ -208,18 +208,35 @@ function ReadNumber($number)
         <div style="display: flex; gap: 15px;">
             <?php if ($logo_path): ?>
                 <img src="<?= $logo_path ?>" style="width: 70px; height: 70px; object-fit: contain;">
-            <?php else: ?>
+
+            <?php elseif (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุซัพพลายเออร์'): ?>
                 <div
                     style="width: 70px; height: 70px; background: #0f172a; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;">
                     <?= mb_substr($data['my_company'], 0, 1, 'UTF-8') ?>
                 </div>
+
             <?php endif; ?>
-            <div style="font-size: 11px; line-height: 1.4;">
-                <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= $data['my_company'] ?></h1>
-                <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
-                <p style="margin: 2px 0 0; color: #64748b;"><b>Tax ID:</b> <?= $data['my_tax'] ?> | <b>Tel:</b>
-                    <?= $data['my_phone'] ?></p>
-            </div>
+            <?php if (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุ'): ?>
+                <div style="font-size: 11px; line-height: 1.4;">
+                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= $data['my_company'] ?></h1>
+
+                    <?php if (!empty($data['my_address'])): ?>
+                        <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
+                    <?php endif; ?>
+
+                    <p style="margin: 2px 0 0; color: #64748b;">
+                        <?php if (!empty($data['my_tax'])): ?>
+                            <b>Tax ID:</b> <?= $data['my_tax'] ?>
+                        <?php endif; ?>
+
+                        <?php if (!empty($data['my_tax']) && !empty($data['my_phone'])): ?> | <?php endif; ?>
+
+                        <?php if (!empty($data['my_phone'])): ?>
+                            <b>Tel:</b> <?= $data['my_phone'] ?>
+                        <?php endif; ?>
+                    </p>
+                </div>
+            <?php endif; ?>
         </div>
         <div style="text-align: right;">
             <h2 style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900;">ใบขอซื้อ</h2>
