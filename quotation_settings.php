@@ -248,7 +248,7 @@ if (!$customer) {
                     <div class="w-full md:flex-grow">
                         <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
-                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
                             placeholder="เช่น เงื่อนไขการรับประกัน..."></textarea>
                     </div>
                     <div class="w-full md:w-72 space-y-2">

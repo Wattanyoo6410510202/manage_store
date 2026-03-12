@@ -67,7 +67,7 @@ $doc_list_pages = [
     'edit_invoice.php',
     'add_invoice.php',
     'invoice_settings.php'
-    
+
 ];
 $is_list_active = in_array($current_page, $doc_list_pages);
 
@@ -103,6 +103,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="shopping-cart.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -160,8 +161,8 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
         class="w-60 bg-slate-900 text-slate-300 flex flex-col shrink-0 h-full shadow-2xl md:shadow-none">
         <div class="p-6 bg-slate-950 flex items-center justify-between border-b border-slate-800">
             <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
-                    <i class="fas fa-shopping-cart"></i>
+                <div class="bg-white p-2 rounded-lg shadow-lg shadow-indigo-500/20">
+                    <img src="shopping-cart.png" alt="ไอคอนไง" class="h-6 w-6 text-white" />
                 </div>
                 <span class="text-xl font-extrabold text-white tracking-tight">ProSystem</span>
             </div>
@@ -217,7 +218,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                             <i class="fas fa-file-signature text-[12px]"></i>
                             <span class="text-sm font-medium">ใบสั่งซื้อ (PO)</span>
                         </a>
-                          <a href="invoice_list.php"
+                        <a href="invoice_list.php"
                             class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_invoice_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
                             <span
                                 class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_invoice_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
@@ -230,7 +231,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 
             <?php if (can('projects')): ?>
                 <a href="projects.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php'|| $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-tasks w-5 text-indigo-400"></i>
                     <span class="font-medium">จัดการงวดงาน</span>
                 </a>
@@ -284,7 +285,8 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                 </div>
                 <div class="overflow-hidden">
                     <p class="text-sm font-bold truncate text-white">
-                        <?php echo $_SESSION['username'] ?? 'Administrator'; ?></p>
+                        <?php echo $_SESSION['username'] ?? 'Administrator'; ?>
+                    </p>
                     <p class="text-[10px] text-indigo-400 uppercase font-bold"><?php echo $user_role; ?></p>
                 </div>
             </div>

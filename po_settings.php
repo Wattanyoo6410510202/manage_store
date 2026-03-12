@@ -234,7 +234,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     <div class="w-full md:flex-grow">
                         <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
-                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-300 transition-all"
+                            class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-300 transition-all resize-y"
                             placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)..."></textarea>
                     </div>
                     <div class="w-full md:w-80 space-y-2">
