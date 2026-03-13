@@ -60,7 +60,6 @@ foreach ($milestones as $m) {
     $total_wht += $m['wht_amount'];
     $total_other += $m['other_deduction_amount'];
     $total_net += $m['net_amount'];
-
 }
 
 // ฟังก์ชันอ่านเลขเงินไทย
@@ -130,11 +129,9 @@ if ($num_rows <= 5) {
 <style>
     :root {
         --row-padding:
-            <?= $dynamic_padding ?>
-        ;
+            <?= $dynamic_padding ?>;
         --item-font-size:
-            <?= $dynamic_font_size ?>
-        ;
+            <?= $dynamic_font_size ?>;
         --primary-color: #2563eb;
         --border-color: #e2e8f0;
     }
@@ -239,9 +236,17 @@ if ($num_rows <= 5) {
             </div>
         </div>
         <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 25px; color: var(--primary-color); font-weight: 900;">ใบสรุปงวดงาน</h2>
+            <h2 style="margin: 0; font-size: 25px; color: var(--primary-color); font-weight: 900;">
+                <?php
+                // เช็คค่า type ที่ส่งมา ถ้าเป็น 'withdraw' ให้แสดง "ใบเบิกอุปกรณ์" นอกนั้นเป็น "ใบแจ้งหนี้"
+                echo ($_GET['type'] == 'invoice') ? 'ใบแจ้งหนี้' : 'ใบสรุปงวดงาน';
+                ?>
+            </h2>
             <p style="margin: 0; font-size: 10px; letter-spacing: 3px; color: #94a3b8; text-transform: uppercase;">
-                MILESTONE SUMMARY REPOR
+                <?php
+                // เช็คค่า type สำหรับภาษาอังกฤษ
+                echo ($_GET['type'] == 'invoice') ? 'INVOICE' : ' MILESTONE SUMMARY REPORT';
+                ?>
             </p>
         </div>
     </div>
@@ -362,7 +367,7 @@ if ($num_rows <= 5) {
                             // ถ้าไม่มีการหักเงิน ให้ข้ามงวดนี้ไปเลย ไม่ต้องแสดงผล
                             if (!$has_deduction)
                                 continue;
-                            ?>
+                        ?>
                             <div style="margin-bottom: 2px; font-size: 10px; line-height: 1.4; color: #000;">
                                 <strong>- <?= htmlspecialchars($row['milestone_name']) ?></strong>
                                 <?php if ($row['retention_percent'] > 0): ?>
@@ -484,7 +489,10 @@ if ($num_rows <= 5) {
             const opt = {
                 margin: 0,
                 filename: 'Quotation_<?php echo $data['doc_no']; ?>.pdf',
-                image: { type: 'jpeg', quality: 1.0 },
+                image: {
+                    type: 'jpeg',
+                    quality: 1.0
+                },
                 html2canvas: {
                     scale: 3,
                     useCORS: true,
@@ -492,11 +500,15 @@ if ($num_rows <= 5) {
                     logging: false,
                     scrollY: 0 // บังคับให้เริ่มจับภาพจากด้านบนสุด ป้องกันหน้าว่าง
                 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
             };
 
             // แก้ไขตรงนี้: ใช้ workflow แบบแยกส่วนเพื่อเข้าถึงตัวแปร pdf
-            html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
+            html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
                 // เช็คจำนวนหน้าทั้งหมด
                 const totalPages = pdf.internal.getNumberOfPages();
 

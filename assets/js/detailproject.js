@@ -61,15 +61,15 @@ function bulkDelete() {
     });
 }
 
-function bulkPrint() {
+function bulkPrint(type) { // เพิ่ม parameter รับค่าประเภทหน้า
     let ids = [];
     $('.ms-check:checked').each(function () {
         ids.push($(this).val());
     });
 
     if (ids.length > 0) {
-        // ใช้ location.href แทน window.open
-        window.location.href = 'view_milstones.php?ids=' + ids.join(',');
+        // ส่ง ids พร้อมกับ type ไปที่ PHP
+        window.location.href = 'view_milstones.php?ids=' + ids.join(',') + '&type=invoice';
     }
 }
 
