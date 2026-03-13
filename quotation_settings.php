@@ -34,9 +34,11 @@ if (!$customer) {
                                 class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
                                 <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
-                            <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                <img id="comp_logo_preview" src="uploads/default-logo.png"
-                                    class="h-10 w-10 object-contain">
+                            <div
+                                class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
+                                <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
+
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
                             </div>
                         </div>
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm
@@ -46,9 +48,9 @@ if (!$customer) {
                             <option value="0">ไม่ระบุ / อื่นๆ</option>
 
                             <?php foreach ($suppliers as $sup): ?>
-                            <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'>
-                                <?= htmlspecialchars($sup['company_name']) ?>
-                            </option>
+                                <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'>
+                                    <?= htmlspecialchars($sup['company_name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
 
@@ -285,17 +287,17 @@ if (!$customer) {
 </form>
 
 <script>
-// 1. ฟังก์ชันปรับความสูง textarea อัตโนมัติ
-function autoResize(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight) + 'px';
-}
+    // 1. ฟังก์ชันปรับความสูง textarea อัตโนมัติ
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
 
-// 2. ฟังก์ชันเพิ่มแถวในตาราง
-function addItemRow() {
-    const tbody = document.querySelector('#itemsTable tbody');
-    const rowCount = tbody.rows.length + 1;
-    const newRow = `
+    // 2. ฟังก์ชันเพิ่มแถวในตาราง
+    function addItemRow() {
+        const tbody = document.querySelector('#itemsTable tbody');
+        const rowCount = tbody.rows.length + 1;
+        const newRow = `
     <tr class="item-row group border-t border-slate-100">
         <td class="px-4 py-3 text-center text-xs font-bold text-slate-400 row-number">${rowCount}</td>
         <td class="px-4 py-3">
@@ -324,130 +326,164 @@ function addItemRow() {
             </button>
         </td>
     </tr>`;
-    tbody.insertAdjacentHTML('beforeend', newRow);
-    calculateAll(); // คำนวณใหม่เมื่อเพิ่มแถว
-}
-
-// 3. ฟังก์ชันลบแถว
-function removeRow(btn) {
-    const tbody = document.querySelector('#itemsTable tbody');
-    if (tbody.rows.length > 1) {
-        btn.closest('tr').remove();
-        reorderRows();
-        calculateAll();
-    } else {
-        alert('อย่างน้อยต้องมี 1 รายการครับจาร');
-    }
-}
-
-// 4. ฟังก์ชันจัดเลขลำดับใหม่
-function reorderRows() {
-    document.querySelectorAll('#itemsTable tbody tr').forEach((row, index) => {
-        const rowNumCell = row.querySelector('.row-number');
-        if (rowNumCell) rowNumCell.innerText = index + 1;
-    });
-}
-
-// 5. ฟังก์ชันคำนวณเงิน (หัวใจหลัก) - แก้ไขเวอร์ชันคำนวณ WHT
-function calculateAll() {
-    let subtotal = 0;
-    const vatSelect = document.getElementById('vat_percent');
-    const whtSelect = document.getElementById('wht_percent');
-
-    const vatPercent = parseFloat(vatSelect ? vatSelect.value : 0) || 0;
-    const whtPercent = parseFloat(whtSelect ? whtSelect.value : 0) || 0;
-
-    document.querySelectorAll('.item-row').forEach(row => {
-        // ดึงค่าแบบดัก error และใช้ name selector ที่ยืดหยุ่นขึ้น
-        const qty = parseFloat(row.querySelector('[name*="item_qty"]')?.value) || 0;
-        const price = parseFloat(row.querySelector('[name*="item_price"]')?.value) || 0;
-        const itemDiscount = parseFloat(row.querySelector('[name*="item_discount"]')?.value) || 0;
-
-        const total = (qty * price) - itemDiscount;
-
-        const rowTotalEl = row.querySelector('.row-total');
-        if (rowTotalEl) {
-            rowTotalEl.innerText = total.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-        subtotal += total;
-    });
-
-    const vatAmount = subtotal * (vatPercent / 100);
-    const whtAmount = subtotal * (whtPercent / 100);
-
-    // 🔥 จุดสำคัญ: ยอดสุทธิ (Grand Total) ต้องลบ หัก ณ ที่จ่าย ออกด้วย
-    const grandTotal = (subtotal + vatAmount) - whtAmount;
-
-    const format = {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    };
-
-    // อัปเดตตัวเลขหน้าจอ
-    if (document.getElementById('subtotal_display')) document.getElementById('subtotal_display').innerText = subtotal
-        .toLocaleString(undefined, format);
-    if (document.getElementById('vat_display')) document.getElementById('vat_display').innerText = vatAmount
-        .toLocaleString(undefined, format);
-    if (document.getElementById('wht_display')) document.getElementById('wht_display').innerText = whtAmount
-        .toLocaleString(undefined, format);
-    if (document.getElementById('grandtotal_display')) document.getElementById('grandtotal_display').innerText =
-        grandTotal.toLocaleString(undefined, format);
-
-    // อัปเดต Label เปอร์เซ็นต์ (เพื่อให้เลขในวงเล็บเปลี่ยนตาม)
-    if (document.getElementById('vat_percent_label')) document.getElementById('vat_percent_label').innerText =
-        vatPercent;
-    if (document.getElementById('wht_percent_label')) document.getElementById('wht_percent_label').innerText =
-        whtPercent;
-}
-// 6. อัปเดตข้อมูลผู้ขาย
-function updateSupplierInfo() {
-    const select = document.getElementById('supplier_select');
-    if (!select || !select.options[select.selectedIndex]) return;
-
-    const selectedOption = select.options[select.selectedIndex];
-    const infoAttr = selectedOption.getAttribute('data-info');
-    if (!infoAttr) return;
-
-    const data = JSON.parse(infoAttr);
-    document.getElementById('comp_name').innerText = data.company_name || '-';
-    document.getElementById('comp_tax').innerText = data.tax_id || '-';
-    document.getElementById('comp_phone').innerText = data.phone || '-';
-    document.getElementById('comp_email').innerText = data.email || '-';
-    document.getElementById('comp_addr').innerText = data.address || '-';
-
-    const logoImg = document.getElementById('comp_logo_preview');
-    if (logoImg) logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'uploads/default-logo.png';
-}
-
-// 7. ตั้งค่าเริ่มต้น
-document.addEventListener('DOMContentLoaded', () => {
-    // อัปเดตข้อมูลผู้ขายครั้งแรก
-    if (document.getElementById('supplier_select')) {
-        updateSupplierInfo();
+        tbody.insertAdjacentHTML('beforeend', newRow);
+        calculateAll(); // คำนวณใหม่เมื่อเพิ่มแถว
     }
 
-    // จัดการ Event สำหรับการคำนวณ (ใช้ Delegation เพื่อความชัวร์)
-    document.addEventListener('input', (e) => {
-        if (e.target.matches('[name="item_qty[]"], [name="item_price[]"], [name="item_discount[]"]')) {
+    // 3. ฟังก์ชันลบแถว
+    function removeRow(btn) {
+        const tbody = document.querySelector('#itemsTable tbody');
+        if (tbody.rows.length > 1) {
+            btn.closest('tr').remove();
+            reorderRows();
             calculateAll();
+        } else {
+            alert('อย่างน้อยต้องมี 1 รายการครับจาร');
         }
+    }
+
+    // 4. ฟังก์ชันจัดเลขลำดับใหม่
+    function reorderRows() {
+        document.querySelectorAll('#itemsTable tbody tr').forEach((row, index) => {
+            const rowNumCell = row.querySelector('.row-number');
+            if (rowNumCell) rowNumCell.innerText = index + 1;
+        });
+    }
+
+    // 5. ฟังก์ชันคำนวณเงิน (หัวใจหลัก) - แก้ไขเวอร์ชันคำนวณ WHT
+    function calculateAll() {
+        let subtotal = 0;
+        const vatSelect = document.getElementById('vat_percent');
+        const whtSelect = document.getElementById('wht_percent');
+
+        const vatPercent = parseFloat(vatSelect ? vatSelect.value : 0) || 0;
+        const whtPercent = parseFloat(whtSelect ? whtSelect.value : 0) || 0;
+
+        document.querySelectorAll('.item-row').forEach(row => {
+            // ดึงค่าแบบดัก error และใช้ name selector ที่ยืดหยุ่นขึ้น
+            const qty = parseFloat(row.querySelector('[name*="item_qty"]')?.value) || 0;
+            const price = parseFloat(row.querySelector('[name*="item_price"]')?.value) || 0;
+            const itemDiscount = parseFloat(row.querySelector('[name*="item_discount"]')?.value) || 0;
+
+            const total = (qty * price) - itemDiscount;
+
+            const rowTotalEl = row.querySelector('.row-total');
+            if (rowTotalEl) {
+                rowTotalEl.innerText = total.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+            subtotal += total;
+        });
+
+        const vatAmount = subtotal * (vatPercent / 100);
+        const whtAmount = subtotal * (whtPercent / 100);
+
+        // 🔥 จุดสำคัญ: ยอดสุทธิ (Grand Total) ต้องลบ หัก ณ ที่จ่าย ออกด้วย
+        const grandTotal = (subtotal + vatAmount) - whtAmount;
+
+        const format = {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        };
+
+        // อัปเดตตัวเลขหน้าจอ
+        if (document.getElementById('subtotal_display')) document.getElementById('subtotal_display').innerText = subtotal
+            .toLocaleString(undefined, format);
+        if (document.getElementById('vat_display')) document.getElementById('vat_display').innerText = vatAmount
+            .toLocaleString(undefined, format);
+        if (document.getElementById('wht_display')) document.getElementById('wht_display').innerText = whtAmount
+            .toLocaleString(undefined, format);
+        if (document.getElementById('grandtotal_display')) document.getElementById('grandtotal_display').innerText =
+            grandTotal.toLocaleString(undefined, format);
+
+        // อัปเดต Label เปอร์เซ็นต์ (เพื่อให้เลขในวงเล็บเปลี่ยนตาม)
+        if (document.getElementById('vat_percent_label')) document.getElementById('vat_percent_label').innerText =
+            vatPercent;
+        if (document.getElementById('wht_percent_label')) document.getElementById('wht_percent_label').innerText =
+            whtPercent;
+    }
+    // 6. อัปเดตข้อมูลผู้ขาย
+    function updateSupplierInfo() {
+        const select = document.getElementById('supplier_select');
+        if (!select) return;
+
+        const selectedOption = select.options[select.selectedIndex];
+        const infoAttr = selectedOption ? selectedOption.getAttribute('data-info') : null;
+
+        const logoImg = document.getElementById('comp_logo_preview');
+        const logoIcon = document.getElementById('comp_logo_icon');
+
+        // --- กรณีที่ไม่ได้เลือกบริษัท หรือเลือกตัวเลือกว่าง ---
+        if (!infoAttr || select.value === "") {
+            // ล้างตัวหนังสือให้เป็นขีด (-) หรือว่างเปล่า
+            document.getElementById('comp_name').innerText = '-';
+            document.getElementById('comp_tax').innerText = '-';
+            document.getElementById('comp_phone').innerText = '-';
+            document.getElementById('comp_email').innerText = '-';
+            document.getElementById('comp_addr').innerText = '-';
+
+            // รีเซ็ตโลโก้กลับไปที่ Icon เริ่มต้น
+            if (logoImg && logoIcon) {
+                logoImg.src = '';
+                logoImg.classList.add('hidden');
+                logoIcon.classList.remove('hidden');
+            }
+            return; // จบการทำงานตรงนี้ ไม่ต้องไป Parse JSON ต่อ
+        }
+
+        // --- กรณีที่มีข้อมูลบริษัท ---
+        try {
+            const data = JSON.parse(infoAttr);
+            document.getElementById('comp_name').innerText = data.company_name || '-';
+            document.getElementById('comp_tax').innerText = data.tax_id || '-';
+            document.getElementById('comp_phone').innerText = data.phone || '-';
+            document.getElementById('comp_email').innerText = data.email || '-';
+            document.getElementById('comp_addr').innerText = data.address || '-';
+
+            if (logoImg && logoIcon) {
+                if (data.logo_path && data.logo_path.trim() !== '') {
+                    logoImg.src = 'uploads/' + data.logo_path;
+                    logoImg.classList.remove('hidden');
+                    logoIcon.classList.add('hidden');
+                } else {
+                    logoImg.src = '';
+                    logoImg.classList.add('hidden');
+                    logoIcon.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing supplier data", e);
+        }
+    }
+
+    // 7. ตั้งค่าเริ่มต้น
+    document.addEventListener('DOMContentLoaded', () => {
+        // อัปเดตข้อมูลผู้ขายครั้งแรก
+        if (document.getElementById('supplier_select')) {
+            updateSupplierInfo();
+        }
+
+        // จัดการ Event สำหรับการคำนวณ (ใช้ Delegation เพื่อความชัวร์)
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('[name="item_qty[]"], [name="item_price[]"], [name="item_discount[]"]')) {
+                calculateAll();
+            }
+        });
+
+        // จัดการเมื่อเปลี่ยนค่า VAT / WHT
+        const vatSelect = document.getElementById('vat_percent');
+        if (vatSelect) vatSelect.addEventListener('change', calculateAll);
+
+        const whtSelect = document.getElementById('wht_percent');
+        if (whtSelect) whtSelect.addEventListener('change', calculateAll);
+
+        // ปรับ textarea ตั้งต้น
+        document.querySelectorAll('textarea[name="item_desc[]"]').forEach(autoResize);
+
+        // คำนวณครั้งแรก
+        calculateAll();
     });
-
-    // จัดการเมื่อเปลี่ยนค่า VAT / WHT
-    const vatSelect = document.getElementById('vat_percent');
-    if (vatSelect) vatSelect.addEventListener('change', calculateAll);
-
-    const whtSelect = document.getElementById('wht_percent');
-    if (whtSelect) whtSelect.addEventListener('change', calculateAll);
-
-    // ปรับ textarea ตั้งต้น
-    document.querySelectorAll('textarea[name="item_desc[]"]').forEach(autoResize);
-
-    // คำนวณครั้งแรก
-    calculateAll();
-});
 </script>
 <script src="assets/js/demo-data.js"></script>

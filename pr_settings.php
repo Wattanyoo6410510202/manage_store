@@ -60,9 +60,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
                                 <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
-                            <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                <img id="comp_logo_preview" src="uploads/default-logo.png"
-                                    class="h-10 w-10 object-contain">
+                            <div
+                                class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
+                                <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
+
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
                             </div>
                         </div>
 
@@ -445,25 +447,61 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
         document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
-    // 4. อัปเดตข้อมูลผู้ขาย (Supplier)
     function updateSupplierInfo() {
         const select = document.getElementById('supplier_select');
-        if (!select || select.selectedIndex === -1) return;
+        if (!select) return;
 
         const selectedOption = select.options[select.selectedIndex];
-        if (!selectedOption.hasAttribute('data-info')) return;
-
-        const data = JSON.parse(selectedOption.getAttribute('data-info'));
-
-        document.getElementById('comp_name').innerText = data.company_name || '-';
-        document.getElementById('comp_tax').innerText = data.tax_id || '-';
-        document.getElementById('comp_phone').innerText = data.phone || '-';
-        document.getElementById('comp_email').innerText = data.email || '-';
-        document.getElementById('comp_addr').innerText = data.address || '-';
+        const infoAttr = selectedOption ? selectedOption.getAttribute('data-info') : null;
 
         const logoImg = document.getElementById('comp_logo_preview');
-        if (logoImg) {
-            logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'uploads/default-logo.png';
+        const logoIcon = document.getElementById('comp_logo_icon');
+
+        // --- 1. กรณีกดย้อนกลับ หรือไม่ได้เลือกบริษัท (ค่าว่าง) ---
+        if (!infoAttr || select.value === "") {
+            // ล้างตัวหนังสือกลับเป็นค่าเริ่มต้น (-)
+            document.getElementById('comp_name').innerText = '-';
+            document.getElementById('comp_tax').innerText = '-';
+            document.getElementById('comp_phone').innerText = '-';
+            document.getElementById('comp_email').innerText = '-';
+            document.getElementById('comp_addr').innerText = '-';
+
+            // รีเซ็ตการแสดงผลโลโก้ (ซ่อนรูป กลับไปโชว์ Icon)
+            if (logoImg && logoIcon) {
+                logoImg.src = '';
+                logoImg.classList.add('hidden');
+                logoIcon.classList.remove('hidden');
+            }
+            return; // จบการทำงาน
+        }
+
+        // --- 2. กรณีเลือกบริษัทที่มีข้อมูล ---
+        try {
+            const data = JSON.parse(infoAttr);
+
+            // อัปเดตข้อมูลตัวหนังสือ
+            document.getElementById('comp_name').innerText = data.company_name || '-';
+            document.getElementById('comp_tax').innerText = data.tax_id || '-';
+            document.getElementById('comp_phone').innerText = data.phone || '-';
+            document.getElementById('comp_email').innerText = data.email || '-';
+            document.getElementById('comp_addr').innerText = data.address || '-';
+
+            // จัดการเรื่องรูปภาพและไอคอน
+            if (logoImg && logoIcon) {
+                if (data.logo_path && data.logo_path.trim() !== '') {
+                    // มีรูปภาพ: โชว์รูป และซ่อน Icon
+                    logoImg.src = 'uploads/' + data.logo_path;
+                    logoImg.classList.remove('hidden');
+                    logoIcon.classList.add('hidden');
+                } else {
+                    // ไม่มีรูปภาพ: ซ่อนรูป และโชว์ Icon แทน
+                    logoImg.src = '';
+                    logoImg.classList.add('hidden');
+                    logoIcon.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing supplier data:", e);
         }
     }
 

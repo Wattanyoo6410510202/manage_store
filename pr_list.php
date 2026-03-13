@@ -221,9 +221,9 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
                                 </td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
                                 </td>
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
@@ -485,33 +485,41 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             cancelButtonText: 'ยกเลิก',
             confirmButtonText: 'ยืนยันอนุมัติ',
             reverseButtons: true,
-
-            heightAuto: false // กันหน้าดีด
+            heightAuto: false
         }).then((result) => {
             if (result.isConfirmed) {
-                // ส่งไปที่ API ของ PR (จารอย่าลืมสร้างไฟล์นี้แยกจากของ Quotation นะ)
                 fetch(`api/update_pr_status.php?id=${id}&action=approved`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
                             renderAlert('success', 'อนุมัติใบขอซื้อเรียบร้อยแล้ว');
 
-                            // 1. หาแถว (Row) ที่เราเพิ่งกด
+                            // 1. สร้าง HTML ของ Badge ตาม config จาร (Approved)
+                            const approvedBadge = `
+                            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span class="text-[10px] font-bold uppercase tracking-wide">อนุมัติ</span>
+                            </div>`;
+
+                            // 2. หาแถว (Row) ที่เราเพิ่งกด
                             const targetRow = $(`.pr-checkbox[value="${id}"]`).closest('tr');
 
-                            // 2. อัปเดต Column "STATUS" (ในตารางของจารคือคอลัมน์ที่ 7 นับจาก 0)
-                            // เราจะเปลี่ยนตัวหนังสือเป็น 'approved'
-                            prTable.cell(targetRow, 7).data('approved').draw(false);
+                            // 3. อัปเดต Column สถานะ (ช่องที่ 8 คือ index 7) ด้วย HTML Badge
+                            // ใช้ .draw(false) เพื่อค้างอยู่ที่หน้าเดิม ไม่ดีดไปหน้า 1
+                            prTable.cell(targetRow, 7).data(approvedBadge).draw(false);
 
-                            // 3. ซ่อนปุ่มอนุมัติและปุ่มแก้ไขทิ้ง (เพราะอนุมัติแล้วไม่ควรแก้)
+                            // 4. ซ่อนปุ่มที่ไม่เกี่ยวข้องทิ้ง (เพราะอนุมัติแล้ว)
                             targetRow.find('button[onclick^="approvePR"]').fadeOut();
                             targetRow.find('a[href^="edit_pr.php"]').fadeOut();
 
-                            // --- ลบ location.reload() ทิ้งไปเลยครับจาร ---
                         } else {
                             Swal.fire('ผิดพลาด', data.message, 'error');
                         }
                     })
+                    .catch(err => {
+                        console.error(err);
+                        renderAlert('error', 'การเชื่อมต่อล้มเหลว');
+                    });
             }
         })
     }

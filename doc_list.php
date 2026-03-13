@@ -228,8 +228,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['creator_name'] ?: '-') ?></td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['creator_name'] ?: '-') ?></td>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
                                 </td>
                                 <td>
                                     <div class="flex justify-center gap-1">
@@ -532,19 +532,24 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         if (data.status === 'success') {
                             renderAlert('success', 'อนุมัติใบเสนอราคาเรียบร้อยแล้ว');
 
-                            // --- จุดแก้ไข: ไม่อยากให้รีเฟรชทั้งหน้า ให้แก้ตรงนี้ ---
+                            // 1. เตรียม HTML ของ Badge (ดึงมาจาก $config ที่จารต้องการ)
+                            const approvedBadge = `
+                            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span class="text-[10px] font-bold uppercase tracking-wide">อนุมัติ</span>
+                            </div>`;
 
-                            // 1. หา Row (แถว) ที่เราเพิ่งกดอนุมัติไป
+                            // 2. หาแถวที่กด
                             const targetRow = $(`button[onclick="approveQuote(${id})"]`).closest('tr');
 
-                            // 2. อัปเดต Column สถานะ (สมมติว่าเป็นคอลัมน์ที่ 8 เหมือนในโค้ดจาร)
-                            // เราจะเปลี่ยนข้อความเป็น 'approved' และซ่อนปุ่มอนุมัติทิ้งไป
-                            quoteTable.cell(targetRow, 7).data('approved').draw(false);
+                            // 3. อัปเดต Column สถานะ (ช่องที่ 8 คือ index 7) ด้วย HTML Badge
+                            // .draw(false) เพื่อให้ตารางไม่อัปเดตหน้า (ค้างอยู่ที่หน้าเดิม)
+                            quoteTable.cell(targetRow, 7).data(approvedBadge).draw(false);
 
-                            // 3. ซ่อนปุ่มอนุมัติออก เพื่อไม่ให้กดซ้ำ
-                            $(`button[onclick="approveQuote(${id})"]`).fadeOut();
+                            // 4. ซ่อนปุ่มอนุมัติออก หรือล้างปุ่มในช่อง Action
+                            // ใช้ .fadeOut() เพื่อความสวยงาม หรือ .html('') เพื่อล้างทิ้งทันที
+                            targetRow.find('button[onclick*="approveQuote"]').fadeOut(400);
 
-                            // จบครับจาร ไม่ต้องมี location.reload(); หน้าจอจะไม่ขาวแน่นอน
                         } else {
                             renderAlert('error', data.message || 'เกิดข้อผิดพลาด');
                         }

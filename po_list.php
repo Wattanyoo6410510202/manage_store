@@ -200,7 +200,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
                                 <td class="p-4" data-order="<?= $row['created_at'] ?>">
                                     <div class="flex flex-col">
-                                        <span class="text-[15px] font-bold text-slate-700 mt-0.5 flex items-center gap-1">
+                                        <span class="text-[15px] font-bold text-slate-700 mt-0.5 flex items-center gap-1 ">
                                             <i class="fas fa-calendar-alt text-[9px]"></i>
                                             <?= date('d/m/y', strtotime($row['created_at'])) ?>
                                         </span>
@@ -217,9 +217,9 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
                                 </td>
-                                <td class="truncate max-w-[150px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
+                                <td class="truncate max-w-[100px]"><?= htmlspecialchars($row['approver_name'] ?: '-') ?>
                                 </td>
                                 <td>
                                     <div class="flex justify-center gap-1">
@@ -437,37 +437,43 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             confirmButtonText: 'ยืนยันอนุมัติ',
             cancelButtonText: 'ยกเลิก',
             reverseButtons: true,
-            heightAuto: false // กันหน้าดีด
+            heightAuto: false
         }).then((result) => {
             if (result.isConfirmed) {
                 const fd = new FormData();
                 fd.append('id', id);
                 fd.append('action', 'approve');
 
-                // เปลี่ยน path มาที่ไฟล์เฉพาะของ PO
                 fetch('api/update_po_status.php', {
                     method: 'POST',
                     body: fd
                 })
                     .then(res => res.json())
                     .then(res => {
-                        // ... เมื่อ success แล้ว ...
                         if (res.status === 'success') {
                             renderAlert('success', 'อนุมัติใบสั่งซื้อเรียบร้อยแล้ว');
 
                             const rowElement = $(`.po-checkbox[value="${id}"]`).closest('tr');
 
-                            // 1. เปลี่ยนคำว่า Status เป็น approved
-                            rowElement.find('td:nth-child(8)').html('<span class="">approved</span>');
+                            // 1. สร้าง HTML Badge ตาม config ของจาร (Approved)
+                            const approvedBadge = `
+                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide">อนุมัติ</span>
+                        </div>`;
 
-                            // 2. ซ่อนปุ่ม Approve (ตัวที่กด)
+                            // 2. อัปเดตคอลัมน์ Status (คอลัมน์ที่ 8) ด้วย Badge ใหม่
+                            rowElement.find('td:nth-child(8)').html(approvedBadge);
+
+                            // 3. ซ่อนปุ่ม Approve และปุ่ม Edit ทันทีที่อนุมัติเสร็จ
                             rowElement.find('button[onclick*="approvePo"]').fadeOut(300);
-
-                            // 3. ซ่อนปุ่ม Edit (แก้ Selector ให้แม่นขึ้น)
                             rowElement.find('a[href*="edit_po.php"]').fadeOut(300);
 
-                            // 4. (แถม) ถ้าอยากให้ปุ่มลบหายไปด้วยกันพลาด
+                            // (Optional) ซ่อนปุ่มลบด้วยถ้าต้องการ
                             // rowElement.find('button[onclick*="deletePO"]').fadeOut(300);
+
+                        } else {
+                            renderAlert('error', res.message || 'เกิดข้อผิดพลาด');
                         }
                     })
                     .catch(err => {

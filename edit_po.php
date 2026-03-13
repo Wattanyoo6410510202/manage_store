@@ -41,34 +41,42 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white p-5 rounded-3xl border border-slate-200 ">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200">
                         <div class="flex justify-between items-start mb-4">
                             <h3
                                 class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
-                                <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Supplier / ผู้ขาย
+                                <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
-                            <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                <img id="comp_logo_preview" src="assets/img/default-logo.png"
-                                    class="h-10 w-10 object-contain">
+                             <div
+                                class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
+                                <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
+
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
                             </div>
                         </div>
 
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
-                            class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all">
-                            <?php foreach ($suppliers as $sup): ?>
-                                <option value="<?= $sup['id'] ?>"
-                                    data-info="<?= htmlspecialchars(json_encode($sup), ENT_QUOTES, 'UTF-8') ?>"
-                                    <?= ($sup['id'] == $po_data['supplier_id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($sup['company_name']) ?>
-                                </option>
-                            <?php endforeach; ?>
+                            class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
+
+                            <option value="0" <?= (empty($pr_data['supplier_id'])) ? 'selected' : '' ?>>---
+                                กรุณาเลือกผู้ขาย ---</option>
+
+                            <?php if (!empty($suppliers)): ?>
+                                <?php foreach ($suppliers as $sup): ?>
+                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'
+                                        <?= (isset($pr_data['supplier_id']) && $sup['id'] == $pr_data['supplier_id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($sup['company_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
 
                         <div
                             class="p-5 bg-gradient-to-br from-indigo-50/50 to-slate-50 rounded-2xl border border-indigo-100/50 space-y-4">
                             <div>
                                 <div id="comp_name" class="text-base font-black text-slate-800 leading-tight">
-                                    โหลดข้อมูล...</div>
+                                    <?= (!empty($pr_data['supplier_id'])) ? 'กำลังโหลดข้อมูล...' : 'ยังไม่ได้เลือกผู้ขาย' ?>
+                                </div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <span
                                         class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
@@ -76,6 +84,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
                             </div>
+
                             <div class="grid grid-cols-1 gap-2">
                                 <div class="flex items-center gap-3 text-xs">
                                     <i class="fas fa-phone-alt text-indigo-500 w-4"></i>
@@ -86,6 +95,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                     <span id="comp_email" class="font-bold text-slate-600">-</span>
                                 </div>
                             </div>
+
                             <div class="pt-3 border-t border-indigo-100/50">
                                 <div id="comp_addr"
                                     class="text-[11px] text-slate-500 leading-relaxed font-medium italic">-</div>
@@ -407,30 +417,55 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         setDisplay('wht_display', wht); // แสดงยอดเงินที่โดนหัก
         setDisplay('grandtotal_display', grandtotal);
     }
-    // 5. จัดการข้อมูล Supplier
+  // 5. จัดการข้อมูล Supplier
+    // 5. จัดการข้อมูล Supplier (ฉบับสลับรูป/ไอคอน)
     function updateSupplierInfo() {
         try {
             const select = document.getElementById('supplier_select');
-            if (!select || !select.value) return;
+            const logoImg = document.getElementById('comp_logo_preview');
+            const logoIcon = document.getElementById('comp_logo_icon');
+            
+            // 1. ถ้าไม่ได้เลือก (Value 0) ให้ล้างค่าและกลับไปโชว์ไอคอนอาคาร
+            if (!select || !select.value || select.value == "0") {
+                document.getElementById('comp_name').innerText = 'ยังไม่ได้เลือกผู้ขาย';
+                document.getElementById('comp_tax').innerText = '-';
+                document.getElementById('comp_phone').innerText = '-';
+                document.getElementById('comp_email').innerText = '-';
+                document.getElementById('comp_addr').innerText = '-';
+                
+                if (logoImg) logoImg.classList.add('hidden');    // ซ่อนรูป
+                if (logoIcon) logoIcon.classList.remove('hidden'); // โชว์ไอคอนอาคาร
+                return;
+            }
 
             const selectedOption = select.options[select.selectedIndex];
             const dataAttr = selectedOption.getAttribute('data-info');
             if (!dataAttr) return;
 
             const data = JSON.parse(dataAttr);
-            document.getElementById('comp_name').innerText = data.company_name || '-';
+            
+            // 2. อัปเดตข้อมูล Text
+            document.getElementById('comp_name').innerText = data.company_name || 'ไม่ระบุชื่อบริษัท';
             document.getElementById('comp_tax').innerText = data.tax_id || '-';
             document.getElementById('comp_phone').innerText = data.phone || '-';
             document.getElementById('comp_email').innerText = data.email || '-';
             document.getElementById('comp_addr').innerText = data.address || '-';
 
-            const logoImg = document.getElementById('comp_logo_preview');
-            if (logoImg) logoImg.src = data.logo_path ? 'uploads/' + data.logo_path : 'assets/img/default-logo.png';
+            // 3. จัดการรูป Logo และ Icon
+            const logoFile = data.logo_path || data.logo; 
+            if (logoFile && logoImg) {
+                logoImg.src = 'uploads/' + logoFile;
+                logoImg.classList.remove('hidden');   // โชว์รูป
+                if (logoIcon) logoIcon.classList.add('hidden'); // ซ่อนไอคอน
+            } else {
+                if (logoImg) logoImg.classList.add('hidden');    // ซ่อนรูป
+                if (logoIcon) logoIcon.classList.remove('hidden'); // โชว์ไอคอน (กรณีบริษัทไม่มีรูป)
+            }
+            
         } catch (e) {
             console.error("Error parsing supplier info:", e);
         }
     }
-
     // 6. ขยาย Textarea อัตโนมัติ
     function autoResize(textarea) {
         textarea.style.height = 'auto';
