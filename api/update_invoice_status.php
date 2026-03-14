@@ -17,11 +17,11 @@ if (!$user_id) {
     exit;
 }
 
-// 2. รับค่าจาก JS
-$id = $_GET['id'] ?? $_POST['id'] ?? null;
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+// 2. รับค่าจาก JS (รองรับทั้ง GET สำหรับสถานะทั่วไป และ POST สำหรับการอัปโหลดไฟล์)
+$id = $_POST['id'] ?? $_GET['id'] ?? null;
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-// รายการสถานะที่รองรับใน enum('pending', 'paid', 'canceled', 'approved')
+// รายการสถานะที่รองรับ
 $allowed_actions = ['approved', 'paid', 'pending', 'canceled'];
 
 if (!$id || !in_array($action, $allowed_actions)) {
@@ -37,34 +37,51 @@ try {
     $result = $stmt->get_result()->fetch_assoc();
     $current_status = $result['status'] ?? '';
 
-    if ($current_status === $action) {
+    if ($current_status === $action && $action !== 'paid') {
         echo json_encode(['status' => 'error', 'message' => 'รายการนี้อยู่ในสถานะ ' . $action . ' อยู่แล้ว']);
         exit;
     }
 
     // 4. แยก Logic ตามความสำคัญ
     if ($action === 'approved') {
-        // --- กรณี "อนุมัติ": ต้องเช็คสิทธิ์ และเก็บชื่อผู้อนุมัติ ---
+        // --- กรณี "อนุมัติ" ---
         if (!in_array($user_role, ['admin', 'gmhok'])) {
             echo json_encode(['status' => 'error', 'message' => 'คุณไม่มีสิทธิ์ในการอนุมัติรายการนี้']);
             exit;
         }
 
-        $update_sql = "UPDATE invoices SET 
-                       status = ?, 
-                       approved_by = ?, 
-                       approved_at = NOW(), 
-                       updated_at = NOW() 
-                       WHERE id = ?";
+        $update_sql = "UPDATE invoices SET status = ?, approved_by = ?, approved_at = NOW(), updated_at = NOW() WHERE id = ?";
         $stmt = $conn->prepare($update_sql);
         $stmt->bind_param("sii", $action, $user_id, $id);
 
-    } else {
-        // --- กรณีอื่นๆ (paid, pending, canceled): เปลี่ยนสถานะอย่างเดียว ---
+    } elseif ($action === 'paid') {
+        // --- กรณี "ชำระเงิน": รองรับการแนบไฟล์หลักฐาน และบันทึกเวลาจ่าย ---
+        $file_name = null;
+        if (isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] == 0) {
+            $upload_dir = "../uploads/payments/";
+            if (!is_dir($upload_dir)) { mkdir($upload_dir, 0777, true); }
+
+            $ext = strtolower(pathinfo($_FILES['payment_proof']['name'], PATHINFO_EXTENSION));
+            $file_name = "pay_" . $id . "_" . date('YmdHis') . "." . $ext;
+            
+            if (!move_uploaded_file($_FILES['payment_proof']['tmp_name'], $upload_dir . $file_name)) {
+                throw new Exception("ไม่สามารถย้ายไฟล์ไปยังที่จัดเก็บได้");
+            }
+        }
+
+        // บันทึกสถานะ, ชื่อไฟล์หลักฐาน และเวลาที่ชำระเงิน (paid_at)
         $update_sql = "UPDATE invoices SET 
                        status = ?, 
+                       payment_proof = IFNULL(?, payment_proof), 
+                       paid_at = NOW(), 
                        updated_at = NOW() 
                        WHERE id = ?";
+        $stmt = $conn->prepare($update_sql);
+        $stmt->bind_param("ssi", $action, $file_name, $id);
+
+    } else {
+        // --- กรณีอื่นๆ (pending, canceled) ---
+        $update_sql = "UPDATE invoices SET status = ?, updated_at = NOW() WHERE id = ?";
         $stmt = $conn->prepare($update_sql);
         $stmt->bind_param("si", $action, $id);
     }
@@ -73,8 +90,9 @@ try {
     if ($stmt->execute()) {
         echo json_encode([
             'status' => 'success',
-            'message' => 'เปลี่ยนสถานะเป็น ' . $action . ' เรียบร้อยแล้ว',
-            'new_status' => $action
+            'message' => 'บันทึกสถานะ ' . $action . ' เรียบร้อยแล้ว',
+            'new_status' => $action,
+            'paid_at' => ($action === 'paid') ? date('d/m/Y H:i') : null
         ]);
     } else {
         throw new Exception($conn->error);
@@ -83,7 +101,7 @@ try {
 } catch (Exception $e) {
     echo json_encode([
         'status' => 'error',
-        'message' => 'เกิดข้อผิดพลาดที่ระบบ: ' . $e->getMessage()
+        'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
     ]);
 }
 

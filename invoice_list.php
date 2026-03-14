@@ -107,14 +107,25 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </button>
 
                     <div id="bulkActions"
-                        class="hidden ml-auto self-end p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in">
-                        <span class="text-[11px] font-bold text-red-700 ml-2">
-                            เลือกอยู่ <span id="selectedCount" class="underline">0</span> รายการ
+                        class="hidden ml-auto self-end p-1.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-3 transition-all animate-fade-in shadow-sm">
+
+                        <span class="text-[11px] font-bold text-slate-600 ml-2">
+                            เลือกอยู่ <span id="selectedCount" class="text-indigo-600 underline">0</span> รายการ
                         </span>
-                        <button onclick="bulkDelete()"
-                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+
+                        <div class="flex items-center gap-2 border-l border-slate-200 pl-3">
+                            <button onclick="bulkBilling()"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                ทำใบวางบิล
+                            </button>
+
+                            <button onclick="bulkDelete()"
+                                class="bg-white hover:bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                                <i class="fas fa-trash-alt"></i>
+                                ลบรายการ
+                            </button>
+                        </div>
                     </div>
 
                 </div>
@@ -150,6 +161,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <tr class="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
                                 <td class="text-center">
                                     <input type="checkbox" name="invoice_ids[]" value="<?= $row['id'] ?>"
+                                        data-customer="<?= $row['customer_id'] ?>"
+                                        data-status="<?= strtolower($row['status']) ?>"
                                         class="invoice-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
                                 <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
@@ -270,11 +283,22 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             </a>
                                         <?php endif; ?>
 
-                                        <button onclick="deleteInvoice(<?= $row['id'] ?>)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
-                                            title="Delete Invoice">
-                                            <i class="fas fa-trash text-[10px]"></i>
-                                        </button>
+                                        <div class="flex justify-center gap-1">
+                                            <?php if ($row['status'] === 'paid'): ?>
+                                                <a href="view_receipt.php?id=<?= $row['id'] ?>"
+                                                    class="px-2 h-7 flex items-center justify-center gap-1.5 bg-white text-violet-500 rounded-md hover:bg-violet-50 hover:text-violet-600 border border-violet-100 shadow-sm transition-all"
+                                                    title="ทำใบเสร็จ/กำกับภาษี" target="_blank">
+                                                    <i class="fas fa-file-invoice-dollar text-[10px]"></i>
+                                                    <span class="text-[10px] font-bold">ทำใบเสร็จ</span>
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <button onclick="deleteInvoice(<?= $row['id'] ?>)"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
+                                                title="Delete Invoice">
+                                                <i class="fas fa-trash text-[10px]"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -388,16 +412,15 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
     function updateBulkUI() {
         const checkedCount = $('.invoice-checkbox:checked').length;
-        const bulkBtn = $('#bulkActions');
+        const bulkDiv = $('#bulkActions');
 
         if (checkedCount > 0) {
-            bulkBtn.removeClass('hidden').addClass('flex').fadeIn(200);
+            // โชว์แถบจัดการ และใส่เลขจำนวนที่เลือก
+            bulkDiv.removeClass('hidden').addClass('flex');
             $('#selectedCount').text(checkedCount);
         } else {
-            bulkBtn.fadeOut(200, function () {
-                $(this).addClass('hidden').removeClass('flex');
-            });
-            $('#selectAll').prop('checked', false);
+            // ซ่อนถ้าไม่ได้เลือก
+            bulkDiv.addClass('hidden').removeClass('flex');
         }
     }
 
@@ -470,6 +493,52 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             });
     }
 
+    function bulkBilling() {
+        const ids = [];
+        const customerIds = [];
+        const statuses = [];
+        const items = $('.invoice-checkbox:checked');
+
+        if (items.length === 0) {
+            alert('กรุณาเลือกใบแจ้งหนี้อย่างน้อย 1 รายการ');
+            return;
+        }
+
+        items.each(function () {
+            ids.push($(this).val());
+            customerIds.push($(this).data('customer'));
+
+            // ดึง status มาแล้วแปลงเป็นตัวเล็กทุกลำดับ
+            let s = $(this).data('status') ? $(this).data('status').toString().toLowerCase() : '';
+            statuses.push(s);
+        });
+
+        // --- 1. เช็คว่ามีใบที่จ่ายแล้ว (paid) หลุดมาไหม ---
+        if (statuses.includes('paid')) {
+            alert('⚠️ ไม่สามารถทำใบวางบิลได้: มีใบแจ้งหนี้ที่สถานะเป็น "ชำระเงินแล้ว (Paid)" รวมอยู่ด้วย');
+            return;
+        }
+
+        // --- 2. เช็คว่ามีใบที่ถูกยกเลิก (canceled) ไหม (แถมให้จาร) ---
+        if (statuses.includes('canceled')) {
+            alert('⚠️ ไม่สามารถทำใบวางบิลได้: มีใบแจ้งหนี้ที่สถานะเป็น "ยกเลิก (Canceled)" รวมอยู่ด้วย');
+            return;
+        }
+
+        // --- 3. เช็คว่าทุกลูกค้าเป็นคนเดียวกันไหม ---
+        const firstCustomer = customerIds[0];
+        const isSameCustomer = customerIds.every(id => id === firstCustomer);
+
+        if (!isSameCustomer) {
+            alert('⚠️ ไม่สามารถทำใบวางบิลได้: ใบแจ้งหนี้ที่เลือกมาจากลูกค้าคนละคนกัน');
+            return;
+        }
+
+        // ผ่านทุกด่าน... วาร์ปได้!
+        const selectedIds = ids.join(',');
+        window.location.href = `view_billings.php?customer_id=${firstCustomer}&invoice_ids=${selectedIds}`;
+    }
+
     // 1. ฟังก์ชันสำหรับ "อนุมัติ"
     function approveInvoice(id, doc_no) {
         Swal.fire({
@@ -522,44 +591,54 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         });
     }
 
-    // 2. ฟังก์ชันสำหรับ "ชำระเงิน"
     function payInvoice(id, doc_no) {
         Swal.fire({
             title: 'ยืนยันการชำระเงิน?',
-            text: `เลขที่ใบขอซื้อ: ${doc_no}`,
+            text: `เลขที่ใบแจ้งหนี้: ${doc_no}`,
             icon: 'info',
+            html: `
+            <div class="mt-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">แนบหลักฐานการชำระเงิน (ถ้ามี)</label>
+                <input type="file" id="payment_file" class="swal2-input" accept="image/*,.pdf" style="font-size: 14px;">
+            </div>
+        `,
             showCancelButton: true,
-            confirmButtonColor: '#3b82f6',
-            confirmButtonText: 'ชำระเงินแล้ว',
+            heightAuto: false,
+            confirmButtonText: 'บันทึกการชำระเงิน',
             cancelButtonText: 'ยกเลิก',
-            reverseButtons: true,
-            heightAuto: false
+            preConfirm: () => {
+                const file = document.getElementById('payment_file').files[0];
+                return { file: file };
+            }
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(`api/update_invoice_status.php?id=${id}&action=paid`)
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('action', 'paid');
+                if (result.value.file) {
+                    formData.append('payment_proof', result.value.file);
+                }
+
+                // ใช้ POST แทน GET เพื่อส่งไฟล์
+                fetch('api/update_invoice_status.php', {
+                    method: 'POST',
+                    body: formData
+                })
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            renderAlert('success', data.message);
+                            renderAlert('success', 'บันทึกข้อมูลเรียบร้อยแล้ว');
 
-                            // สร้าง HTML Badge แบบ Paid ตาม config จาร
+                            // Logic การอัปเดตหน้าจอ (Badge)
                             const badgeHtml = `
-    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-blue-50 border-blue-100 text-blue-600 shadow-sm">
-        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-        <span class="text-[10px] font-bold uppercase tracking-wide">ชำระแล้ว</span>
-    </div>`;
+                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-green-50 border-green-100 text-green-600 shadow-sm">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide">ชำระแล้ว</span>
+                        </div>`;
 
                             let row = $(`button[onclick*="payInvoice(${id}"]`).closest('tr');
-
-                            // 1. อัปเดตช่องสถานะ (คอลัมน์ที่ 8 index 7)
-                            row.find('td:eq(7)').html(badgeHtml);
-
-                            // 2. เจาะจงเอาออกแค่ "ปุ่มจ่ายเงิน" ตัวเดียว
-                            // ปุ่มแก้ไข (edit) หรือปุ่มลบ (delete) ที่อยู่ในคอลัมน์สุดท้ายจะยังอยู่ครบครับ
-                            row.find(`button[onclick*="payInvoice(${id}"]`).fadeOut(400, function () {
-                                $(this).remove();
-                            });
-
+                            row.find('td:eq(7)').html(badgeHtml); // ปรับ index ให้ตรงกับตารางจาร
+                            row.find(`button[onclick*="payInvoice(${id}"]`).remove();
                         } else {
                             renderAlert('error', data.message);
                         }
