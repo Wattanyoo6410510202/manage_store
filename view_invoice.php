@@ -9,19 +9,20 @@ if (empty($id)) {
 }
 
 // 1. SQL แก้ไขให้ตรงกับตาราง invoices (ใช้ AS เพื่อคงชื่อตัวแปรเดิม)
+// --- แก้ไข SQL Query ของจารตรงส่วนนี้ ---
 $sql = "SELECT i.*, 
-               i.sub_total AS subtotal,         -- แปลง sub_total เป็น subtotal
-               i.vat_amount AS vat,             -- แปลง vat_amount เป็น vat
-               i.total_amount AS grand_total,   -- แปลง total_amount เป็น grand_total
+               i.sub_total AS subtotal, 
+               i.vat_amount AS vat, 
+               i.total_amount AS grand_total, 
                c.customer_name, c.address as cust_address, c.tax_id as cust_tax, 
                c.contact_person, c.phone as cust_phone, c.email as cust_email,
                s.company_name as my_company, s.tax_id as my_tax, s.phone as my_phone, 
                s.email as my_email, s.address as my_address, s.logo_path,
-               -- ดึงข้อมูลธนาคารและ QR Code เพิ่มตรงนี้ --
-               s.bank_name, s.bank_account_name, s.bank_account_number,s.qr_code_path,
-               ----------------------------
-               u1.name as creator_name,
-               u2.username as approver_name
+               s.bank_name, s.bank_account_name, s.bank_account_number, s.qr_code_path,
+      
+               u1.name AS creator_real_name,  
+               u2.name AS approver_name  
+    
         FROM invoices i
         LEFT JOIN customers c ON i.customer_id = c.id
         LEFT JOIN suppliers s ON i.supplier_id = s.id 
@@ -432,7 +433,7 @@ function ReadNumber($number)
                 </div>
                 <p style="margin: 0; font-weight: bold;">ผู้จัดทำ</p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">(
-                    <?= $data['creator_name'] ?? $data['created_by'] ?> )
+                    <?= $data['creator_real_name'] ?? $data['created_by'] ?> )
                 </p>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
                     <?= date('d/m/Y', strtotime($data['created_at'])) ?>
