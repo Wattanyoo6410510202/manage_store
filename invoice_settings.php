@@ -44,19 +44,19 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                     <div class="bg-white p-5 rounded-3xl border border-slate-200 ">
                         <div class="flex justify-between items-start mb-4">
                             <h3
-                                class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
+                                class="text-xs font-black text-slate-800 flex items-center gap-2 uppercase tracking-[0.2em]">
                                 <i class="fas fa-building text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
                             <div
                                 class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
                                 <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
 
-                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-800"></i>
                             </div>
                         </div>
 
                         <label
-                            class="text-[10px] font-bold text-slate-400 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
+                            class="text-[10px] font-bold text-slate-800 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
                             <option value="0">ไม่ระบุ / อื่นๆ</option>
@@ -96,21 +96,21 @@ $default_inv_no = "INV" . date('Ym') . "-001";
 
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-400 uppercase block mb-1">วันที่ออกบิล</label>
+                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่ออกบิล</label>
                                 <input type="date" name="invoice_date" id="invoice_date" value="<?= date('Y-m-d') ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
 
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-400 uppercase block mb-1">วันครบกำหนด</label>
+                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันครบกำหนด</label>
                                 <input type="date" name="due_date" id="due_date"
                                     value="<?= date('Y-m-d', strtotime('+30 days')) ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">สถานะ</label>
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">สถานะ</label>
                                 <select name="status"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="pending" selected>รอชำระ</option>
@@ -120,7 +120,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">VAT (%)</label>
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">VAT (%)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="7" selected>7%</option>
@@ -130,7 +130,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">WHT (%)</label>
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">WHT (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="0" selected>0%</option>
@@ -143,11 +143,11 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 rounded-3xl border border-slate-800 p-6 relative overflow-hidden ">
+                    <div class="bg-slate-900 rounded-3xl border text-white border-slate-800 p-6 relative overflow-hidden ">
                         <div class="absolute -right-4 -top-4 text-slate-800 opacity-20 text-7xl rotate-12">
                             <i class="fas fa-user-tie"></i>
                         </div>
-                        <h3 class="text-xs font-black text-slate-500 mb-4 uppercase tracking-[0.2em] relative">Bill To /
+                        <h3 class="text-xs font-black mb-4 uppercase tracking-[0.2em] relative">Bill To /
                             ผู้ซื้อ</h3>
                         <div class="relative z-10">
                             <div class="text-lg font-black text-white mb-2">
@@ -155,12 +155,12 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             </div>
                             <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-xs">
-                                    <span class="text-slate-500 font-bold">Tax ID:</span>
+                                    <span class=" font-bold">Tax ID:</span>
                                     <span
-                                        class="text-indigo-400 font-mono font-bold"><?= $customer['tax_id'] ?: 'ไม่ระบุ' ?></span>
+                                        class=" font-mono font-bold"><?= $customer['tax_id'] ?: 'ไม่ระบุ' ?></span>
                                 </div>
-                                <div class="text-[11px] text-slate-400 leading-relaxed border-t border-slate-800 pt-3">
-                                    <i class="fas fa-map-marker-alt mr-2 text-slate-600"></i>
+                                <div class="text-[11px]  leading-relaxed border-t border-slate-800 pt-3">
+                                    <i class="fas fa-map-marker-alt mr-2 "></i>
                                     <?= htmlspecialchars($customer['address']) ?>
                                 </div>
                             </div>
@@ -184,7 +184,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียด (Description)</th>
@@ -198,7 +198,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <tr class="item-row group">
-                                <td class="px-4 py-4 text-center text-xs font-bold text-slate-400 row-number">1</td>
+                                <td class="px-4 py-4 text-center text-xs font-bold text-slate-800 row-number">1</td>
                                 <td class="px-4 py-4">
                                     <textarea name="item_name[]" placeholder="ระบุชื่อรายการ..." rows="1"
                                         oninput="autoResize(this)"
@@ -239,7 +239,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                     class="p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-8">
                     <div class="w-full md:flex-grow">
                         <label
-                            class="text-[10px] font-bold text-slate-400 uppercase block mb-2 tracking-widest">หมายเหตุ
+                            class="text-[10px] font-bold text-slate-800 uppercase block mb-2 tracking-widest">หมายเหตุ
                             (Remark)</label>
                         <textarea name="remark" rows="3"
                             class="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
@@ -289,7 +289,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
         const rowCount = tbody.querySelectorAll('.item-row').length + 1;
         const newRow = `
     <tr class="item-row group border-t border-slate-50">
-        <td class="px-4 py-4 text-center text-xs font-bold text-slate-400 row-number">${rowCount}</td>
+        <td class="px-4 py-4 text-center text-xs font-bold text-slate-800 row-number">${rowCount}</td>
         <td class="px-4 py-4">
             <textarea name="item_name[]" placeholder="ระบุชื่อรายการ..." rows="1" oninput="autoResize(this)"
                 class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>

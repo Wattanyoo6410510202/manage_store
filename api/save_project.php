@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (session_status() === PHP_SESSION_NONE)
+    session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าจาก Form
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
 
     // --- ส่วนที่แก้ไขให้ครบ: คำนวณ VAT และ WHT ---
-
+    $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : "NULL";
     // เช็ค Toggle VAT 7%
     $include_vat = isset($_POST['include_vat']) && $_POST['include_vat'] === 'yes';
     $total_vat_amount = $include_vat ? ($contract_value * 0.07) : 0;
@@ -54,16 +55,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // 5. บันทึกลงตารางหลัก (เพิ่ม total_wht_amount เข้าไปใน SQL)
-    $sql = "INSERT INTO projects (
+   $sql = "INSERT INTO projects (
                 project_name, contractor_name, bank_name, bank_account_no, bank_account_name,
                 project_no, customer_id, contract_value, total_vat_amount, total_wht_amount, 
-                net_contract_value, start_date, end_date, attachment_path, retention_percent,supplier_id, 
-                wht_percent, project_remarks, created_at
+                net_contract_value, start_date, end_date, attachment_path, retention_percent, supplier_id, 
+                wht_percent, project_remarks, created_by, created_at
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
-                '$net_contract_value', '$start_date', '$end_date', '$attachment_name', '$retention_percent', '$supplier_id',
-                '$wht_percent', '$project_remarks', NOW()
+                '$net_contract_value', '$start_date', '$end_date', '$attachment_name', '$retention_percent', $supplier_id,
+                '$wht_percent', '$project_remarks', $created_by, NOW()
             )";
 
     if (mysqli_query($conn, $sql)) {

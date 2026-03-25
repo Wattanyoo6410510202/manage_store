@@ -31,14 +31,14 @@ if (!$customer) {
 
                         <div class="flex justify-between items-start mb-4">
                             <h3
-                                class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
+                                class="text-xs font-black text-slate-800 flex items-center gap-2 uppercase tracking-[0.2em]">
                                 <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
                             <div
                                 class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
                                 <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
 
-                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-800"></i>
                             </div>
                         </div>
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm
@@ -94,19 +94,19 @@ if (!$customer) {
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 ">
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">วันที่</label>
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่</label>
                                 <input type="date" name="doc_date" value="<?= date('Y-m-d') ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">ยืนราคา
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ยืนราคา
                                     (วัน)</label>
                                 <input type="number" name="valid_until" value="30"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-400 uppercase block mb-1">การชำระเงิน</label>
+                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">การชำระเงิน</label>
                                 <select name="payment_term"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="30">เครดิต 30 วัน</option>
@@ -114,7 +114,7 @@ if (!$customer) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">ภาษี (VAT
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ภาษี (VAT
                                     %)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -126,7 +126,7 @@ if (!$customer) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย
+                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย
                                     (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -136,12 +136,12 @@ if (!$customer) {
                                     <option value="5">5%</option>
                                 </select>
                             </div>
-                            <div>
+                            <!-- <div>
                                 <button type="button" onclick="fillRandomData()"
                                     class="w-full px-4 py-2.5 bg-amber-500 text-white text-[11px] font-bold rounded-lg hover:bg-amber-600 transition-all flex items-center justify-center">
                                     <i class="fas fa-dice mr-2"></i> สุ่มข้อมูล
                                 </button>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
                     <div class="bg-slate-900 rounded-xl border border-slate-800 p-4 ">
@@ -156,22 +156,22 @@ if (!$customer) {
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 text-[11px] mb-2">
-                            <div class="text-slate-400"><span class="text-slate-600 font-bold uppercase mr-1">Tax
+                            <div class="text-slate-800"><span class="text-slate-600 font-bold uppercase mr-1">Tax
                                     ID:</span> <span
                                     class="text-indigo-300 font-mono"><?= $customer['tax_id'] ?: '-' ?></span></div>
-                            <div class="text-slate-400"><span
+                            <div class="text-slate-800"><span
                                     class="text-slate-600 font-bold uppercase mr-1">Contact:</span> <span
                                     class="text-slate-200"><?= htmlspecialchars($customer['contact_person'] ?: '-') ?></span>
                             </div>
                         </div>
 
-                        <div class="text-[11px] text-slate-400 mb-1 flex items-center gap-2">
+                        <div class="text-[11px] text-slate-800 mb-1 flex items-center gap-2">
                             <i class="fas fa-envelope text-[9px] text-slate-600 w-3"></i>
                             <span class="text-slate-300"><?= htmlspecialchars($customer['email'] ?: '-') ?></span>
                         </div>
 
                         <div
-                            class="text-[11px] text-slate-400 mb-2 flex items-center gap-2 pb-2 border-b border-slate-800/50">
+                            class="text-[11px] text-slate-800 mb-2 flex items-center gap-2 pb-2 border-b border-slate-800/50">
                             <i class="fas fa-phone text-[9px] text-slate-600 w-3"></i>
                             <span class="text-slate-300"><?= htmlspecialchars($customer['phone'] ?: '-') ?></span>
                         </div>
@@ -199,7 +199,7 @@ if (!$customer) {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียดสินค้า / บริการ</th>
@@ -212,7 +212,7 @@ if (!$customer) {
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <tr class="item-row group">
-                                <td class="px-4 py-3 text-center text-xs font-bold text-slate-400 row-number">1</td>
+                                <td class="px-4 py-3 text-center text-xs font-bold text-slate-800 row-number">1</td>
                                 <td class="px-4 py-3">
                                     <textarea name="item_desc[]" placeholder="ระบุรายละเอียดสินค้า..." rows="1"
                                         oninput="autoResize(this)"
@@ -248,7 +248,7 @@ if (!$customer) {
                 <div
                     class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                     <div class="w-full md:flex-grow">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุ</label>
+                        <label class="text-[10px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
                             class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
                             placeholder="เช่น เงื่อนไขการรับประกัน..."></textarea>
@@ -299,7 +299,7 @@ if (!$customer) {
         const rowCount = tbody.rows.length + 1;
         const newRow = `
     <tr class="item-row group border-t border-slate-100">
-        <td class="px-4 py-3 text-center text-xs font-bold text-slate-400 row-number">${rowCount}</td>
+        <td class="px-4 py-3 text-center text-xs font-bold text-slate-800 row-number">${rowCount}</td>
         <td class="px-4 py-3">
             <textarea name="item_desc[]" 
                       placeholder="ระบุรายละเอียด..." 

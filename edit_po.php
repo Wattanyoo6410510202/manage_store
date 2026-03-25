@@ -44,14 +44,14 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     <div class="bg-white p-5 rounded-3xl border border-slate-200">
                         <div class="flex justify-between items-start mb-4">
                             <h3
-                                class="text-xs font-black text-slate-400 flex items-center gap-2 uppercase tracking-[0.2em]">
+                                class="text-xs font-black text-slate-800 flex items-center gap-2 uppercase tracking-[0.2em]">
                                 <i class="fas fa-file-invoice text-indigo-500 text-base"></i> Issuer / ผู้ขาย
                             </h3>
                              <div
                                 class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center w-12 h-12">
                                 <img id="comp_logo_preview" src="" class="h-10 w-10 object-contain hidden">
 
-                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-400"></i>
+                                <i id="comp_logo_icon" class="fas fa-building text-2xl text-slate-800"></i>
                             </div>
                         </div>
 
@@ -106,10 +106,10 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
                 </div>
 
-                <div class="lg:col-span-2 space-y-6">
+                <div class="lg:col-span-2 space-y-6 mb-4">
                     <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">เลขที่เอกสาร
+                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">เลขที่เอกสาร
                                 PO</label>
                             <input type="text" value="<?= $po_data['doc_no'] ?>"
                                 class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold outline-none text-slate-500"
@@ -117,13 +117,13 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                         <div>
                             <label
-                                class="text-[10px] font-black text-slate-400 uppercase block mb-1">วันที่สั่งซื้อ</label>
+                                class="text-[10px] font-black text-slate-800 uppercase block mb-1">วันที่สั่งซื้อ</label>
                             <input type="date" name="po_date"
                                 value="<?= date('Y-m-d', strtotime($po_data['created_at'])) ?>"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">อ้างอิง
+                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">อ้างอิง
                                 (Ref.)</label>
                             <input type="text" name="reference_no"
                                 value="<?= htmlspecialchars($po_data['reference_no']) ?>"
@@ -131,7 +131,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                         <div>
                             <label
-                                class="text-[10px] font-black text-slate-400 uppercase block mb-1">การชำระเงิน</label>
+                                class="text-[10px] font-black text-slate-800 uppercase block mb-1">การชำระเงิน</label>
                             <select name="payment_term"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                                 <option value="30" <?= $po_data['payment_term'] == '30' ? 'selected' : '' ?>>เครดิต 30 วัน
@@ -143,7 +143,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">ภาษี (VAT
+                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">ภาษี (VAT
                                 %)</label>
                             <select name="vat_percent" id="vat_percent" onchange="calculateTotal()"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
@@ -156,7 +156,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
 
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
+                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
                                 %)</label>
                             <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
@@ -171,10 +171,10 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </select>
                         </div>
                     </div>
-                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 ">
+                    <div class="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 text-white">
                         <div class="bg-slate-800/50 px-6 py-4 border-b border-slate-700">
                             <h3
-                                class="text-indigo-400 text-xs font-black flex items-center gap-2 uppercase tracking-wider">
+                                class=" text-xs font-black flex items-center gap-2 uppercase tracking-wider">
                                 <i class="fas fa-map-marker-alt"></i> Ship To / สถานที่จัดส่ง
                             </h3>
                         </div>
@@ -183,16 +183,15 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <div class="text-white font-black text-lg">
                                     <?= htmlspecialchars($customer['customer_name'] ?? 'ไม่พบข้อมูล') ?>
                                 </div>
-                                <div class="text-indigo-300 text-xs font-mono font-bold mt-1">Tax ID:
+                                <div class="text-xs font-mono font-bold mt-1">Tax ID:
                                     <?= $customer['tax_id'] ?? '-' ?>
                                 </div>
                             </div>
-                            <div class="text-slate-400 text-xs leading-relaxed">
+                            <div class=" text-xs leading-relaxed">
                                 <?= nl2br(htmlspecialchars($customer['address'] ?? '-')) ?>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
             <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
@@ -208,7 +207,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50/80 text-[10px] uppercase text-slate-400 font-black border-b border-slate-200">
+                            class="bg-slate-50/80 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-4 w-12 text-center">#</th>
                                 <th class="px-2 py-4">รายละเอียดสินค้า</th>
@@ -229,7 +228,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 $row_total = ($item['item_qty'] * $item['item_price']) - ($item['item_discount'] ?? 0);
                                 ?>
                                 <tr class="item-row group">
-                                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-300 row-number">
+                                    <td class="px-6 py-4 text-center text-xs font-bold text-slate-800 row-number">
                                         <?= $count++ ?>
                                     </td>
                                     <td class="px-2 py-4">
@@ -277,7 +276,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                     <div class="w-full md:flex-grow">
                         <label
-                            class="text-[10px] font-bold text-slate-400 uppercase block mb-2">หมายเหตุการสั่งซื้อ</label>
+                            class="text-[10px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุการสั่งซื้อ</label>
                         <textarea name="notes" rows="3"
                             class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"><?= htmlspecialchars($po_data['notes']) ?></textarea>
                     </div>
@@ -327,7 +326,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         const rowCount = tbody.rows.length + 1;
         const newRow = `
         <tr class="item-row group border-t border-slate-100">
-            <td class="px-6 py-4 text-center text-xs font-bold text-slate-300">${rowCount}</td>
+            <td class="px-6 py-4 text-center text-xs font-bold text-slate-800">${rowCount}</td>
             <td class="px-2 py-4">
                 <textarea name="item_desc[]" placeholder="ระบุรายละเอียด..." rows="1" oninput="autoResize(this)" class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
             </td>

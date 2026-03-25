@@ -59,7 +59,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[200px]">
                         <label
-                            class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
                         <select id="filterSupplier"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด (Show All)</option>
@@ -73,13 +73,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[150px]">
                         <label
-                            class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
                         <input type="date" id="minDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
 
                     <div class="relative min-w-[150px]">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">ถึงวันที่</label>
+                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
                         <input type="date" id="maxDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
@@ -90,7 +90,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </button>
 
                     <div class="relative min-w-[120px]">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block ml-1">สถานะ</label>
+                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
@@ -102,7 +102,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </div>
 
                     <button onclick="resetFilter()"
-                        class="self-end mb-2.5 text-[10px] text-slate-400 hover:text-indigo-600 transition-colors">
+                        class="self-end mb-2.5 text-[10px] text-slate-800 hover:text-indigo-600 transition-colors">
                         <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
                     </button>
 
@@ -188,7 +188,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     <div class="flex flex-col items-end gap-1">
                                         <div class="flex items-center gap-1.5 opacity-80">
                                             <span
-                                                class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Subtotal</span>
+                                                class="text-[8px] font-bold text-slate-800 uppercase tracking-tighter">Subtotal</span>
                                             <i class="fas fa-calculator text-[9px] text-slate-300"></i>
                                             <span class="text-[10px] text-slate-500 font-mono font-medium">
                                                 <?= number_format($row['subtotal'], 2) ?>
@@ -270,14 +270,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
 
                                         <a href="view_invoice.php?id=<?= $row['id'] ?>"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
                                             title="View Invoice">
                                             <i class="fas fa-eye text-[10px]"></i>
                                         </a>
 
                                         <?php if ($row['status'] === 'pending'): ?>
                                             <a href="edit_invoice.php?id=<?= $row['id'] ?>"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
                                                 title="Edit Invoice">
                                                 <i class="fas fa-edit text-[10px]"></i>
                                             </a>
@@ -294,7 +294,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <?php endif; ?>
 
                                             <button onclick="deleteInvoice(<?= $row['id'] ?>)"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-400 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
                                                 title="Delete Invoice">
                                                 <i class="fas fa-trash text-[10px]"></i>
                                             </button>
