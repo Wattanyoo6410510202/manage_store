@@ -238,17 +238,18 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                     <td class="px-4 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <?php if ($m['status'] == 'pending'): ?>
+                                                <button onclick="editMilestone(<?= $m['id'] ?>)"
+                                                    class="text-[10px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
+                                                    title="แก้ไขข้อมูล">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                                 <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
                                                     class="text-[10px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
                                                     title="ยืนยันชำระเงิน">
                                                     <i class="fas fa-check-circle"></i>
                                                 </button>
 
-                                                <button onclick="editMilestone(<?= $m['id'] ?>)"
-                                                    class="text-[10px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
-                                                    title="แก้ไขข้อมูล">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
+
 
                                                 <button onclick="deleteMilestone(<?= $m['id'] ?>)"
                                                     class="text-[10px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
