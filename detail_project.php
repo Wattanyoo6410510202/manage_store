@@ -99,7 +99,8 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                         </p>
                     </div>
                     <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">อื่นๆ สะสมที่หักแล้ว</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">อื่นๆ สะสมที่หักแล้ว
+                        </p>
                         <p class="text-lg font-black text-rose-500">
                             - <?= number_format($total_paid_other, 2) ?>
                         </p>
@@ -172,10 +173,10 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                 </div>
                 <table id="milestoneTable" class="w-full">
                     <thead>
-                        <tr class="text-[10px] text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                        <tr class="text-[10px] text-slate-800 uppercase tracking-widest border-b border-slate-50">
                             <th class="px-4 py-3 text-left">
                                 <input type="checkbox" id="selectAll"
-                                    class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    class="rounded text-slate-800 focus:ring-indigo-500">
                             </th>
                             <th class="px-4 py-3 text-left">หลักฐาน</th>
                             <th class="px-4 py-3 text-left">งวดงาน</th>
@@ -216,9 +217,10 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                     </td>
                                     <td class="px-4 py-4">
                                         <p class="font-black text-slate-700 uppercase text-sm truncate max-w-[250px]">
-                                            <?= $m['milestone_name'] ?></p>
+                                            <?= $m['milestone_name'] ?>
+                                        </p>
                                     </td>
-                                    <td class="px-4 py-4 text-sm text-slate-500 font-bold">
+                                    <td class="px-4 py-4 text-sm text-slate-800 font-bold">
                                         <?= date('d/m/Y', strtotime($m['claim_date'])) ?>
                                     </td>
                                     <td class="px-4 py-4 text-center">
@@ -260,6 +262,12 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                                         class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[10px] font-black border border-emerald-100 uppercase tracking-tighter">
                                                         <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
                                                     </span>
+                                                    <button
+                                                        onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
+                                                        class="text-[10px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
+                                                        title="คืนเงินประกัน">
+                                                        <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
+                                                    </button>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -274,6 +282,46 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
         </div>
     </div>
 </div>
-
+<script>
+    function refundRetention(id, currentNote) {
+        Swal.fire({
+            title: 'ยืนยันการคืนเงินประกัน?',
+            text: "ระบบจะเซ็ตยอดหักอื่นๆ และค่าประกันเป็น 0",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#6366f1',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'ยืนยันคืนเงิน',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'api/update_refund_milestone.php',
+                    type: 'POST',
+                    dataType: 'json', // ระบุว่ารอรับ JSON
+                    data: {
+                        action: 'refund_retention',
+                        id: id,
+                        new_note: 'คืนเงินแล้ว: ' + currentNote
+                    },
+                    success: function (response) {
+                        // เช็ค status ที่ส่งมาจาก PHP
+                        if (response.status === 'success') {
+                            Swal.fire('สำเร็จ!', response.message, 'success')
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire('เกิดข้อผิดพลาด', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        // ถ้าเข้าตรงนี้แสดงว่าไฟล์ PHP error หรือ path ผิด
+                        console.error(xhr.responseText); // ดู error จริงใน Console (F12)
+                        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ หรือไฟล์มีปัญหา', 'error');
+                    }
+                });
+            }
+        })
+    }
+</script>
 <script src="assets/js/detailproject.js"></script>
 <?php include('footer.php'); ?>

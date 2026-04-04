@@ -202,30 +202,78 @@ if ($num_rows <= 5) {
 
 
 <div id="quotation-content" class="page-container">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-        <div style="display: flex; gap: 15px; align-items: flex-start;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
+        <div
+            style="flex: 1;  border-radius: 10px; padding: 10px 14px;  ">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 5px;">
+                <p
+                    style="margin: 0; font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Project Information
+                </p>
+                <div style="font-size: 11px; color: #475569;">
+                    <strong>เลขที่:</strong> <span
+                        style="font-weight: 700; color: #0f172a;"><?= $first['project_no'] ?: '-' ?></span>
+                </div>
+            </div>
+
+            <h3 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 800; line-height: 1.4;">
+                <?= $first['project_name'] ?>
+            </h3>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                <div style="font-size: 10.5px; color: #64748b; line-height: 1;">
+                    <strong>ผู้รับจ้าง:</strong> <span
+                        style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
+                    <span style="color: #cbd5e1; margin: 0 6px;">|</span>
+                    <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= $first['bank_name'] ?: '-' ?></span>
+                </div>
+
+                <div
+                    style="font-size: 10px; font-weight: 700; color: var(--primary-color); background: #fff; padding: 2px 8px; border-radius: 5px; border: 1px solid #e2e8f0; white-space: nowrap;">
+                    <i class="far fa-calendar-alt" style="margin-right: 3px;"></i>
+                    <?= ($first['start_date'] && $first['start_date'] != '0000-00-00') ? date('d/m/y', strtotime($first['start_date'])) : 'รอกำหนด' ?>
+                    -
+                    <?= ($first['end_date'] && $first['end_date'] != '0000-00-00') ? date('d/m/y', strtotime($first['end_date'])) : 'รอกำหนด' ?>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right; min-width: 250px;">
+            <h2
+                style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900; line-height: 1.1; letter-spacing: -0.5px;">
+                <?= ($_GET['type'] == 'invoice') ? 'ใบแจ้งหนี้' : 'ใบสรุปงวดงาน'; ?>
+            </h2>
+            <p
+                style="margin: 4px 0 0; font-size: 11px; letter-spacing: 3px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+                <?= ($_GET['type'] == 'invoice') ? 'INVOICE' : 'MILESTONE SUMMARY'; ?>
+            </p>
+        </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
+        <div  style="flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; background: #f8fafc; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
             <?php
             $header = !empty($milestones) ? $milestones[0] : null;
             ?>
 
-            <?php if (!empty($header['logo_path']) && file_exists('uploads/' . $header['logo_path'])): ?>
+            <!-- <?php if (!empty($header['logo_path']) && file_exists('uploads/' . $header['logo_path'])): ?>
                 <img src="uploads/<?= $header['logo_path'] ?>"
                     style="width: 70px; height: 70px; object-fit: contain; flex-shrink: 0;">
-            <?php endif; ?>
+            <?php endif; ?> -->
 
             <div style="font-size: 11px; line-height: 1.4;">
                 <?php if (!empty($header['my_company'])): ?>
-                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;">
+                    <h1 style="margin: 0 0 4px; font-size: 14px; color: #0f172a;">
                         <?= $header['my_company'] ?>
                     </h1>
                 <?php endif; ?>
 
                 <?php if (!empty($header['my_address'])): ?>
-                    <p style="margin: 0; color: #1e293b;"><?= $header['my_address'] ?></p>
+                    <p style="margin: 0; color: #64748b;"><?= $header['my_address'] ?></p>
                 <?php endif; ?>
 
                 <?php if (!empty($header['my_tax']) || !empty($header['my_phone'])): ?>
-                    <p style="margin: 2px 0 0; color: #1e293b;">
+                    <p style="margin: 2px 0 0; color: #64748b;">
                         <?php if (!empty($header['my_tax'])): ?>
                             <b>Tax ID:</b> <?= $header['my_tax'] ?>
                         <?php endif; ?>
@@ -236,64 +284,6 @@ if ($num_rows <= 5) {
                     </p>
                 <?php endif; ?>
             </div>
-        </div>
-        <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 25px; color: var(--primary-color); font-weight: 900;">
-                <?php
-                // เช็คค่า type ที่ส่งมา ถ้าเป็น 'withdraw' ให้แสดง "ใบเบิกอุปกรณ์" นอกนั้นเป็น "ใบแจ้งหนี้"
-                echo ($_GET['type'] == 'invoice') ? 'ใบแจ้งหนี้' : 'ใบสรุปงวดงาน';
-                ?>
-            </h2>
-            <p style="margin: 0; font-size: 10px; letter-spacing: 3px; color: #94a3b8; text-transform: uppercase;">
-                <?php
-                // เช็คค่า type สำหรับภาษาอังกฤษ
-                echo ($_GET['type'] == 'invoice') ? 'INVOICE' : ' MILESTONE SUMMARY REPORT';
-                ?>
-            </p>
-        </div>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
-        <div
-            style="flex: 1.2; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc;">
-            <div
-                style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
-                <p
-                    style="margin: 0; font-size: 10px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
-                    ข้อมูลโครงการ
-                </p>
-                <div style="font-size: 11px; color: #1e293b;">
-                    <strong style="color: color: #334155;">เลขที่:</strong>
-                    <span style="font-weight: 600;"><?= $first['project_no'] ?: '-' ?></span>
-                </div>
-            </div>
-            <h3 style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.3;"><?= $first['project_name'] ?></h3>
-
-            <div
-                style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; ">
-                <div style="font-size: 11px; color: #334155;">
-                    <strong>ผู้รับจ้าง:</strong> <?= $first['contractor_name'] ?: '-' ?>
-                </div>
-
-                <div style="font-size: 10px; color: #475569; display: flex; align-items: center; gap: 5px;">
-                    <span style="font-weight: 700; color: #64748b;">ระยะเวลา:</span>
-                    <span
-                        style="font-weight: 800; background: #f8fafc; padding: 1px 6px; border-radius: 4px; border: 1px solid #f1f5f9;">
-                        <?= ($first['start_date'] && $first['start_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['start_date'])) : 'รอกำหนด' ?>
-                        <span style="color: #cbd5e1; margin: 0 2px;">-</span>
-                        <?= ($first['end_date'] && $first['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($first['end_date'])) : 'รอกำหนด' ?>
-                    </span>
-                </div>
-            </div>
-
-            <div
-                style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed #e2e8f0; font-size: 10px; line-height: 1.6; color: #334155;">
-                <div><strong>ธนาคาร:</strong> <?= $first['bank_name'] ?: '-' ?></div>
-                <div><strong>ชื่อบัญชี:</strong> <?= $first['bank_account_name'] ?: '-' ?></div>
-                <div><strong>เลขบัญชี:</strong> <?= $first['bank_account_no'] ?: '-' ?></div>
-            </div>
-
-
         </div>
 
         <div
@@ -387,7 +377,7 @@ if ($num_rows <= 5) {
                                     <?= number_format($row['retention_percent'], 0) ?>%
                                     (<?= number_format($row['retention_amount'], 2) ?> บาท)
                                 <?php elseif (!empty($row['deduction_note'])): ?>
-                                    หมายเหตุ: <?= htmlspecialchars($row['deduction_note']) ?>
+                                   <?= htmlspecialchars($row['deduction_note']) ?>
                                 <?php endif; ?>
                             </div>
                         <?php endwhile; ?>
