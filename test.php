@@ -1,480 +1,295 @@
 <?php
 require_once 'config.php';
 include('header.php');
-include('assets/alert.php');
 
-$id = isset($_GET['id']) ? mysqli_real_escape_string($conn, $_GET['id']) : '';
+$project_id = intval($_GET['project_id']);
 
-if (empty($id)) {
-    die("ไม่พบเลขที่เอกสาร");
+// 1. ดึงข้อมูลโปรเจกต์
+$sql_pj = "SELECT * FROM projects WHERE id = $project_id";
+$res_pj = mysqli_query($conn, $sql_pj);
+$pj = mysqli_fetch_assoc($res_pj);
+
+if (!$pj) {
+    echo "<script>alert('ไม่พบข้อมูลโครงการ'); window.location.href='projects.php';</script>";
+    exit;
 }
 
-// 1. ดึงข้อมูล Invoice และข้อมูลลูกค้า
-$sql = "SELECT i.*, c.customer_name, c.address as cust_address, c.tax_id, c.contact_person, c.phone 
-        FROM invoices i 
-        LEFT JOIN customers c ON i.customer_id = c.id 
-        WHERE i.id = '$id' LIMIT 1";
-$res = mysqli_query($conn, $sql);
-$item = mysqli_fetch_assoc($res);
+// 2. นับงวดงานถัดไป
+$sql_count = "SELECT COUNT(*) as total FROM project_milestones WHERE project_id = $project_id";
+$count = mysqli_fetch_assoc(mysqli_query($conn, $sql_count))['total'] + 1;
 
-if (!$item) {
-    die("ไม่พบข้อมูลในระบบ");
-}
-
-// 2. ดึงข้อมูลบริษัทเรา (Suppliers)
-$sql_sup = "SELECT * FROM suppliers LIMIT 1";
-$res_sup = mysqli_query($conn, $sql_sup);
-$sup = mysqli_fetch_assoc($res_sup);
-
-$logo_path = !empty($sup['logo_path']) ? 'uploads/' . $sup['logo_path'] : '';
-
-// 3. เช็คส่วนลด (ใช้ชื่อฟิลด์ตามมาตรฐาน invoice_items)
-$sum_discount_res = mysqli_query($conn, "SELECT SUM(discount_amount) as total_discount FROM invoice_items WHERE invoice_id = '$id'");
-$row_discount = mysqli_fetch_assoc($sum_discount_res);
-$total_discount = $row_discount['total_discount'] ?? 0;
-
-// --- ลายเซ็น (Logic เดิมของพี่เป๊ะ) ---
-$prepared_by_id = $data['created_by'];
-$sig_sql = "SELECT path FROM signatures WHERE users_id = '$prepared_by_id' LIMIT 1";
-$sig_data = mysqli_fetch_assoc(mysqli_query($conn, $sig_sql));
-$real_path = !empty($sig_data['path']) ? 'uploads/signatures/' . $sig_data['path'] : '';
-$prepared_sig = (!empty($real_path) && file_exists($real_path)) ? $real_path : '';
-
-$approved_sig = '';
-if ($data['status'] === 'approved' && !empty($data['approved_by'])) {
-    $approver_id = $data['approved_by'];
-    $sig_app_data = mysqli_fetch_assoc(mysqli_query($conn, "SELECT path FROM signatures WHERE users_id = '$approver_id' LIMIT 1"));
-    $real_app_path = !empty($sig_app_data['path']) ? 'uploads/signatures/' . $sig_app_data['path'] : '';
-    if (!empty($real_app_path) && file_exists($real_app_path)) {
-        $approved_sig = $real_app_path;
-    }
-}
-$num_rows = mysqli_num_rows($res_items);
-// --- Logic ปรับ Font/Padding ของพี่ ---
-if ($num_rows <= 5) {
-    $dynamic_padding = '5px 8px';
-    $dynamic_font_size = '14px';
-} elseif ($num_rows <= 10) {
-    $dynamic_padding = '3px 10px';
-    $dynamic_font_size = '13px';
-} else {
-    $dynamic_padding = '2px 12px';
-    $dynamic_font_size = '12px';
-}
+// 3. คำนวณหายอดรวมที่เบิกไปแล้ว (Gross Amount)
+$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
 ?>
 
-<style>
-    /* ใช้ CSS Variable เพื่อความคลีน */
-    :root {
-        --row-padding:
-            <?= $dynamic_padding ?>
-        ;
-        --item-font-size:
-            <?= $dynamic_font_size ?>
-        ;
-    }
+<div>
+    <form action="api/save_milestone.php" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="project_id" value="<?= $project_id ?>">
+        <input type="hidden" name="vat_amount" id="vat_amount_val">
+        <input type="hidden" name="wht_amount" id="wht_amount_val">
+        <input type="hidden" name="total_request_amount" id="total_request_amount_val">
+        <input type="hidden" name="remaining_balance" id="remaining_balance_val">
+        <input type="hidden" name="retention_amount" id="retention_amount_val">
+        <input type="hidden" name="other_deduction_amount" id="other_deduction_amount_val">
 
-    .table-items tbody td {
-        padding: var(--row-padding) !important;
-        font-size: var(--item-font-size);
-    }
-</style>
-
-<?php
-function BahtText($amount)
-{
-    $amount_number = number_format($amount, 2, '.', '');
-    $pt = strpos($amount_number, '.');
-    $number = $fraction = "";
-    if ($pt === false) {
-        $number = $amount_number;
-    } else {
-        $number = substr($amount_number, 0, $pt);
-        $fraction = substr($amount_number, $pt + 1);
-    }
-
-    $ret = "";
-    $baht = ReadNumber($number);
-    if ($baht != "")
-        $ret .= $baht . "บาท";
-
-    if ($fraction == "00") {
-        $ret .= "ถ้วน";
-    } else {
-        $ret .= ReadNumber($fraction) . "สตางค์";
-    }
-    return $ret;
-}
-
-function ReadNumber($number)
-{
-    $position_call = array("แสน", "หมื่น", "พัน", "ร้อย", "สิบ", "");
-    $number_call = array("", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า");
-    $number = $number + 0;
-    $ret = "";
-    if ($number == 0)
-        return $ret;
-    if ($number > 1000000) {
-        $ret .= ReadNumber(intval($number / 1000000)) . "ล้าน";
-        $number = $number % 1000000;
-    }
-
-    $t = sprintf("%06d", $number);
-    $adjective = false;
-    for ($i = 0; $i < 6; $i++) {
-        $n = substr($t, $i, 1);
-        if ($n != "0") {
-            if ($i == 4 && $n == "1") {
-                $ret .= "สิบ";
-            } elseif ($i == 4 && $n == "2") {
-                $ret .= "ยี่สิบ";
-            } elseif ($i == 5 && $n == "1" && $adjective) {
-                $ret .= "เอ็ด";
-            } else {
-                $ret .= $number_call[$n] . $position_call[$i];
-            }
-            $adjective = true;
-        } else {
-            $adjective = false;
-        }
-    }
-    return $ret;
-}
-?>
-
-
-<link rel="stylesheet" href="assets/css/style_quotation.css">
-
-<div class="floating-toolbar no-print">
-    <div class="tool-group">
-        <button onclick="history.back()" class="btn-tool btn-back"><i class="fas fa-chevron-left"></i></button>
-    </div>
-    <div class="tool-group main-tools">
-        <button onclick="window.print()" class="btn-tool btn-print"><i class="fas fa-print"></i>
-            <span>Print</span></button>
-        <button onclick="toggleSignature()" class="btn-tool btn-sig"><i class="fas fa-pen-nib"></i>
-            <span>Sign</span></button>
-    </div>
-    <div class="tool-group export-tools">
-        <button onclick="exportPDF()" class="btn-tool btn-pdf"><i class="fas fa-file-pdf"></i></button>
-        <button onclick="exportWord()" class="btn-tool btn-word"><i class="fas fa-file-word"></i></button>
-    </div>
-</div>
-
-<div id="quotation-content" class="page-container">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-        <div style="display: flex; gap: 15px;">
-            <?php if ($logo_path): ?>
-                <img src="<?= $logo_path ?>" style="width: 70px; height: 70px; object-fit: contain;">
-
-            <?php elseif (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุซัพพลายเออร์'): ?>
-                <div
-                    style="width: 70px; height: 70px; background: #0f172a; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;">
-                    <?= mb_substr($data['my_company'], 0, 1, 'UTF-8') ?>
-                </div>
-
-            <?php endif; ?>
-            <?php if (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุ'): ?>
-                <div style="font-size: 11px; line-height: 1.4;">
-                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= $data['my_company'] ?></h1>
-
-                    <?php if (!empty($data['my_address'])): ?>
-                        <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
-                    <?php endif; ?>
-
-                    <p style="margin: 2px 0 0; color: #64748b;">
-                        <?php if (!empty($data['my_tax'])): ?>
-                            <b>Tax ID:</b> <?= $data['my_tax'] ?>
-                        <?php endif; ?>
-
-                        <?php if (!empty($data['my_tax']) && !empty($data['my_phone'])): ?> | <?php endif; ?>
-
-                        <?php if (!empty($data['my_phone'])): ?>
-                            <b>Tel:</b> <?= $data['my_phone'] ?>
-                        <?php endif; ?>
-                    </p>
-                </div>
-            <?php endif; ?>
-        </div>
-        <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 28px; color: var(--primary-color); font-weight: 900;">
-                <?= ($data['doc_type'] == 'quotation') ? 'ใบเสนอราคา' : 'ใบแจ้งหนี้' ?>
-            </h2>
-            <p style="margin: 0; font-size: 10px; letter-spacing: 3px; color: #94a3b8; text-transform: uppercase;">
-                <?= $data['doc_type'] ?>
-            </p>
-        </div>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; gap: 15px;">
-        <div
-            style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: #f8fafc; ">
-            <p
-                style="margin: 0 0 5px; font-size: 9px; font-weight: bold; color: var(--primary-color); text-transform: uppercase;">
-                Customer / ลูกค้า
-            </p>
-            <h3 style="margin: 0; font-size: 14px; color: #0f172a;"><?= $data['customer_name'] ?></h3>
-
-            <div style="margin: 5px 0 0; font-size: 11px; color: #64748b; line-height: 1.5;">
-                <?= nl2br($data['cust_address']) ?><br>
-
-                <?php if (!empty($data['cust_tax'])): ?>
-                    <b>เลขประจำตัวผู้เสียภาษี:</b> <?= $data['cust_tax'] ?><br>
-                <?php endif; ?>
-
-                <?php if (!empty($data['contact_person']) || !empty($data['cust_phone']) || !empty($data['cust_email'])): ?>
-                    <div style="margin-top: 4px;">
-                        <b style="color: #475569;">ติดต่อ:</b>
-                        <?= htmlspecialchars($data['contact_person'] ?? '-') ?>
-
-                        <?php if (!empty($data['cust_phone'])): ?>
-                            <span style="color: #64748b;"> | โทร: </span><?= htmlspecialchars($data['cust_phone']) ?>
-                        <?php endif; ?>
-
-                        <?php if (!empty($data['cust_email'])): ?>
-                            <span style="color: #64748b;"> | อีเมล: </span><span
-                                style="color: #0f172a; text-decoration: none;"><?= htmlspecialchars($data['cust_email']) ?></span>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800">บันทึกใบเบิกงวดงาน</h2>
+                <p class="text-slate-500 text-sm">โครงการ: <span
+                        class="text-indigo-600 font-bold"><?= $pj['project_no'] ?> - <?= $pj['project_name'] ?></span>
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl font-bold -lg -indigo-200 transition-all">
+                    <i class="fas fa-check-circle mr-2"></i> บันทึกข้อมูล
+                </button>
             </div>
         </div>
-        <div style="width: 250px; font-size: 12px;">
-            <div
-                style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
-                <span style="color: #64748b;">เลขที่ / No.</span>
-                <span style="font-weight: bold; color: #0f172a;"><?= htmlspecialchars($data['invoice_no']) ?></span>
-            </div>
-            <div
-                style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
-                <span style="color: #64748b;">วันที่ / Date</span>
-                <span
-                    style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['invoice_date'])) ?></span>
-            </div>
-            <div
-                style="display: flex; justify-content: space-between; padding: 6px 0;  border-bottom: 1px solid #e2e8f0;">
-                <span style="color: #64748b;">วันครบกำหนด</span>
-                <span
-                    style="color: #0f172a; font-weight: bold;"><?= $data['due_date'] ? date('d/m/Y', strtotime($data['due_date'])) : 'ไม่มีกำหนด' ?></span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding: 6px 0;">
-                <span style="color: #64748b;">สถานะ</span>
-                <span>
-                    <?php
-                    // จับคู่สถานะ Enum กับ คำไทยและสี
-                    $status_map = [
-                        'pending' => ['label' => 'รอดำเนินการ'], // สีส้ม
-                        'approved' => ['label' => 'อนุมัติแล้ว'], // สีเขียว
-                        'paid' => ['label' => 'ชำระเงินแล้ว'], // สีน้ำเงิน
-                        'canceled' => ['label' => 'ยกเลิก']  // สีแดง
-                    ];
 
-                    $current_status = $data['status'];
-                    $label = $status_map[$current_status]['label'] ?? $current_status;
-                    $color = $status_map[$current_status]['color'] ?? '#64748b';
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-file-invoice-dollar text-indigo-500"></i> รายละเอียดใบแจ้งหนี้
+                    </h3>
 
-                    echo "<span style='color: $0f172a; font-weight: bold;'>$label</span>";
-                    ?>
-                </span>
-            </div>
-        </div>
-    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">งวดที่ / รายละเอียดงาน <span
+                                    class="text-red-500">*</span></label>
+                            <input type="text" name="milestone_name" required value="งวดที่ <?= $count ?>: "
+                                class="w-full border border-slate-200 rounded-xl p-2.5 ">
+                        </div>
 
-    <div class="item-section">
-        <table class="table-items">
-            <thead>
-                <tr>
-                    <th width="3%">#</th>
-                    <th align="left">รายการ / Description</th>
-                    <th width="5%" align="center">จำนวน</th>
-                    <th width="8%" align="right">หน่วย</th>
-                    <th width="12%" align="right">ราคา</th>
-                    <?php if ($total_discount > 0): ?>
-                        <th width="10%" align="right">ส่วนลด</th>
-                    <?php endif; ?>
-                    <th width="12%" align="right">ยอดรวม</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php $count = 1;
-                while ($item = mysqli_fetch_assoc($res_items)): ?>
-                    <tr>
-                        <td align="center"><?= $count++ ?></td>
-                        <td style="font-weight: 400; vertical-align: top; line-height: 1.4; color: #334155; 
-           max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
-                            <?= nl2br(htmlspecialchars($item['item_name'])) ?>
-                        </td>
-                        <td align="center "><?= number_format($item['qty'], 0) ?></td>
-                        <td align="center"><?= htmlspecialchars($item['unit_name']) ?></td>
-                        <td align="right"><?= number_format($item['price_per_unit'], 2) ?></td>
-                        <?php if ($total_discount > 0): ?>
-                            <td align="right">-<?= number_format($item['discount_amount'], 2) ?></td>
-                        <?php endif; ?>
-                        <td align="right" style="font-weight: 600;"><?= number_format($item['total_price'], 2) ?></td>
-                    </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="doc-footer">
-        <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-
-            <div style="width: 55%;">
-                <?php if (!empty($data['bank_name'])): ?>
-                    <p style="font-size: 11px; color: #64748b; font-weight: bold; margin-bottom: 5px;">
-                        กรุณาชำระเงินภายในวันที่
-                        <span
-                            style="color: #0f172a;"><?= $data['due_date'] ? date('d/m/Y', strtotime($data['due_date'])) : '-' ?></span>
-                        ตามบัญชีดังนี้:
-                    </p>
-
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <?php if (!empty($data['qr_code_path'])): ?>
-                            <div style="flex-shrink: 0;">
-                                <img src="uploads/<?= $data['qr_code_path'] ?>"
-                                    style="width: 90px; height: 90px; object-fit: contain; border: 1px solid #f1f5f9; padding: 2px; border-radius: 4px;"
-                                    onerror="this.style.display='none'">
-                            </div>
-                        <?php endif; ?>
-
-                        <div style="font-size: 11px; line-height: 1.4;">
-                            <div style="font-weight: bold; color: #0f172a; font-size: 12px; margin-bottom: 2px;">
-                                <?php echo $data['bank_name']; ?>
-                            </div>
-                            <div style="color: #475569;">
-                                ชื่อบัญชี: <span style="color: #0f172a;"><?php echo $data['bank_account_name']; ?></span>
-                            </div>
-                            <div
-                                style="color: #0f172a; font-weight: bold; font-size: 12px; letter-spacing: 0.3px; margin-top: 2px;">
-                                เลขบัญชี: <?php echo $data['bank_account_number']; ?>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1 ">ยอดเงินตั้งเบิก
+                                (ก่อนภาษี)</label>
+                            <div class="relative">
+                                <input type="number" step="0.01" name="amount" id="amount" oninput="calculateMoney()"
+                                    required class="w-full border-2  rounded-xl p-2.5 pl-8 " placeholder="0.00">
+                                <span class="absolute left-3 top-3 text-slate-400">฿</span>
                             </div>
                         </div>
-                    </div>
-                <?php endif; ?>
 
-                <div style="margin-top: 5px; ">
-                    <p
-                        style="font-size: 10px; font-weight: bold; color: #0f172a; text-transform: uppercase; margin-bottom: 4px;">
-                        หมายเหตุ:</p>
-                    <div style="font-size: 11px; color: #0f172a; line-height: 1.4;">
-                        <?= !empty($data['remark']) ? nl2br(htmlspecialchars($data['remark'])) : '<span style="color: #cbd5e1;">-</span>' ?>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เรียกเก็บ</label>
+                            <input type="date" name="claim_date" value="<?= date('Y-m-d') ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (เพิ่มเติม)</label>
+                            <textarea name="remarks" rows="2"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none "
+                                placeholder="ระบุรายละเอียดเพิ่มเติม เช่น หักค่าของ, จ่ายล่วงหน้า..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="use_vat" checked onchange="calculateMoney()"
+                                        class="rounded text-indigo-500">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
+                                </div>
+
+                                <div
+                                    class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                    <input type="checkbox" id="vat_include_check" onchange="calculateMoney()"
+                                        class="w-3 h-3 rounded text-emerald-500 focus:ring-0">
+                                    <label for="vat_include_check"
+                                        class="text-[9px] font-bold text-slate-400 uppercase cursor-pointer">VAT
+                                        ใน</label>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-end">
+                                <p class="text-lg font-bold text-slate-700" id="vat_display">0.00 ฿</p>
+                                <input type="hidden" id="vat_type_status" name="has_vat" value="1">
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
+                                <input type="checkbox" id="use_wht" checked onchange="calculateMoney()"
+                                    class="rounded ">
+                            </div>
+                            <p class="text-lg font-bold " id="wht_display">0.00 ฿</p>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 relative overflow-hidden transition-all"
+                            id="deduction_card">
+                            <div class="flex justify-between items-center mb-1">
+
+
+                                <div class="flex gap-2">
+                                    <div
+                                        class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                        <span class="text-[9px] font-bold text-slate-400">หัก</span>
+                                        <input type="number" id="retention_percent" name="retention_percent"
+                                            value="<?= $m_data['retention_percent'] ?? 0 ?>" oninput="calculateMoney()"
+                                            class="w-8 text-center bg-transparent text-[10px] font-bold text-slate-600 focus:outline-none"
+                                            placeholder="0">
+                                        <span class="text-[9px] font-bold text-slate-400">%</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
+                                        class="rounded text-slate-500 w-3 h-3 focus:ring-0 cursor-pointer">
+                                    <label for="use_deduction"
+                                        class="text-[10px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
+                                        / หักอื่นๆ</label>
+                                </div>
+                            </div>
+
+                            <p class="text-lg font-bold text-slate-700" id="deduction_total_display">0.00 ฿</p>
+
+                            <input type="text" id="deduction_note" name="deduction_note"
+                                value="<?= $m_data['deduction_note'] ?? '' ?>" placeholder="เงินประกัน/ หักอื่นๆ"
+                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[10px] text-slate-500 focus:outline-none placeholder:text-slate-300">
+                        </div>
+
+                        <div class="p-4 bg-indigo-600 rounded-xl -md text-white">
+                            <label class="text-[10px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
+                            <p class="text-xl font-black" id="total_request_display">0.00 ฿</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-university text-blue-500"></i> บัญชีธนาคารสำหรับโอนเงิน
+                    </h3>
+                    <div class="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center -sm">
+                            <i class="fas fa-wallet text-blue-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700"><?= $pj['bank_name'] ?>: <span
+                                    class="text-blue-700 font-black"><?= $pj['bank_account_no'] ?></span></p>
+                            <p class="text-[11px] text-slate-500">ชื่อบัญชี: <?= $pj['bank_account_name'] ?></p>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div style="width: 40%;">
-                <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
-                    <table width="100%" style="font-size: 13px;">
-                        <tr>
-                            <td style="padding-bottom: 5px;">รวมเป็นเงิน</td>
-                            <td align="right" style="padding-bottom: 5px;"><?= number_format($data['subtotal'], 2) ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding-bottom: 5px;">
-                                ภาษีมูลค่าเพิ่ม <?= number_format($data['vat_percent'], 0) ?>%
-                            </td>
-                            <td align="right" style="padding-bottom: 5px;">
-                                <?= number_format($data['vat'], 2) ?>
-                            </td>
-                        </tr>
 
-                        <tr>
-                            <td style="padding-bottom: 5px;">
-                                หัก ณ ที่จ่าย <?= number_format($data['wht_percent'], 0) ?>%
-                            </td>
-                            <td align="right" style="padding-bottom: 5px;">
-                                <?= number_format($data['wht_amount'], 2) ?>
-                            </td>
-                        </tr>
-                        <tr style="font-size: 16px; font-weight: 900; color: var(--primary-color);">
-                            <td style="padding-top: 10px; border-top: 1px solid #cbd5e1;">ยอดสุทธิ</td>
-                            <td align="right" style="padding-top: 10px; border-top: 1px solid #cbd5e1;">
-                                <?= number_format($data['grand_total'], 2) ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" align="right"
-                                style="padding-top: 8px; font-size: 11px; color: #64748b; font-style: italic;">
-                                ( <?= BahtText($data['grand_total']) ?> )
-                            </td>
-                        </tr>
-                    </table>
+            <div class="space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <label class="block text-sm font-bold text-slate-700 mb-4">สถานะการจ่ายเงิน</label>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="cursor-pointer group">
+                            <input type="radio" name="status" value="pending" class="peer hidden" checked>
+                            <div
+                                class="flex flex-col items-center justify-center py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 transition-all 
+                    peer-checked:border-amber-400 peer-checked:bg-amber-50 peer-checked:text-amber-500 shadow-sm group-hover:bg-white">
+                                <i class="fas fa-hourglass-half text-2xl mb-2"></i>
+                                <span class="text-[11px] font-black uppercase tracking-wider">รอชำระ</span>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer group">
+                            <input type="radio" name="status" value="paid" class="peer hidden">
+                            <div
+                                class="flex flex-col items-center justify-center py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 transition-all 
+                    peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-500 shadow-sm group-hover:bg-white">
+                                <i class="fas fa-check-circle text-2xl mb-2"></i>
+                                <span class="text-[11px] font-black uppercase tracking-wider">จ่ายแล้ว</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 rounded-3xl p-6 text-white -xl">
+                    <h4 class="font-bold mb-4 flex items-center gap-2 text-indigo-400">
+                        <i class="fas fa-calculator"></i> สถานะงบประมาณ
+                    </h4>
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">มูลค่ารวม:</span>
+                            <span class="font-bold"><?= number_format($pj['contract_value'], 2) ?></span>
+                        </div>
+                        <div class="flex justify-between border-t border-slate-800 pt-2">
+                            <span class="text-slate-400">เบิกไปแล้ว:</span>
+                            <span class="text-white"><?= number_format($collected, 2) ?></span>
+                        </div>
+                        <div class="flex justify-between text-indigo-400 font-bold">
+                            <span>งวดนี้:</span>
+                            <span id="current_claim_display">0.00</span>
+                        </div>
+                        <div
+                            class="flex justify-between font-black text-lg pt-2 mt-2 border-t border-dashed border-slate-700">
+                            <span>คงเหลือสุทธิ:</span>
+                            <span id="remaining_balance_display" class="text-indigo-400">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">หลักฐานการเบิก (สลิป/ใบแจ้งหนี้)</h3>
+                    <div
+                        class="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 cursor-pointer">
+                        <input type="file" name="claim_attachment" class="absolute inset-0 opacity-0 cursor-pointer"
+                            onchange="document.getElementById('file-label').innerText = this.files[0].name">
+                        <p id="file-label" class="text-[10px] text-slate-400 truncate">คลิกเพื่อเลือกไฟล์</p>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <div
-            style="display: flex; justify-content: space-between; text-align: center; font-size: 12px; margin-top: 30px;">
-
-            <div style="width: 30%;">
-                <div class="sig-box"
-                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-
-                    <?php if ($prepared_sig): ?>
-                        <img src="<?= $prepared_sig ?>?v=<?= time() ?>"
-                            style="max-height: 50px; max-width: 100%; object-fit: contain;">
-
-                    <?php else: ?>
-
-                    <?php endif; ?>
-
-                </div>
-                <p style="margin: 0; font-weight: bold;">ผู้จัดทำ</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">(
-                    <?= $data['creator_real_name'] ?? $data['created_by'] ?> )
-                </p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่
-                    <?= date('d/m/Y', strtotime($data['created_at'])) ?>
-                </p>
-            </div>
-
-            <div style="width: 30%;">
-                <div class="sig-box"
-                    style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-
-                    <?php if ($approved_sig): ?>
-                        <img src="<?= $approved_sig ?>?v=<?= time() ?>"
-                            style="max-height: 50px; max-width: 100%; object-fit: contain;">
-                    <?php elseif ($data['status'] === 'approved'): ?>
-                        <span style="font-size: 10px; color: #94a3b8; font-style: italic;"></span>
-                    <?php else: ?>
-                        <span style="font-size: 10px; color: #cbd5e1; font-style: italic;"></span>
-                    <?php endif; ?>
-
-                </div>
-                <p style="margin: 0; font-weight: bold;">ผู้มีอำนาจลงนามอนุมัติ</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">
-                    (
-                    <?= !empty($data['approver_name']) ? $data['approver_name'] : '...................................' ?>
-                    )
-                </p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                    วันที่
-                    <?= ($data['approved_at']) ? date('d/m/Y', strtotime($data['approved_at'])) : 'วันที่ ......../......../........' ?>
-                </p>
-            </div>
-
-            <div style="width: 30%;">
-                <div class="sig-box" style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
-                <p style="margin: 0; font-weight: bold;">ลูกค้า</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #64748b;">( <?= $data['customer_name'] ?> )</p>
-                <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
-            </div>
-
-        </div>
-    </div>
-    <div
-        style="margin-top: 40px; text-align: center; font-size: 9px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px;">
-    </div>
+    </form>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
-    // Script PDF / Word ของพี่ (คงเดิม)
-    function exportPDF() { /* ... โค้ดเดิมของพี่ ... */ }
-    function exportWord() { /* ... โค้ดเดิมของพี่ ... */ }
-    function toggleSignature() { window.location.href = 'create_signature.php'; }
+    function calculateMoney() {
+        // 1. ดึงค่าพื้นฐาน
+        let amount = parseFloat(document.getElementById('amount').value) || 0;
+        let contractValue = <?= (float) $pj['contract_value'] ?>;
+        let collectedBefore = <?= (float) $collected ?>;
+
+        // 2. คำนวณภาษี
+        let vat = document.getElementById('use_vat').checked ? (amount * 0.07) : 0;
+        let wht = document.getElementById('use_wht').checked ? (amount * 0.03) : 0;
+
+        // 3. คำนวณเงินประกัน / หักอื่นๆ
+        let useDeduction = document.getElementById('use_deduction').checked;
+        let retPercent = parseFloat(document.getElementById('retention_percent').value) || 0;
+        let deductionAmount = useDeduction ? (amount * (retPercent / 100)) : 0;
+
+        // 4. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือ
+        let totalRequest = (amount + vat) - wht - deductionAmount;
+        let remaining = contractValue - (collectedBefore + amount);
+
+        // 5. แสดงผลบน UI
+        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
+        document.getElementById('wht_display').innerText = '- ' + wht.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
+        document.getElementById('deduction_total_display').innerText = '- ' + deductionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
+        document.getElementById('total_request_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
+        document.getElementById('current_claim_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('remaining_balance_display').innerText = remaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        // 6. อัปเดตค่าลง Hidden Inputs (ต้องมี ID ใน HTML ให้ครบ)
+        if (document.getElementById('vat_amount_val')) document.getElementById('vat_amount_val').value = vat.toFixed(2);
+        if (document.getElementById('wht_amount_val')) document.getElementById('wht_amount_val').value = wht.toFixed(2);
+        if (document.getElementById('total_request_amount_val')) document.getElementById('total_request_amount_val').value = totalRequest.toFixed(2);
+        if (document.getElementById('remaining_balance_val')) document.getElementById('remaining_balance_val').value = remaining.toFixed(2);
+
+        // บันทึกเงินประกัน
+        if (document.getElementById('retention_amount_val')) {
+            document.getElementById('retention_amount_val').value = deductionAmount.toFixed(2);
+        }
+        // บันทึกยอดหักอื่นๆ (ใน DB จารมีคอลัมน์นี้ด้วย)
+        if (document.getElementById('other_deduction_amount_val')) {
+            document.getElementById('other_deduction_amount_val').value = deductionAmount.toFixed(2);
+        }
+
+        document.getElementById('deduction_card').style.opacity = useDeduction ? '1' : '0.6';
+    }
+
+    // เรียกทำงานทันทีที่โหลดหน้า
+    calculateMoney();
 </script>
 
 <?php include('footer.php'); ?>

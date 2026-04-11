@@ -18,7 +18,7 @@ include('assets/alert.php');
         <div class="lg:col-span-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden sticky top-6">
                 <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h3 id="form-title" class="font-bold text-slate-700">เพิ่มผู้ขายใหม่</h3>
+                    <h3 id="form-title" class="font-bold text-slate-800">เพิ่มผู้ขายใหม่</h3>
                 </div>
 
                 <form id="supplier-form" action="api/process_settings.php" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
@@ -29,7 +29,7 @@ include('assets/alert.php');
                             <img id="image-preview" src="#" alt="Preview" class="hidden max-h-28 rounded-lg mb-2">
                             <div id="upload-placeholder" class="text-center">
                                 <i class="fas fa-cloud-upload-alt text-2xl text-slate-300"></i>
-                                <p class="text-[10px] text-slate-400">อัปโหลดโลโก้บริษัท</p>
+                                <p class="text-[10px] text-slate-700">อัปโหลดโลโก้บริษัท</p>
                             </div>
                         </div>
                         <input type="file" name="logo" id="logo-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
@@ -46,7 +46,7 @@ include('assets/alert.php');
                     <input name="email" id="form-email" placeholder="อีเมลบริษัท" class="w-full border-slate-200 rounded-xl p-2.5 text-sm border">
 
                     <div class="pt-2 border-t border-slate-100">
-                        <p class="text-[11px] font-bold text-slate-400 uppercase mb-2">ข้อมูลการชำระเงิน</p>
+                        <p class="text-[11px] font-bold text-slate-800 uppercase mb-2">ข้อมูลการชำระเงิน</p>
                         <input type="text" name="bank_name" id="form-bank-name" placeholder="ชื่อธนาคาร" class="w-full border-slate-200 rounded-xl p-2.5 text-sm border mb-3">
 
                         <div class="grid grid-cols-2 gap-4">
@@ -56,13 +56,13 @@ include('assets/alert.php');
                     </div>
 
                     <div class="pt-2">
-                        <p class="text-[11px] font-bold text-slate-400 uppercase mb-2">QR Code ชำระเงิน (PromptPay)</p>
+                        <p class="text-[11px] font-bold text-slate-700 uppercase mb-2">QR Code ชำระเงิน (PromptPay)</p>
                         <div class="relative group">
                             <div id="qr-preview-container" class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-200 rounded-2xl min-h-[100px] bg-slate-50">
                                 <img id="qr-preview" src="#" alt="QR Preview" class="hidden max-h-24 rounded-lg mb-1">
                                 <div id="qr-upload-placeholder" class="text-center">
                                     <i class="fas fa-qrcode text-xl text-slate-300"></i>
-                                    <p class="text-[10px] text-slate-400">อัปโหลด QR Code</p>
+                                    <p class="text-[10px] text-slate-700">อัปโหลด QR Code</p>
                                 </div>
                             </div>
                             <input type="file" name="qr_code" id="qr-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
@@ -82,7 +82,7 @@ include('assets/alert.php');
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 overflow-x-auto">
                 <table id="supplierTable" class="table table-hover w-full">
                     <thead>
-                        <tr class="text-slate-400 text-[11px] uppercase">
+                        <tr class="text-slate-700 text-[11px] uppercase">
                             <th class="w-16">Logo</th>
                             <th>บริษัท / Tax ID</th>
                             <th>ข้อมูลติดต่อ</th>
@@ -101,17 +101,17 @@ include('assets/alert.php');
                                 </td>
                                 <td>
                                     <div class="font-bold text-slate-700"><?php echo $row['company_name']; ?></div>
-                                    <div class="text-[10px] text-slate-400">Tax ID: <?php echo $row['tax_id'] ?: '-'; ?></div>
+                                    <div class="text-[10px] text-slate-700">Tax ID: <?php echo $row['tax_id'] ?: '-'; ?></div>
                                 </td>
                                 <td>
                                     <div class="text-indigo-600 font-medium text-[12px]"><i class="fas fa-phone-alt mr-1"></i><?php echo $row['phone'] ?: '-'; ?></div>
-                                    <div class="text-slate-400 text-[11px]"><i class="fas fa-user mr-1"></i><?php echo $row['contact_name'] ?: '-'; ?></div>
+                                    <div class="text-slate-700 text-[11px]"><i class="fas fa-user mr-1"></i><?php echo $row['contact_name'] ?: '-'; ?></div>
                                 </td>
                                 <td>
                                     <div class="flex items-center gap-2">
                                         <div>
                                             <div class="text-slate-700 font-bold text-[12px]"><?php echo $row['bank_name'] ?: '-'; ?></div>
-                                            <div class="text-[10px] text-slate-400"><?php echo $row['bank_account_number'] ?: '-'; ?></div>
+                                            <div class="text-[10px] text-slate-700"><?php echo $row['bank_account_number'] ?: '-'; ?></div>
                                         </div>
                                         <?php if (!empty($row['qr_code_path'])): ?>
                                             <i class="fas fa-qrcode text-indigo-500" title="มี QR Code แล้ว"></i>

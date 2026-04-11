@@ -133,7 +133,7 @@ $result = mysqli_query($conn, $sql);
                         <div>
                             <div class="flex justify-between items-start mb-3">
 
-                                <div class="flex gap-2 items-center">
+                                <div class="flex flex-wrap gap-2 items-center">
                                     <button onclick="viewProjectDetails(<?= $pj_id ?>)"
                                         class="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-200 shadow-sm active:transform active:scale-95">
                                         <i

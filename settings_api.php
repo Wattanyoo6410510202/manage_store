@@ -102,13 +102,13 @@ include 'header.php';
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800"><i class="fas fa-sliders-h mr-2"></i>ตั้งค่าระบบจัดซื้อ</h1>
             <button onclick="openAddModal()"
-                class="bg-indigo-600 text-white px-5 py-2 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 text-sm">
+                class="bg-indigo-600 text-white px-5 py-2 rounded-2xl font-bold hover:bg-indigo-700 transition  text-sm">
                 <i class="fas fa-plus mr-2"></i>เพิ่มค่าตั้งค่าใหม่
             </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div class="bg-white p-6 rounded-3xl border border-slate-200  relative overflow-hidden group">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
                     <i class="fas fa-search-plus text-5xl text-indigo-600"></i>
                 </div>
@@ -149,7 +149,7 @@ include 'header.php';
             </div>
 
             <div
-                class="md:col-span-2 bg-indigo-600 p-6 rounded-3xl shadow-lg shadow-indigo-100 flex items-center justify-between text-white">
+                class="md:col-span-2 bg-indigo-600 p-6 rounded-3xl   flex items-center justify-between text-white">
                 <div>
                     <h4 class="text-lg font-bold mb-1">สถานะการเชื่อมต่อระบบ</h4>
                     <p class="text-indigo-100 text-sm opacity-80 font-light">ระบบทำการเชื่อมต่อกับฐานข้อมูลและ API
@@ -165,7 +165,7 @@ include 'header.php';
             <script>Swal.fire({ icon: 'success', title: 'ดำเนินการสำเร็จ', timer: 1500, showConfirmButton: false });</script>
         <?php endif; ?>
 
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-white rounded-3xl  border border-slate-200 overflow-hidden">
             <table class="w-full text-left">
                 <thead class="bg-slate-50 border-b border-slate-100">
                     <tr>
@@ -213,7 +213,7 @@ include 'header.php';
 
     <div id="addModal"
         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate__animated animate__zoomIn">
+        <div class="bg-white rounded-3xl w-full max-w-md p-8 ">
             <h3 class="text-xl font-bold text-slate-800 mb-6">เพิ่มค่าตั้งค่าใหม่</h3>
             <form method="POST" class="space-y-4">
                 <input type="hidden" name="action" value="add">
@@ -243,7 +243,7 @@ include 'header.php';
                     <button type="button" onclick="closeAddModal()"
                         class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition">ยกเลิก</button>
                     <button type="submit"
-                        class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">บันทึกข้อมูล</button>
+                        class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-2xl  ">บันทึกข้อมูล</button>
                 </div>
             </form>
         </div>

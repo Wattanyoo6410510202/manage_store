@@ -48,14 +48,27 @@ $logo_path = (!empty($first['logo_path']) && file_exists('uploads/' . $first['lo
     ? 'uploads/' . $first['logo_path'] : '';
 
 // 2. คำนวณยอดรวมจากทุกงวดที่เลือก
+// 2. คำนวณยอดรวมจากทุกงวดที่เลือก
 $total_amount = 0;
 $total_vat = 0;
 $total_wht = 0;
 $total_net = 0;
-$total_other = 0; // เพิ่มตัวแปรสำหรับยอดหักอื่นๆ
+$total_other = 0;
 
-foreach ($milestones as $m) {
-    $total_amount += $m['amount'];
+foreach ($milestones as $key => $m) {
+    // Logic: ถ้าเป็น VAT ใน (has_vat == 0) ยอด amount ใน DB คือยอดรวม VAT มาแล้ว 
+    // เราต้องถอดออกเพื่อแสดงยอด "ก่อนภาษี" ในใบแจ้งหนี้
+    if (isset($m['has_vat']) && $m['has_vat'] == 0 && $m['vat_amount'] > 0) {
+        $display_amount = $m['amount'] - $m['vat_amount'];
+    } else {
+        // ถ้าเป็น VAT นอก ยอด amount คือยอดก่อนภาษีอยู่แล้ว
+        $display_amount = $m['amount'];
+    }
+
+    // เก็บค่ากลับเข้าไปใน Array เพื่อเอาไปใช้แสดงผลในตารางด้านล่าง
+    $milestones[$key]['display_amount'] = $display_amount;
+
+    $total_amount += $display_amount; // ยอดรวมก่อนภาษีทั้งหมด
     $total_vat += $m['vat_amount'];
     $total_wht += $m['wht_amount'];
     $total_other += $m['other_deduction_amount'];
@@ -202,9 +215,9 @@ if ($num_rows <= 5) {
 
 
 <div id="quotation-content" class="page-container">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
-        <div
-            style="flex: 1;  border-radius: 10px; padding: 10px 14px;  ">
+    <div
+        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
+        <div style="flex: 1;  border-radius: 10px; padding: 10px 14px;  ">
             <div
                 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 5px;">
                 <p
@@ -251,7 +264,8 @@ if ($num_rows <= 5) {
         </div>
     </div>
     <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 10px;">
-        <div  style="flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; background: #f8fafc; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
+        <div
+            style="flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; background: #f8fafc; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
             <?php
             $header = !empty($milestones) ? $milestones[0] : null;
             ?>
@@ -332,7 +346,7 @@ if ($num_rows <= 5) {
                             <td align="center"><?= date('d/m/Y', strtotime($m['claim_date'])) ?></td>
                             <td>
                                 <div
-                                    style="font-weight: bold;  max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
+                                    style="font-weight: bold; max-width: 300px; word-break: break-word; overflow-wrap: break-word;">
                                     <?= htmlspecialchars($m['milestone_name']) ?>
                                 </div>
                                 <div
@@ -340,7 +354,9 @@ if ($num_rows <= 5) {
                                     <?= htmlspecialchars($m['remarks']) ?>
                                 </div>
                             </td>
-                            <td align="right"><?= number_format($m['amount'], 2) ?></td>
+
+                            <td align="right"><?= number_format($m['display_amount'], 2) ?></td>
+
                             <td align="right"><?= number_format($m['vat_amount'], 2) ?></td>
                             <td align="right" style="color: #1e293b;">-<?= number_format($m['wht_amount'], 2) ?></td>
                             <td align="right" style="font-weight: bold;"><?= number_format($m['net_amount'], 2) ?></td>
@@ -377,7 +393,7 @@ if ($num_rows <= 5) {
                                     <?= number_format($row['retention_percent'], 0) ?>%
                                     (<?= number_format($row['retention_amount'], 2) ?> บาท)
                                 <?php elseif (!empty($row['deduction_note'])): ?>
-                                   <?= htmlspecialchars($row['deduction_note']) ?>
+                                    <?= htmlspecialchars($row['deduction_note']) ?>
                                 <?php endif; ?>
                             </div>
                         <?php endwhile; ?>

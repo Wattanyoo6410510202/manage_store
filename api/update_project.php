@@ -12,6 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $total_vat_amount = floatval($_POST['total_vat_amount']);
     $total_wht_amount = floatval($_POST['total_wht_amount'] ?? 0);
     $net_contract_value = floatval($_POST['net_contract_value']);
+    
+    // เพิ่มการรับค่า VAT Type (0 = VAT ใน, 1 = VAT นอก)
+    $has_vat = isset($_POST['vat_type_status']) ? intval($_POST['vat_type_status']) : 1;
+    // ถ้าไม่ได้ติ๊กเปิด VAT 7% เลย อาจจะเก็บเป็น NULL หรือ 1 ตามต้องการ
+    // แต่ถ้าเปิด VAT สวิตช์ vat_type_status จะเป็นตัวบอกว่าเป็น 0 หรือ 1
+    
     $start_date = !empty($_POST['start_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['start_date']) . "'" : "NULL";
     $end_date = !empty($_POST['end_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['end_date']) . "'" : "NULL";
 
@@ -19,18 +25,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $created_by_sql = "";
 
     if ($current_user_id > 0) {
-        // เช็คว่าของเดิมใน DB เป็น NULL หรือ 0 หรือไม่
         $check_sql = "SELECT created_by FROM projects WHERE id = '$project_id'";
         $check_res = mysqli_query($conn, $check_sql);
         $row = mysqli_fetch_assoc($check_res);
 
         if (is_null($row['created_by']) || $row['created_by'] == 0) {
-            // ถ้าว่าง ให้เตรียม SQL เพื่อ Update ค่านี้เข้าไปด้วย
             $created_by_sql = ", created_by = '$current_user_id'";
         }
     }
 
-    // ข้อมูลผู้รับจ้าง & ธนาคาร
     $contractor_name = mysqli_real_escape_string($conn, $_POST['contractor_name']);
     $bank_name = mysqli_real_escape_string($conn, $_POST['bank_name']);
     $bank_account_no = mysqli_real_escape_string($conn, $_POST['bank_account_no']);
@@ -38,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
     $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
 
-    // 2. จัดการไฟล์แนบ (ถ้ามีการอัปโหลดใหม่)
+    // 2. จัดการไฟล์แนบ
     $file_sql = "";
     if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
         $target_dir = "../uploads/projects/";
@@ -50,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $target_file = $target_dir . $new_file_name;
 
         if (move_uploaded_file($_FILES["attachment"]["tmp_name"], $target_file)) {
-            // ดึงชื่อไฟล์เก่ามาลบทิ้ง (เพื่อไม่ให้เปลืองที่ Server)
             $old_file_res = mysqli_query($conn, "SELECT attachment_path FROM projects WHERE id = '$project_id'");
             $old_file = mysqli_fetch_assoc($old_file_res);
             if ($old_file['attachment_path'] && file_exists($target_dir . $old_file['attachment_path'])) {
@@ -60,11 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // 3. UPDATE ข้อมูลหลักในตาราง projects
+    // 3. UPDATE ข้อมูลหลัก (เพิ่มฟิลด์ has_vat ลงไปด้วย)
     $sql_update = "UPDATE projects SET 
                     project_name = '$project_name',
                     customer_id = '$customer_id',
                     contract_value = '$contract_value',
+                    has_vat = '$has_vat', 
                     total_vat_amount = '$total_vat_amount',
                     total_wht_amount = '$total_wht_amount',
                     net_contract_value = '$net_contract_value',

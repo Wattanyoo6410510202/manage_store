@@ -227,27 +227,34 @@ $res_docs = mysqli_query($conn, $sql_docs);
                 <div class="bg-slate-900 rounded-2xl p-6 text-white ">
                     <div class="flex justify-between items-center mb-4 border-b border-indigo-800 pb-2">
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
-                        <div class="flex items-center gap-4"> <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
-                                <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
-                                    onchange="calculateNetValue()" class="hidden peer"
-                                    <?php if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) echo 'checked'; ?>>
-                                <div
-                                    class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
-                                </div>
-                            </label>
+                       <div class="flex items-center gap-4"> 
+    <label class="inline-flex items-center cursor-pointer">
+        <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
+        <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
+            onchange="calculateNetValue()" class="hidden peer"
+            <?php if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) echo 'checked'; ?>>
+        <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+    </label>
 
-                            <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400">WHT 3%</span>
-                                <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
-                                    onchange="calculateNetValue()" class="hidden peer"
-                                    <?php if (isset($pj['total_wht_amount']) && floatval($pj['total_wht_amount']) > 0) echo 'checked'; ?>>
-                                <div
-                                    class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-rose-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
-                                </div>
-                            </label>
+    <label class="inline-flex items-center cursor-pointer">
+        <span class="mr-2 text-[10px] font-bold text-slate-400">เป็น VAT ใน</span>
+        <input type="hidden" name="vat_type_status" value="1">
+        <input type="checkbox" id="vat_include_check" name="vat_type_status" value="0"
+            onchange="calculateNetValue()" class="hidden peer"
+            <?php // ถ้า has_vat ใน DB เป็น 0 ให้ติ๊กสวิตช์นี้
+                if (isset($pj['has_vat']) && $pj['has_vat'] == 0 && $pj['has_vat'] !== null) echo 'checked'; 
+            ?>>
+        <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-cyan-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+    </label>
 
-                        </div>
+    <label class="inline-flex items-center cursor-pointer">
+        <span class="mr-2 text-[10px] font-bold text-slate-400">WHT 3%</span>
+        <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
+            onchange="calculateNetValue()" class="hidden peer"
+            <?php if (isset($pj['total_wht_amount']) && floatval($pj['total_wht_amount']) > 0) echo 'checked'; ?>>
+        <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-rose-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+    </label>
+</div>
                     </div>
 
                     <div class="space-y-3 text-sm">
@@ -331,52 +338,93 @@ $res_docs = mysqli_query($conn, $sql_docs);
 <script>
 // 1. ฟังก์ชันคำนวณ (ใช้ Logic จากหน้าสร้างงาน)
 function calculateNetValue() {
-    // 1. ดึงค่าพื้นฐาน
-    const base = parseFloat(document.getElementById('contract_value').value) || 0;
+    // 1. ดึงค่าจาก Input หลัก (ยอดที่จารกรอก)
+    const inputValue = parseFloat(document.getElementById('contract_value').value) || 0;
 
     // 2. เช็คสถานะ Toggle
     const isVatEnabled = document.getElementById('vat_toggle').checked;
-    const isWhtEnabled = document.getElementById('wht_toggle').checked; // เพิ่มเช็ค WHT
+    const isWhtEnabled = document.getElementById('wht_toggle').checked;
+    const isVatIn = document.getElementById('vat_include_check').checked; // ติ๊กคือ VAT ใน (0)
 
-    // 3. คำนวณยอดภาษีแต่ละประเภท
-    const vat = isVatEnabled ? base * 0.07 : 0;
-    const wht = isWhtEnabled ? base * 0.03 : 0; // คำนวณ WHT 3%
+    let actualBase = inputValue; // เนื้อเงินก่อนภาษี (ฐานสำหรับคำนวณ WHT)
+    let vat = 0;
+    let wht = 0;
+    let net = inputValue;
 
-    // 4. ยอดสุทธิ = มูลค่างาน + VAT - WHT
-    const net = base + vat - wht;
-
-    // 5. อัปเดตค่าลงใน Hidden Input (สำหรับส่งไป Save ใน PHP)
-    document.getElementById('total_vat_amount').value = vat.toFixed(2);
-    if (document.getElementById('total_wht_amount')) {
-        document.getElementById('total_wht_amount').value = wht.toFixed(2);
+    // 3. Logic คำนวณ VAT
+    if (isVatEnabled) {
+        if (isVatIn) {
+            // กรณี VAT ใน: ถอด VAT ออกมา (เนื้อเงิน = ยอดกรอก / 1.07)
+            actualBase = inputValue / 1.07;
+            vat = inputValue - actualBase;
+            // ยอดสุทธิยังเป็นค่าเดิม (inputValue)
+        } else {
+            // กรณี VAT นอก: ยอดกรอกคือเนื้อเงินอยู่แล้ว
+            actualBase = inputValue;
+            vat = inputValue * 0.07;
+            net = inputValue + vat; // บวก VAT เพิ่มเข้าไปในยอดจ่าย
+        }
     }
-    document.getElementById('net_contract_value').value = net.toFixed(2);
 
-    // 6. อัปเดตการแสดงผลบน UI (Display)
-    document.getElementById('display_base').innerText = base.toLocaleString(undefined, {
-        minimumFractionDigits: 2
-    });
-    document.getElementById('display_vat').innerText = vat.toLocaleString(undefined, {
-        minimumFractionDigits: 2
-    });
+    // 4. คำนวณ WHT 3% (จากเนื้อเงิน actualBase เสมอ)
+    if (isWhtEnabled) {
+        wht = actualBase * 0.03;
+    }
 
-    // เพิ่มการแสดงผลยอด WHT (ถ้ามี id นี้ในหน้า HTML)
+    // 5. คำนวณยอดสุทธิสุดท้าย
+    net = net - wht; // ไม่ว่าเป็น VAT แบบไหน ต้องหัก WHT ออกจากยอดที่จะจ่ายเสมอ
+
+    // 6. อัปเดตค่าลงใน Hidden Input (ส่งไป Save)
+    const setHidden = (id, val) => {
+        let el = document.getElementById(id);
+        if (el) el.value = val.toFixed(2);
+    };
+    setHidden('total_vat_amount', vat);
+    setHidden('total_wht_amount', wht);
+    setHidden('net_contract_value', net);
+
+    // 7. อัปเดตการแสดงผลบน UI (จุดที่จารต้องการแก้)
+    const formatNum = (num) => num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (document.getElementById('display_base')) {
+        /**
+         * ถ้าเป็น VAT ใน: แสดง actualBase (ยอดที่ถอดภาษีแล้ว)
+         * ถ้าเป็น VAT นอก/ไม่มี VAT: แสดง inputValue ตามปกติ
+         */
+        let displayBase = (isVatEnabled && isVatIn) ? actualBase : inputValue;
+        document.getElementById('display_base').innerText = formatNum(displayBase);
+    }
+
+    if (document.getElementById('display_vat')) {
+        // เพิ่มคำนำหน้าเพื่อให้รู้ว่าเป็น VAT ในหรือนอก
+        let vatPrefix = isVatEnabled ? (isVatIn ? "" : "+ ") : "";
+        document.getElementById('display_vat').innerText = vatPrefix + formatNum(vat);
+    }
+
     if (document.getElementById('display_wht')) {
-        document.getElementById('display_wht').innerText = wht.toLocaleString(undefined, {
-            minimumFractionDigits: 2
-        });
+        document.getElementById('display_wht').innerText = "- " + formatNum(wht);
     }
 
-    document.getElementById('display_net').innerText = net.toLocaleString(undefined, {
-        minimumFractionDigits: 2
-    });
+    if (document.getElementById('display_net')) {
+        document.getElementById('display_net').innerText = formatNum(net);
+    }
 
-    // 7. ปรับความจางของแถวเพื่อให้รู้ว่าใช้งานหรือไม่
-    document.getElementById('vat_row').style.opacity = isVatEnabled ? '1' : '0.3';
+    // 8. ปรับความจางของแถว
+    if (document.getElementById('vat_row')) {
+        document.getElementById('vat_row').style.opacity = isVatEnabled ? '1' : '0.3';
+    }
     if (document.getElementById('wht_row')) {
         document.getElementById('wht_row').style.opacity = isWhtEnabled ? '1' : '0.3';
     }
 }
+
+// ดักจับการเปลี่ยนค่า (Event Listener)
+document.addEventListener('change', function(e) {
+    const ids = ['vat_toggle', 'wht_toggle', 'vat_include_check'];
+    if (ids.includes(e.target.id)) {
+        calculateNetValue();
+    }
+});
 // 2. จัดการหน้าจอเมื่อโหลดเสร็จ
 document.addEventListener('DOMContentLoaded', () => {
     calculateNetValue(); // คำนวณยอดทันทีที่เข้าหน้า

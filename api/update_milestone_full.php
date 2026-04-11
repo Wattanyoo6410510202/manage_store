@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าพื้นฐานและจัดการความปลอดภัย
@@ -9,23 +10,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $amount = floatval($_POST['amount']);
 
     // รับค่าภาษี
-    $vat_amount = floatval($_POST['vat_amount']);
-    $wht_amount = floatval($_POST['wht_amount']);
+    $vat_amount = floatval($_POST['vat_amount'] ?? 0);
+    $wht_amount = floatval($_POST['wht_amount'] ?? 0);
+    
+    // --- รับค่าประเภท VAT (0=ใน, 1=นอก) ---
+    $has_vat = isset($_POST['has_vat']) ? intval($_POST['has_vat']) : 1;
 
-    // --- ส่วนที่เพิ่มมาใหม่: เงินประกัน / หักอื่นๆ ---
+    // --- ส่วนที่เกี่ยวกับเงินประกัน / หักอื่นๆ ---
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
     $retention_amount = floatval($_POST['retention_amount'] ?? 0);
     $other_deduction_amount = floatval($_POST['other_deduction_amount'] ?? 0);
     $deduction_note = mysqli_real_escape_string($conn, $_POST['deduction_note'] ?? '');
 
     // ยอดสุทธิและยอดคงเหลือจาก JS
-    $net_amount = floatval($_POST['total_request_amount']);
-    $total_request_amount = $net_amount; // ใช้ตัวเดียวกัน
+    $total_request_amount = floatval($_POST['total_request_amount']);
+    $net_amount = $total_request_amount; 
     $remaining_balance = floatval($_POST['remaining_balance']);
 
     $claim_date = mysqli_real_escape_string($conn, $_POST['claim_date']);
     $status = mysqli_real_escape_string($conn, $_POST['status']);
     $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
+
+    // กำหนด % เพื่อลง Database (ถ้ามียอดเงินแปลว่ามีการใช้ภาษานั้นๆ)
+    $vat_percent = ($vat_amount > 0) ? 7.00 : 0.00;
+    $wht_percent = ($wht_amount > 0) ? 3.00 : 0.00;
 
     // 2. จัดการเรื่องไฟล์แนบ (Attachment)
     $update_file_query = "";
@@ -36,11 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             mkdir($target_dir, 0777, true);
         }
 
-        // ดึงชื่อไฟล์เก่ามาลบทิ้ง
+        // ดึงชื่อไฟล์เก่ามาลบทิ้งเพื่อประหยัดพื้นที่ Server
         $old_file_res = mysqli_query($conn, "SELECT claim_attachment FROM project_milestones WHERE id = $id");
         $old_file_row = mysqli_fetch_assoc($old_file_res);
-        if (!empty($old_file_row['claim_attachment'])) {
-            @unlink($target_dir . $old_file_row['claim_attachment']);
+        if ($old_file_row && !empty($old_file_row['claim_attachment'])) {
+            $old_file_path = $target_dir . $old_file_row['claim_attachment'];
+            if (file_exists($old_file_path)) {
+                @unlink($old_file_path);
+            }
         }
 
         $file_ext = pathinfo($_FILES["claim_attachment"]["name"], PATHINFO_EXTENSION);
@@ -51,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // 3. ยิง SQL Update (เพิ่มฟิลด์เกี่ยวกับ Retention เข้าไป)
+    // 3. ยิง SQL Update
     $sql = "UPDATE project_milestones SET 
                 milestone_name = '$milestone_name',
                 amount = '$amount',
@@ -59,8 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 retention_amount = '$retention_amount',
                 other_deduction_amount = '$other_deduction_amount',
                 deduction_note = '$deduction_note',
+                vat_percent = '$vat_percent',
                 vat_amount = '$vat_amount',
+                wht_percent = '$wht_percent',
                 wht_amount = '$wht_amount',
+                has_vat = '$has_vat',
                 net_amount = '$net_amount',
                 total_request_amount = '$total_request_amount',
                 remaining_balance = '$remaining_balance',
@@ -71,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             WHERE id = $id";
 
     if (mysqli_query($conn, $sql)) {
-        // อัปเดตสำเร็จ
         $_SESSION['flash_msg'] = 'update_success';
         header("Location: ../detail_project.php?id=$project_id");
         exit();

@@ -89,17 +89,32 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
-                                <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
-                                <input type="checkbox" id="use_vat" checked onchange="calculateMoney()"
-                                    class="rounded text-indigo-500">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="use_vat"  onchange="calculateMoney()"
+                                        class="rounded text-indigo-500">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
+                                </div>
+
+                                <div
+                                    class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                    <input type="checkbox" id="vat_include_check" onchange="calculateMoney()"
+                                        class="w-3 h-3 rounded text-emerald-500 focus:ring-0">
+                                    <label for="vat_include_check"
+                                        class="text-[9px] font-bold text-slate-400 uppercase cursor-pointer">VAT
+                                        ใน</label>
+                                </div>
                             </div>
-                            <p class="text-lg font-bold text-slate-700" id="vat_display">0.00 ฿</p>
+
+                            <div class="flex justify-between items-end">
+                                <p class="text-lg font-bold text-slate-700" id="vat_display">0.00 ฿</p>
+                                <input type="hidden" id="vat_type_status" name="has_vat" value="1">
+                            </div>
                         </div>
 
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
                                 <label class="text-[10px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
-                                <input type="checkbox" id="use_wht" checked onchange="calculateMoney()"
+                                <input type="checkbox" id="use_wht" onchange="calculateMoney()"
                                     class="rounded ">
                             </div>
                             <p class="text-lg font-bold " id="wht_display">0.00 ฿</p>
@@ -167,7 +182,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
 
                     <div class="grid grid-cols-2 gap-4">
                         <label class="cursor-pointer group">
-                            <input type="radio" name="status" value="pending" class="peer hidden" checked>
+                            <input type="radio" name="status" value="pending" class="peer hidden" >
                             <div
                                 class="flex flex-col items-center justify-center py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 transition-all 
                     peer-checked:border-amber-400 peer-checked:bg-amber-50 peer-checked:text-amber-500 shadow-sm group-hover:bg-white">
@@ -234,41 +249,81 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
         let contractValue = <?= (float) $pj['contract_value'] ?>;
         let collectedBefore = <?= (float) $collected ?>;
 
-        // 2. คำนวณภาษี
-        let vat = document.getElementById('use_vat').checked ? (amount * 0.07) : 0;
-        let wht = document.getElementById('use_wht').checked ? (amount * 0.03) : 0;
-
-        // 3. คำนวณเงินประกัน / หักอื่นๆ
+        // 2. เช็คสถานะ Toggle
+        let useVat = document.getElementById('use_vat').checked;
+        let isVatIn = document.getElementById('vat_include_check').checked; // true = VAT ใน
+        let useWht = document.getElementById('use_wht').checked;
         let useDeduction = document.getElementById('use_deduction').checked;
         let retPercent = parseFloat(document.getElementById('retention_percent').value) || 0;
-        let deductionAmount = useDeduction ? (amount * (retPercent / 100)) : 0;
 
-        // 4. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือ
-        let totalRequest = (amount + vat) - wht - deductionAmount;
+        let actualBase = amount; // ฐานเงินที่จะเอาไปคิด WHT และ Retention
+        let vatAmount = 0;
+        let whtAmount = 0;
+        let deductionAmount = 0;
+        let totalBeforeHax = amount; // ยอดรวมก่อนหักภาษี ณ ที่จ่าย และเงินประกัน
+
+        // 3. คำนวณ VAT 7%
+        if (useVat) {
+            if (isVatIn) {
+                // กรณี VAT ใน: ถอด VAT ออกจากยอดที่กรอก
+                actualBase = amount / 1.07;
+                vatAmount = amount - actualBase;
+                totalBeforeHax = amount; // ยอดรวมยังเป็นยอดเดิมที่กรอก
+            } else {
+                // กรณี VAT นอก: ยอดที่กรอกคือฐาน แล้วบวกเพิ่ม 7%
+                actualBase = amount;
+                vatAmount = amount * 0.07;
+                totalBeforeHax = amount + vatAmount; // ยอดรวมจะเพิ่มขึ้น
+            }
+        }
+
+        // 4. คำนวณเงินประกัน (Retention) - คิดจากฐานเงิน actualBase
+        if (useDeduction) {
+            deductionAmount = actualBase * (retPercent / 100);
+        }
+
+        // 5. คำนวณ หัก ณ ที่จ่าย (WHT 3%) - คิดจากฐานเงิน actualBase
+        if (useWht) {
+            whtAmount = actualBase * 0.03;
+        }
+
+        // 6. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือ
+        // ยอดจ่ายสุทธิ = ยอดรวม(ที่รวม/แยก VAT แล้ว) - หัก ณ ที่จ่าย - เงินประกัน
+        let totalRequest = totalBeforeHax - whtAmount - deductionAmount;
         let remaining = contractValue - (collectedBefore + amount);
 
-        // 5. แสดงผลบน UI
-        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('wht_display').innerText = '- ' + wht.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('deduction_total_display').innerText = '- ' + deductionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('total_request_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('current_claim_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('remaining_balance_display').innerText = remaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-        // 6. อัปเดตค่าลง Hidden Inputs (ต้องมี ID ใน HTML ให้ครบ)
-        if (document.getElementById('vat_amount_val')) document.getElementById('vat_amount_val').value = vat.toFixed(2);
-        if (document.getElementById('wht_amount_val')) document.getElementById('wht_amount_val').value = wht.toFixed(2);
-        if (document.getElementById('total_request_amount_val')) document.getElementById('total_request_amount_val').value = totalRequest.toFixed(2);
-        if (document.getElementById('remaining_balance_val')) document.getElementById('remaining_balance_val').value = remaining.toFixed(2);
-
-        // บันทึกเงินประกัน
-        if (document.getElementById('retention_amount_val')) {
-            document.getElementById('retention_amount_val').value = deductionAmount.toFixed(2);
+        // 7. อัปเดตสถานะ Hidden Input (0=ใน, 1=นอก)
+        if (document.getElementById('vat_type_status')) {
+            document.getElementById('vat_type_status').value = isVatIn ? "0" : "1";
         }
-        // บันทึกยอดหักอื่นๆ (ใน DB จารมีคอลัมน์นี้ด้วย)
-        if (document.getElementById('other_deduction_amount_val')) {
-            document.getElementById('other_deduction_amount_val').value = deductionAmount.toFixed(2);
+
+        // 8. แสดงผลบน UI
+        const fmt = (num) => num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        document.getElementById('vat_display').innerText = (useVat ? (isVatIn ? "- " : "+ ") : "") + fmt(vatAmount) + ' ฿';
+        document.getElementById('wht_display').innerText = '- ' + fmt(whtAmount) + ' ฿';
+        document.getElementById('deduction_total_display').innerText = '- ' + fmt(deductionAmount) + ' ฿';
+        document.getElementById('total_request_display').innerText = fmt(totalRequest) + ' ฿';
+
+        if (document.getElementById('current_claim_display')) {
+            document.getElementById('current_claim_display').innerText = fmt(totalRequest);
         }
+        if (document.getElementById('remaining_balance_display')) {
+            document.getElementById('remaining_balance_display').innerText = fmt(remaining);
+        }
+
+        // 9. อัปเดตค่าลง Hidden Inputs
+        const setVal = (id, val) => {
+            let el = document.getElementById(id);
+            if (el) el.value = val.toFixed(2);
+        };
+
+        setVal('vat_amount_val', vatAmount);
+        setVal('wht_amount_val', whtAmount);
+        setVal('total_request_amount_val', totalRequest);
+        setVal('remaining_balance_val', remaining);
+        setVal('retention_amount_val', deductionAmount);
+        setVal('other_deduction_amount_val', deductionAmount);
 
         document.getElementById('deduction_card').style.opacity = useDeduction ? '1' : '0.6';
     }

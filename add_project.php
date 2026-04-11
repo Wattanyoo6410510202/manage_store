@@ -232,6 +232,18 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                                     class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 relative">
                                 </div>
                             </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">เป็น VAT ใน</span>
+
+                                <input type="hidden" name="vat_type_status" value="1">
+
+                                <input type="checkbox" id="vat_include_check" name="vat_type_status" value="0"
+                                    class="hidden peer" onchange="calculateNetValue()">
+
+                                <div
+                                    class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500 relative">
+                                </div>
+                            </label>
 
                             <label class="inline-flex items-center cursor-pointer">
                                 <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
@@ -253,7 +265,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         <div id="vat_row" class="flex justify-between transition-all duration-300">
                             <span class="text-slate-400">VAT (7%):</span>
                             <input type="hidden" name="total_vat_amount" id="total_vat_amount">
-                            <span id="display_vat" class="text-indigo-400">+ 0.00</span>
+                            <span id="display_vat" >+ 0.00</span>
                         </div>
 
                         <div id="wht_row" class="flex justify-between transition-all duration-300">
@@ -390,50 +402,87 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
     }
 
     function calculateNetValue() {
-        // 1. ดึงค่าจาก input ที่จารส่งมา (ID: contract_value)
+        // 1. ดึงค่าจาก input หลัก
         let contractInput = document.getElementById('contract_value');
-        let baseValue = parseFloat(contractInput.value) || 0;
+        let inputValue = parseFloat(contractInput.value) || 0;
 
-        // 2. เช็คสถานะ Toggle (เช็คว่า ID ตรงกับปุ่มสวิตช์ที่ทำไว้ไหม)
-        let vatToggle = document.getElementById('vat_toggle');
-        let whtToggle = document.getElementById('wht_toggle');
+        // 2. เช็คสถานะ Toggle ทั้ง 3 ตัว
+        let vatToggle = document.getElementById('vat_toggle');          // เปิด/ปิด การคิด VAT
+        let vatInToggle = document.getElementById('vat_include_check'); // ติ๊กว่าเป็น VAT ใน (ถ้าไม่ติ๊ก = VAT นอก)
+        let whtToggle = document.getElementById('wht_toggle');          // หัก ณ ที่จ่าย 3%
 
         let isVat = (vatToggle && vatToggle.checked);
+        let isVatIn = (vatInToggle && vatInToggle.checked);
         let isWht = (whtToggle && whtToggle.checked);
 
-        // 3. คำนวณภาษี
-        let vatAmount = isVat ? (baseValue * 0.07) : 0;
-        let whtAmount = isWht ? (baseValue * 0.03) : 0;
+        let actualBase = inputValue; // ยอดก่อนภาษี (ฐานสำหรับคำนวณ WHT)
+        let vatAmount = 0;
+        let whtAmount = 0;
 
-        // 4. คำนวณยอดสุทธิ
-        let netValue = baseValue + vatAmount - whtAmount;
-
-        // 5. อัปเดตตัวเลขบนหน้าจอ (ต้องมี ID เหล่านี้ในส่วนแสดงผล)
-        if (document.getElementById('display_base')) {
-            document.getElementById('display_base').innerText = baseValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        // 3. Logic คำนวณภาษีมูลค่าเพิ่ม
+        if (isVat) {
+            if (isVatIn) {
+                // สูตร VAT ใน: ฐานจริง = ยอดรวม / 1.07
+                actualBase = inputValue / 1.07;
+                vatAmount = inputValue - actualBase;
+            } else {
+                // สูตร VAT นอก: ฐานจริง = ยอดที่กรอก
+                actualBase = inputValue;
+                vatAmount = inputValue * 0.07;
+            }
         }
+
+        // 4. คำนวณ หัก ณ ที่จ่าย (3%) จากฐานจริง (actualBase) เสมอ
+        whtAmount = isWht ? (actualBase * 0.03) : 0;
+
+        // 5. คำนวณยอดสุทธิที่ต้องจ่ายจริง
+        // ถ้าเป็น VAT ใน: ยอดกรอก - WHT
+        // ถ้าเป็น VAT นอก: ยอดกรอก + VAT - WHT
+        let netValue = isVatIn ? (inputValue - whtAmount) : (inputValue + vatAmount - whtAmount);
+
+        // 6. อัปเดตตัวเลขบน UI
+       const fmt = (num) => num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        if (document.getElementById('display_base')) {
+            // ถ้าเป็น VAT ใน ให้โชว์ actualBase (ยอดถอด VAT) 
+            // แต่ถ้าไม่ใช่ ให้โชว์ inputValue ตามปกติ
+            let displayBaseValue = (isVat && isVatIn) ? actualBase : inputValue;
+            document.getElementById('display_base').innerText = fmt(displayBaseValue);
+        }
+        
         if (document.getElementById('display_vat')) {
-            document.getElementById('display_vat').innerText = "+ " + vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // ถ้าเป็น VAT ใน ให้โชว์ยอด VAT ที่ถอดออกมาได้
+            document.getElementById('display_vat').innerText = (isVat ? "+ " : "") + fmt(vatAmount);
         }
         if (document.getElementById('display_wht')) {
-            document.getElementById('display_wht').innerText = "- " + whtAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('display_wht').innerText = "- " + fmt(whtAmount);
         }
         if (document.getElementById('display_net')) {
-            document.getElementById('display_net').innerText = netValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('display_net').innerText = fmt(netValue);
         }
 
-        // 6. เก็บค่าเข้า Hidden Inputs (สำหรับส่งลง Database)
-        if (document.getElementById('total_vat_amount')) document.getElementById('total_vat_amount').value = vatAmount.toFixed(2);
-        if (document.getElementById('total_wht_amount')) document.getElementById('total_wht_amount').value = whtAmount.toFixed(2);
-        if (document.getElementById('net_contract_value')) document.getElementById('net_contract_value').value = netValue.toFixed(2);
+        // 7. เก็บค่าเข้า Hidden Inputs สำหรับลง DB
+        const setHidden = (id, val) => {
+            let el = document.getElementById(id);
+            if (el) el.value = val.toFixed(2);
+        };
+
+        setHidden('total_vat_amount', vatAmount);
+        setHidden('base_before_vat', actualBase); // เก็บฐานจริงเผื่อไว้ใช้
+        setHidden('total_wht_amount', whtAmount);
+        setHidden('net_contract_value', netValue);
     }
 
-    // ป้องกันกรณีที่แก้เลขแล้วกด Toggle แล้วเลขไม่ขยับ
+    // 8. ดักฟัง Event การเปลี่ยนค่า (เพิ่มไอดี vat_include_check เข้าไปด้วย)
     document.addEventListener('change', function (e) {
-        if (e.target.id === 'vat_toggle' || e.target.id === 'wht_toggle') {
+        const targets = ['vat_toggle', 'vat_include_check', 'wht_toggle'];
+        if (targets.includes(e.target.id)) {
             calculateNetValue();
         }
     });
+
+    // ดักตอนพิมพ์ตัวเลขด้วย
+    document.getElementById('contract_value').addEventListener('input', calculateNetValue);
 
     /**
      * 3. จัดการเอกสารแนบ (Show File Name)
