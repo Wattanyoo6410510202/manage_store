@@ -12,16 +12,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $table  = $_POST['table'] ?? '';  
     $ids    = isset($_POST['ids']) ? json_decode($_POST['ids'], true) : [];
     
-    $allowed_tables = ['pr', 'quotations', 'po'];
+    // 1. เพิ่ม 'invoices' เข้าไปใน Allowed Tables
+    $allowed_tables = ['pr', 'quotations', 'po', 'invoices'];
     if (!in_array($table, $allowed_tables)) {
-        echo json_encode(['status' => 'error', 'message' => 'Table not allowed']); exit;
+        echo json_encode(['status' => 'error', 'message' => 'Table not allowed: ' . $table]); exit;
     }
 
     if (empty($ids)) { 
         echo json_encode(['status' => 'error', 'message' => 'ไม่พบ ID รายการ']); exit; 
     }
 
-    // แก้ Scope $conn สำหรับ PHP ทุกเวอร์ชัน
+    // จัดการความปลอดภัยของ IDs
     $clean_ids = array_map(function($id) use ($conn) {
         return mysqli_real_escape_string($conn, $id);
     }, $ids);
@@ -33,13 +34,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = "กู้คืนข้อมูลสำเร็จ";
     } 
     else if ($action === 'permanent_delete') {
-        $item_table = ($table === 'quotations') ? 'quotation_items' : $table . "_items";
-        $foreign_key = ($table === 'quotations') ? 'quotation_id' : $table . "_id";
+        // 2. จัดการ Mapping ตารางลูกและ Foreign Key สำหรับ Invoices
+        if ($table === 'quotations') {
+            $item_table = 'quotation_items';
+            $foreign_key = 'quotation_id';
+        } elseif ($table === 'invoices') {
+            // ปรับชื่อตามโครงสร้าง DB ของจาร (ปกติจะเป็น invoice_items และ invoice_id)
+            $item_table = 'invoice_items'; 
+            $foreign_key = 'invoice_id';
+        } else {
+            $item_table = $table . "_items";
+            $foreign_key = $table . "_id";
+        }
 
         mysqli_begin_transaction($conn);
         try {
-            mysqli_query($conn, "DELETE FROM $item_table WHERE $foreign_key IN ('$id_list')");
+            // ลบข้อมูลในตารางลูกก่อน (ถ้ามี)
+            // ใช้ @ เพื่อข้าม Error กรณีที่บางตารางไม่มีระบบ items
+            @mysqli_query($conn, "DELETE FROM $item_table WHERE $foreign_key IN ('$id_list')");
+            
+            // ลบข้อมูลในตารางหลัก
             mysqli_query($conn, "DELETE FROM $table WHERE id IN ('$id_list')");
+            
             mysqli_commit($conn);
             $msg = "ลบข้อมูลถาวรเรียบร้อยแล้ว";
             $sql_success = true;
@@ -52,11 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = isset($sql) ? mysqli_query($conn, $sql) : ($sql_success ?? false);
 
     if ($result) {
-        // ส่ง IDs กลับไปให้ JS ฝั่ง Client เพื่อสั่งลบแถวออกจากตาราง
         $response = [
             'status' => 'success', 
             'message' => $msg,
-            'target_ids' => $ids, // ส่งคืน ID ที่ทำรายการสำเร็จ
+            'target_ids' => $ids,
             'table_type' => $table
         ];
     } else {
@@ -66,3 +81,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 echo json_encode($response);
 mysqli_close($conn);
+?>
