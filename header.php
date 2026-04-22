@@ -172,7 +172,10 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
         </div>
 
         <nav id="sidebar-nav" class="flex-1 p-4 space-y-1 overflow-y-auto">
+
             <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Main Menu</p>
+            
+            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">PR/INTERNAL</p>
 
             <a href="index.php"
                 class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'index.php') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
