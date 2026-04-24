@@ -58,8 +58,10 @@ try {
     $total_vat = $total_subtotal * ($vat_percent / 100);
     $total_wht = $total_subtotal * ($wht_percent / 100);
     $grand_total = ($total_subtotal + $total_vat) - $total_wht;
+    $total_after_wht = $grand_total; // เพิ่มการคำนวณค่านี้
     $status = 'pending';
     $temp_no = "TEMP-" . time();
+    $notes_to_save = trim($notes);
 
     // SQL สำหรับ Insert (ใส่ค่าว่างสำหรับ budget_limit_type ไปก่อนเพื่อกัน error)
     $sql = "INSERT INTO pr SET 
@@ -76,7 +78,7 @@ try {
         $temp_no, $doc_date, $due_date, $supplier_id, $customer_id, 
         $expense_cat_id, $budget_type_id, $objective_id, $budget_amount, 
         $expectation, $practice_method, $budget_details, $is_internal, $reference_no, 
-        $payment_term, $requested_by, $contact_tel, $notes, $total_subtotal, 
+        $payment_term, $requested_by, $contact_tel, $notes_to_save, $total_subtotal, 
         $total_vat, $grand_total, $vat_percent, $wht_percent, $total_wht, 
         $total_after_wht, $user_id, $attachment_1, $attachment_2, $status
     );

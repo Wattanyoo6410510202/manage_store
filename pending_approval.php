@@ -40,39 +40,52 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             <div class="overflow-x-auto">
                 <div class="flex flex-wrap items-center gap-3 mb-4 w-full">
                     <div class="relative min-w-[200px]">
-                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
-                        <select id="filterSupplier" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                        <label
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                        <select id="filterSupplier"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด (Show All)</option>
                             <?php foreach ($suppliers as $s): ?>
-                                <option value="<?= htmlspecialchars($s['company_name']) ?>"><?= htmlspecialchars($s['company_name']) ?></option>
+                                <option value="<?= htmlspecialchars($s['company_name']) ?>">
+                                    <?= htmlspecialchars($s['company_name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="relative min-w-[150px]">
-                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
-                        <input type="date" id="minDate" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                        <label
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                        <input type="date" id="minDate"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
                     <div class="relative min-w-[150px]">
                         <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
-                        <input type="date" id="maxDate" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                        <input type="date" id="maxDate"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
-                    <button onclick="filterToday()" class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[12px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
+                    <button onclick="filterToday()"
+                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[12px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
                         <i class="fas fa-calendar-day text-indigo-500"></i> รายการวันนี้
                     </button>
                     <div class="relative min-w-[120px]">
                         <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
-                        <select id="filterStatus" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                        <select id="filterStatus"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
                             <option value="รอ" selected>รออนุมัติ (Pending)</option>
                             <option value="อนุมัติ">อนุมัติแล้ว (Approved)</option>
                         </select>
                     </div>
-                    <button onclick="resetFilter()" class="self-end mb-2.5 text-[12px] text-slate-800 hover:text-indigo-600 transition-colors">
+                    <button onclick="resetFilter()"
+                        class="self-end mb-2.5 text-[12px] text-slate-800 hover:text-indigo-600 transition-colors">
                         <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
                     </button>
-                    <div id="bulkActions" class="hidden ml-auto self-end p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in">
-                        <span class="text-[11px] font-bold text-red-700 ml-2">เลือกอยู่ <span id="selectedCount" class="underline">0</span> รายการ</span>
-                        <button onclick="bulkDeletePR()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
+                    <div id="bulkActions"
+                        class="hidden ml-auto self-end p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in">
+                        <span class="text-[11px] font-bold text-red-700 ml-2">เลือกอยู่ <span id="selectedCount"
+                                class="underline">0</span> รายการ</span>
+                        <button onclick="bulkDeletePR()"
+                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
@@ -81,7 +94,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 <table id="prTable" class="w-full display hover border-none">
                     <thead>
                         <tr class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-800">
-                            <th class="w-8 text-center !pr-2"><input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"></th>
+                            <th class="w-8 text-center !pr-2"><input type="checkbox" id="selectAll"
+                                    class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"></th>
                             <th>เลขที่เอกสาร</th>
                             <th>หน่วยงาน</th>
                             <th>รายละเอียด</th>
@@ -99,36 +113,61 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </thead>
                     <tbody class="text-slate-600">
                         <?php while ($row = mysqli_fetch_assoc($result)): ?>
-                            <tr class="hover:bg-slate-50/50 transition-colors border-b border-slate-50" data-id="<?= $row['id'] ?>">
+                            <tr class="hover:bg-slate-50/50 transition-colors border-b border-slate-50"
+                                data-id="<?= $row['id'] ?>">
                                 <td class="text-center">
-                                    <input type="checkbox" class="pr-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="<?= $row['id'] ?>">
+                                    <input type="checkbox"
+                                        class="pr-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        value="<?= $row['id'] ?>">
                                 </td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
-                                <td><div class="font-semibold text-slate-700 truncate max-w-[150px]"><?= htmlspecialchars($row['supplier_name'] ?: '-') ?></div></td>
-                                <td><div class="font-semibold text-slate-700 truncate max-w-[250px]" title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>"><?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?></div></td>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[150px]">
+                                        <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[250px]"
+                                        title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
+                                        <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
+                                    </div>
+                                </td>
                                 <td class="text-center">
                                     <?php if (!empty($row['attachment_1']) || !empty($row['attachment_2'])): ?>
                                         <div class="flex justify-center gap-1">
                                             <?php if (!empty($row['attachment_1'])): ?>
-                                                <button onclick="viewAttachment('uploads/pr/<?= htmlspecialchars($row['attachment_1']) ?>')" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all" title="ไฟล์แนบ 1"><i class="fas fa-file-pdf text-xs"></i></button>
+                                                <button
+                                                    onclick="viewAttachment('uploads/pr/<?= htmlspecialchars($row['attachment_1']) ?>')"
+                                                    class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all"
+                                                    title="ไฟล์แนบ 1"><i class="fas fa-file-pdf text-xs"></i></button>
                                             <?php endif; ?>
                                             <?php if (!empty($row['attachment_2'])): ?>
-                                                <button onclick="viewAttachment('uploads/pr/<?= htmlspecialchars($row['attachment_2']) ?>')" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all" title="ไฟล์แนบ 2"><i class="fas fa-file-pdf text-xs"></i></button>
+                                                <button
+                                                    onclick="viewAttachment('uploads/pr/<?= htmlspecialchars($row['attachment_2']) ?>')"
+                                                    class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all"
+                                                    title="ไฟล์แนบ 2"><i class="fas fa-file-pdf text-xs"></i></button>
                                             <?php endif; ?>
                                         </div>
-                                    <?php else: echo '-'; endif; ?>
+                                    <?php else:
+                                        echo '-';
+                                    endif; ?>
                                 </td>
                                 <td>
                                     <div class="flex flex-col items-end gap-1">
                                         <div class="flex items-center gap-1.5 opacity-80">
-                                            <span class="text-[8px] font-bold text-slate-800 uppercase tracking-tighter">Subtotal</span>
+                                            <span
+                                                class="text-[8px] font-bold text-slate-800 uppercase tracking-tighter">Subtotal</span>
                                             <i class="fas fa-calculator text-[9px] text-slate-300"></i>
-                                            <span class="text-[12px] text-slate-500 font-mono font-medium"><?= number_format($row['subtotal'], 2) ?></span>
+                                            <span
+                                                class="text-[12px] text-slate-500 font-mono font-medium"><?= number_format($row['subtotal'], 2) ?></span>
                                         </div>
-                                        <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
-                                            <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
+                                        <div
+                                            class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+                                            <span
+                                                class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
                                             <i class="fas fa-coins text-[12px] text-amber-500"></i>
-                                            <span class="text-[14px] font-mono font-black text-slate-900 leading-none"><?= number_format($row['grand_total'], 2) ?></span>
+                                            <span
+                                                class="text-[14px] font-mono font-black text-slate-900 leading-none"><?= number_format($row['grand_total'], 2) ?></span>
                                         </div>
                                     </div>
                                 </td>
@@ -141,63 +180,95 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     ];
                                     $style = $config[$status] ?? $config['pending'];
                                     ?>
-                                    <div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
+                                    <div
+                                        class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
                                         <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
-                                        <span class="text-[12px] font-bold uppercase tracking-wide"><?= $style['label'] ?></span>
+                                        <span
+                                            class="text-[12px] font-bold uppercase tracking-wide"><?= $style['label'] ?></span>
                                     </div>
                                 </td>
                                 <td data-order="<?= $row['created_at'] ?>">
                                     <div class="flex flex-col">
-                                        <span class="text-[14px] font-bold text-slate-700 mt-0.5 flex items-center gap-1"><i class="fas fa-calendar-alt text-[9px]"></i><?= date('d/m/y', strtotime($row['created_at'])) ?></span>
+                                        <span class="text-[14px] font-bold text-slate-700 mt-0.5 flex items-center gap-1"><i
+                                                class="fas fa-calendar-alt text-[9px]"></i><?= date('d/m/y', strtotime($row['created_at'])) ?></span>
                                         <?php if (!empty($row['updated_at'])): ?>
-                                            <span class="text-[9px] text-slate-500 mt-0.5 flex items-center gap-1"><i class="fas fa-history text-[8px]"></i><?= date('d/m/y', strtotime($row['updated_at'])) ?></span>
+                                            <span class="text-[9px] text-slate-500 mt-0.5 flex items-center gap-1"><i
+                                                    class="fas fa-history text-[8px]"></i><?= date('d/m/y', strtotime($row['updated_at'])) ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="truncate max-w-[100px] text-[11px] font-medium text-slate-600"><?= htmlspecialchars($row['creator_real_name'] ?: '-') ?></td>
+                                <td class="truncate max-w-[100px] text-[11px] font-medium text-slate-600">
+                                    <?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
+                                </td>
 
                                 <td class="text-center approver-cell-0">
-                                    <?php if(!empty($row['approver_name'])): ?>
+                                    <?php if (!empty($row['approver_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
-                                        <div class="text-[8px] text-slate-400 font-mono"><?= date('d/m/y', strtotime($row['approved_at'])) ?></div>
-                                    <?php else: echo '-'; endif; ?>
+                                        <div class="text-[8px] text-slate-400 font-mono">
+                                            <?= date('d/m/y', strtotime($row['approved_at'])) ?>
+                                        </div>
+                                    <?php else:
+                                        echo '-';
+                                    endif; ?>
                                 </td>
                                 <td class="text-center approver-cell-1">
-                                    <?php if(!empty($row['approver_1_name'])): ?>
+                                    <?php if (!empty($row['approver_1_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
-                                        <div class="text-[8px] text-slate-400 font-mono"><?= date('d/m/y', strtotime($row['approved_at_1'])) ?></div>
-                                    <?php else: echo '-'; endif; ?>
+                                        <div class="text-[8px] text-slate-400 font-mono">
+                                            <?= date('d/m/y', strtotime($row['approved_at_1'])) ?>
+                                        </div>
+                                    <?php else:
+                                        echo '-';
+                                    endif; ?>
                                 </td>
                                 <td class="text-center approver-cell-2">
-                                    <?php if(!empty($row['approver_2_name'])): ?>
+                                    <?php if (!empty($row['approver_2_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
-                                        <div class="text-[8px] text-slate-400 font-mono"><?= date('d/m/y', strtotime($row['approved_at_2'])) ?></div>
-                                    <?php else: echo '-'; endif; ?>
+                                        <div class="text-[8px] text-slate-400 font-mono">
+                                            <?= date('d/m/y', strtotime($row['approved_at_2'])) ?>
+                                        </div>
+                                    <?php else:
+                                        echo '-';
+                                    endif; ?>
                                 </td>
                                 <td class="text-center approver-cell-3">
-                                    <?php if(!empty($row['approver_3_name'])): ?><i class="fas fa-check text-emerald-500"></i><?php else: echo '-'; endif; ?>
+                                    <?php if (!empty($row['approver_3_name'])): ?><i
+                                            class="fas fa-check text-emerald-500"></i><?php else:
+                                        echo '-';
+                                    endif; ?>
                                 </td>
 
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
-                                        <?php 
+                                        <?php
                                         $can_approve = false;
                                         $role = $_SESSION['role'] ?? '';
                                         $user_id = $_SESSION['user_id'] ?? 0;
-                                        
+
                                         // Check if already approved by this user
                                         $already_approved = (
-                                            $row['approved_by'] == $user_id || 
-                                            $row['approved_by_1'] == $user_id || 
-                                            $row['approved_by_2'] == $user_id || 
+                                            $row['approved_by'] == $user_id ||
+                                            $row['approved_by_1'] == $user_id ||
+                                            $row['approved_by_2'] == $user_id ||
                                             $row['approved_by_3'] == $user_id
                                         );
 
-                                        if ($row['status'] === 'pending' && in_array($role, ['admin', 'gmhok', 'procure', 'acc', 'mgr', 'mgr2']) && !$already_approved) $can_approve = true;
+                                        if ($row['status'] === 'pending' && in_array($role, ['admin', 'gmhok', 'procure', 'acc', 'mgr', 'mgr2']) && !$already_approved)
+                                            $can_approve = true;
                                         if ($can_approve): ?>
-                                            <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')" title="อนุมัติ PR" class="btn-approve-pr w-8 h-8 flex items-center justify-center bg-white text-emerald-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-95"><i class="fas fa-check-circle text-xs"></i></button>
+                                            <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
+                                                title="อนุมัติ PR"
+                                                class="btn-approve-pr w-8 h-8 flex items-center justify-center bg-white text-emerald-500 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all active:scale-95"><i
+                                                    class="fas fa-check-circle text-xs"></i></button>
                                         <?php endif; ?>
-                                        <a href="view_pr_new.php?id=<?= $row['id'] ?>" title="ดูรายละเอียด" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i class="fas fa-eye text-xs"></i></a>
+                                        <a href="view_pr_new.php?id=<?= $row['id'] ?>" title="ดูรายละเอียด"
+                                            class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i
+                                                class="fas fa-eye text-xs"></i></a>
+                                        <?php if ($row['status'] === 'pending'): ?>
+                                            <a href="edit_pr_new.php?id=<?= $row['id'] ?>" title="แก้ไข"
+                                                class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i
+                                                    class="fas fa-edit text-xs"></i></a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -269,7 +340,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         const topPosition = 25 + (existingAlerts * 85);
         const alertHtml = `<div class="custom-alert shadow-lg" style="color: ${config.color}; position: fixed; top: ${topPosition}px; right: 25px; z-index: 10000; width: 100%; max-width: 380px; display: flex; align-items: center; transition: all 0.5s; background: white; padding: 15px; border-radius: 12px; border-left: 5px solid ${config.color}"><div style="background-color: ${config.color}20; padding: 10px; border-radius: 10px; margin-right: 15px;"><i class="bi ${config.icon} fs-4"></i></div><div class="flex-grow-1"><div class="text-dark fw-bold mb-0" style="font-size: 0.95rem;">${config.msg}</div></div><button type="button" class="btn-close" onclick="$(this).closest('.custom-alert').remove()"></button></div>`;
         const $alert = $(alertHtml).hide().appendTo('body').fadeIn(300);
-        setTimeout(() => $alert.fadeOut(300, function() { $(this).remove(); }), 4500);
+        setTimeout(() => $alert.fadeOut(300, function () { $(this).remove(); }), 4500);
     }
 
     function approvePR(id, prNo) {
@@ -290,13 +361,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         if (typeof updatePendingBadge === 'function') updatePendingBadge(); // อัปเดตตัวเลขในเมนูข้าง
 
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = {'approved_by': 9, 'approved_by_1': 10, 'approved_by_2': 11, 'approved_by_3': 12};
-                        if(data.column && colMap[data.column] !== undefined) {
+                        const colMap = { 'approved_by': 9, 'approved_by_1': 10, 'approved_by_2': 11, 'approved_by_3': 12 };
+                        if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
                             if (data.column !== 'approved_by_3') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
                             prTable.cell(row, colMap[data.column]).data(content).draw(false);
                         }
-                        if(data.full_approved) {
+                        if (data.full_approved) {
                             prTable.cell(row, 6).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
                         }
                     } else Swal.fire({ title: 'แจ้งเตือน', text: data.message, icon: 'warning', heightAuto: false });

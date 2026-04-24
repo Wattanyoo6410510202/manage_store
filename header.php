@@ -94,6 +94,10 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
     echo "<script>window.location.href='index.php';</script>";
     exit;
 }
+if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure'])) {
+    echo "<script>alert('เฉพาะ Admin และ จัดซื้อ เท่านั้นที่เข้าถึงหน้านี้ได้'); window.location.href='index.php';</script>";
+    exit;
+}
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================

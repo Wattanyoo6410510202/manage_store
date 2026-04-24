@@ -244,12 +244,12 @@ $milestones = mysqli_query($conn, $milestones_sql);
                                     <td class="px-4 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <button onclick="editMilestone(<?= $m['id'] ?>)"
-                                                    class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
-                                                    title="แก้ไขข้อมูล">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
+                                                class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
+                                                title="แก้ไขข้อมูล">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
                                             <?php if ($m['status'] == 'pending'): ?>
-                                                
+
                                                 <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
                                                     class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
                                                     title="ยืนยันชำระเงิน">
@@ -276,24 +276,26 @@ $milestones = mysqli_query($conn, $milestones_sql);
                                                         title="คืนเงินประกัน">
                                                         <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
                                                     </button>
-                                                    
-                                                    <?php if ($m['inspection_id']): ?>
-                                                        <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
-                                                           class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
-                                                           title="ดูผลการตรวจรับงาน">
-                                                            <i class="fas fa-eye"></i> ดู
-                                                            <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
-                                                                <?= $m['result_status'] === 'pass' ? 'ผ่าน' : ($m['result_status'] === 'conditional_pass' ? 'เงื่อนไข' : 'ไม่ผ่าน') ?>
-                                                            </span>
-                                                        </a>
-                                                    <?php else: ?>
-                                                        <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
-                                                           class="text-[12px] font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black shadow-sm transition-all"
-                                                           title="ตรวจงาน">
-                                                            <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
-                                                        </a>
-                                                    <?php endif; ?>
+
+
                                                 </div>
+
+                                            <?php endif; ?>
+                                            <?php if ($m['inspection_id']): ?>
+                                                <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
+                                                    class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                    title="ดูผลการตรวจรับงาน">
+                                                    <i class="fas fa-eye"></i> ดู
+                                                    <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
+                                                        <?= $m['result_status'] === 'pass' ? 'ผ่าน' : ($m['result_status'] === 'conditional_pass' ? 'เงื่อนไข' : 'ไม่ผ่าน') ?>
+                                                    </span>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
+                                                    class="text-[12px] font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black shadow-sm transition-all"
+                                                    title="ตรวจงาน">
+                                                    <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
+                                                </a>
                                             <?php endif; ?>
                                         </div>
                                     </td>

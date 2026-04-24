@@ -1,6 +1,11 @@
 <?php
+session_start();
 require_once 'config.php';
-include('header.php');
+
+// กำหนด Username และ Password (ควรเปลี่ยนเป็นค่าที่ต้องการ)
+$auth_user = 'pao';
+$auth_pass = '1234';
+$auth_fullname = 'มณชัย (ช่างเป่า)';
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 $milestone_id = isset($_GET['milestone_id']) ? intval($_GET['milestone_id']) : 0;
@@ -9,6 +14,46 @@ if (!$project_id || !$milestone_id) {
     die("<div class='p-10 text-center font-bold text-rose-500'>ข้อมูลไม่ครบถ้วนครับจาร!</div>");
 }
 
+// จัดการการ Login
+if (isset($_POST['login'])) {
+    if ($_POST['username'] === $auth_user && $_POST['password'] === $auth_pass) {
+        $_SESSION['ins_auth'] = true;
+        $_SESSION['auth_fullname'] = $auth_fullname;
+    } else {
+        $error = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+    }
+}
+
+// ตรวจสอบสิทธิ์
+if (!isset($_SESSION['ins_auth']) || $_SESSION['ins_auth'] !== true) {
+    // ล้าง session เมื่อไม่ได้ login หรือโหลดหน้าใหม่
+    session_unset();
+    session_destroy();
+?>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>เข้าสู่ระบบตรวจรับงาน</title>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
+        <h2 class="text-xl font-bold mb-6 text-center text-slate-800">เข้าสู่ระบบเพื่อตรวจงาน</h2>
+        <?php if(isset($error)) echo "<p class='text-rose-500 text-sm mb-4 text-center'>$error</p>"; ?>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required class="w-full bg-slate-50 border rounded-xl px-4 py-3 mb-4 outline-none">
+            <input type="password" name="password" placeholder="Password" required class="w-full bg-slate-50 border rounded-xl px-4 py-3 mb-6 outline-none">
+            <button type="submit" name="login" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">เข้าสู่ระบบ</button>
+        </form>
+    </div>
+</body>
+</html>
+<?php
+    exit;
+}
+
+// ส่วนเนื้อหาเดิม (ต้องครอบด้วยเช็คสิทธิ์นี้)
 // ดึงข้อมูลโปรเจกต์และงวดงานเพื่อแสดงหัวข้อ
 $pj_res = mysqli_query($conn, "SELECT project_name FROM projects WHERE id = $project_id");
 $pj = mysqli_fetch_assoc($pj_res);
@@ -27,9 +72,48 @@ $existing_inspection = mysqli_fetch_assoc($check_res);
 
 $mode = $existing_inspection ? 'edit' : 'add';
 $data = $existing_inspection ?: [];
-?>
 
+// ถ้ามีการ Login แล้ว ให้ใช้ชื่อจาก session เป็นชื่อผู้ตรวจรับ 1 เสมอ
+if (isset($_SESSION['auth_fullname'])) {
+    $data['inspector_name_1'] = $_SESSION['auth_fullname'];
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจงานออนไลน์</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="shopping-cart.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
+
+   
+    </head>
+    <body class="bg-slate-50 font-sarabun min-h-screen">
 <div class="max-w-4xl mx-auto pb-20">
+    <?php if ($mode === 'edit'): ?>
+        <div class="bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 text-amber-800 p-5 rounded-2xl mb-6 shadow-sm flex items-start gap-4">
+            <div class="bg-amber-500 text-white p-2 rounded-xl">
+                <i class="fas fa-check-double text-lg"></i>
+            </div>
+            <div>
+                <p class="font-black text-amber-900">รายการนี้ตรวจรับแล้ว</p>
+                <p class="text-xs md:text-sm text-amber-700 mt-0.5">ข้อมูลในฟอร์มนี้เป็นข้อมูลล่าสุด คุณสามารถปรับปรุงและบันทึกใหม่ได้</p>
+            </div>
+        </div>
+    <?php endif; ?>
     <div class="flex items-center justify-between mb-8">
         <div>
             <h2 class="text-2xl font-black text-slate-800">แบบฟอร์มตรวจรับงาน (Inspection Form)</h2>
@@ -37,16 +121,6 @@ $data = $existing_inspection ?: [];
                 โครงการ: <span class="text-indigo-600 font-bold"><?= htmlspecialchars($pj['project_name']) ?></span> | 
                 งวดงาน: <span class="text-emerald-600 font-bold"><?= htmlspecialchars($ms['milestone_name']) ?></span>
             </p>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="view_inspection_public.php?project_id=<?= $project_id ?>&milestone_id=<?= $milestone_id ?>" 
-               target="_blank"
-               class="bg-sky-500 text-white px-4 py-2 rounded-xl hover:bg-sky-600 transition-all font-bold">
-                <i class="fas fa-external-link-alt mr-1"></i> ดูหน้าตรวจงาน (Public)
-            </a>
-            <button onclick="history.back()" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all font-bold">
-                <i class="fas fa-arrow-left mr-1"></i> ย้อนกลับ
-            </button>
         </div>
     </div>
 
@@ -217,7 +291,8 @@ $data = $existing_inspection ?: [];
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ 1</label>
                     <input type="text" name="inspector_name_1" value="<?= htmlspecialchars($data['inspector_name_1'] ?? '') ?>"
-                           class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                           <?= $mode === 'add' ? 'readonly' : '' ?>
+                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm <?= $mode === 'add' ? 'cursor-not-allowed opacity-75' : '' ?>">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ 2</label>
@@ -245,13 +320,10 @@ $data = $existing_inspection ?: [];
             <button type="submit" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all text-lg">
                 <i class="fas fa-save mr-2"></i> <?= $mode === 'edit' ? 'บันทึกการแก้ไข' : 'บันทึกผลการตรวจงาน' ?>
             </button>
-            <button type="button" onclick="history.back()" class="px-8 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-200 transition-all">
-                ยกเลิก
-            </button>
         </div>
     </form>
 </div>
-
+</body> 
 <script>
 $('#inspectionForm').on('submit', function(e) {
     e.preventDefault();
@@ -277,7 +349,7 @@ $('#inspectionForm').on('submit', function(e) {
             const formData = new FormData(this);
             
             $.ajax({
-                url: 'api/save_inspection.php',
+                url: 'api/save_inspection_publice.php',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -291,7 +363,7 @@ $('#inspectionForm').on('submit', function(e) {
                             icon: 'success',
                             heightAuto: false
                         }).then(() => {
-                            window.location.href = 'detail_project.php?id=<?= $project_id ?>';
+                            window.location.reload();
                         });
                     } else {
                         Swal.fire({
@@ -311,4 +383,3 @@ $('#inspectionForm').on('submit', function(e) {
 });
 </script>
 
-<?php include('footer.php'); ?>

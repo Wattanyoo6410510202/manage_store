@@ -207,11 +207,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                         </label>
                                         <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
                                             <input type="radio" name="budget_limit_type" value="mid" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                                            <span class="ml-2 text-[11px] font-bold text-slate-700">10,001 - 50,000</span>
+                                            <span class="ml-2 text-[11px] font-bold text-slate-700">10,001 - 99,999</span>
                                         </label>
                                         <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
                                             <input type="radio" name="budget_limit_type" value="high" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                                            <span class="ml-2 text-[11px] font-bold text-slate-700">มากกว่า 50,000</span>
+                                            <span class="ml-2 text-[11px] font-bold text-slate-700">มากกว่า 100,000</span>
                                         </label>
                                     </div>
                                 </div>
