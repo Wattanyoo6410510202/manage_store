@@ -24,7 +24,7 @@ $sql = "SELECT
         LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
-        WHERE p.deleted_at IS NULL 
+        WHERE p.deleted_at IS NULL AND p.is_internal = 1
         ORDER BY p.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
