@@ -62,7 +62,7 @@ if (!$customer) {
                                 </div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <span
-                                        class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
+                                        class="text-[12px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
                                         ID</span>
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
@@ -94,19 +94,19 @@ if (!$customer) {
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 ">
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันที่</label>
                                 <input type="date" name="doc_date" value="<?= date('Y-m-d') ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ยืนราคา
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">ยืนราคา
                                     (วัน)</label>
                                 <input type="number" name="valid_until" value="30"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">การชำระเงิน</label>
+                                    class="text-[12px] font-bold text-slate-800 uppercase block mb-1">การชำระเงิน</label>
                                 <select name="payment_term"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="30">เครดิต 30 วัน</option>
@@ -114,7 +114,7 @@ if (!$customer) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ภาษี (VAT
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">ภาษี (VAT
                                     %)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -126,7 +126,7 @@ if (!$customer) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย
                                     (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -199,7 +199,7 @@ if (!$customer) {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียดสินค้า / บริการ</th>
@@ -248,7 +248,7 @@ if (!$customer) {
                 <div
                     class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                     <div class="w-full md:flex-grow">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุ</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
                             class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
                             placeholder="เช่น เงื่อนไขการรับประกัน..."></textarea>

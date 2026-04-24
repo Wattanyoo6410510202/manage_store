@@ -193,7 +193,7 @@ include('header.php');
                                data-price="${item.price}"
                                onchange="updateSelection(this, 'row-${index}')">
                         <div class="w-6 h-6 bg-slate-100 border-2 border-slate-200 rounded-lg peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
-                            <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100"></i>
+                            <i class="fas fa-check text-white text-[12px] opacity-0 peer-checked:opacity-100"></i>
                         </div>
                     </label>
                 </div>
@@ -201,7 +201,7 @@ include('header.php');
                     <div class="flex justify-between items-start gap-2">
                         <div>
                             <h4 class="font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors">${item.supplier}</h4>
-                            <p class="text-[10px] text-slate-400 mt-1"><i class="fas fa-shield-alt mr-1"></i>Verified by AI Assistant</p>
+                            <p class="text-[12px] text-slate-400 mt-1"><i class="fas fa-shield-alt mr-1"></i>Verified by AI Assistant</p>
                         </div>
                         <div class="text-right">
                             <span class="text-xl font-black ${isBest ? 'text-emerald-600' : 'text-slate-700'}">
@@ -234,7 +234,7 @@ include('header.php');
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2 mb-2">
         <div>
             <h3 class="font-bold text-slate-800 text-lg">ราคาตลาดจริง: ${name}</h3>
-            <p class="text-[10px] text-emerald-500 font-bold"><i class="fas fa-check-circle mr-1"></i>เลือกรายการที่ต้องการเพื่อทำใบเปรียบเทียบ</p>
+            <p class="text-[12px] text-emerald-500 font-bold"><i class="fas fa-check-circle mr-1"></i>เลือกรายการที่ต้องการเพื่อทำใบเปรียบเทียบ</p>
         </div>
         <div id="selectionBadge" class="hidden">
             <div class="flex items-center gap-2 bg-indigo-600 text-white pl-4 pr-2 py-2 rounded-2xl border border-indigo-700 shadow-lg shadow-indigo-200">
@@ -263,12 +263,12 @@ include('header.php');
                                data-price="${cleanPrice}"
                                onchange="updateSelection(this, '${rowId}')">
                         <div class="w-6 h-6 bg-slate-100 border-2 border-slate-200 rounded-lg peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
-                            <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100"></i>
+                            <i class="fas fa-check text-white text-[12px] opacity-0 peer-checked:opacity-100"></i>
                         </div>
                     </label>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">${item.source}</div>
+                    <div class="text-[12px] text-slate-400 font-bold uppercase tracking-tighter">${item.source}</div>
                     <h4 class="font-bold text-slate-800 text-xs line-clamp-2 group-hover:text-indigo-600 transition-colors">${item.title}</h4>
                     <div class="mt-2 flex items-center justify-between">
                         <span class="text-lg font-black text-indigo-600">${item.price}</span>

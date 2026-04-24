@@ -29,7 +29,11 @@ $sql = "SELECT p.*,
                
                -- 4. ข้อมูลผู้อนุมัติและลายเซ็น
                u_app.name as approver_name, 
-               sig_app.path as approver_signature
+               sig_app.path as approver_signature,
+
+               -- 5. ข้อมูลคนสร้าง PR (กรณีอ้างอิง PR)
+               u_pr.name as pr_creator_name,
+               s_pr.company_name as pr_creator_sup
 
         FROM po p
         -- เชื่อมตาราง suppliers เพื่อเอาข้อมูลบริษัทเรา โดยใช้ supplier_id จาก po
@@ -40,6 +44,11 @@ $sql = "SELECT p.*,
         LEFT JOIN signatures sig_creator ON u_creator.id = sig_creator.users_id
         LEFT JOIN users u_app ON p.approved_by = u_app.id
         LEFT JOIN signatures sig_app ON u_app.id = sig_app.users_id
+
+        -- เชื่อม PR เพื่อเอาคนสร้าง
+        LEFT JOIN pr ON p.reference_no = pr.doc_no
+        LEFT JOIN users u_pr ON pr.created_by = u_pr.id
+        LEFT JOIN suppliers s_pr ON u_pr.sup_id = s_pr.id
         
         WHERE p.id = '$id' LIMIT 1";
 
@@ -254,7 +263,14 @@ function ReadNumber($number)
                 style="margin: 0 0 5px; font-size: 9px; font-weight: bold; color: var(--primary-color); text-transform: uppercase;">
                 ผู้รับสั่งซื้อ / ร้านค้า
             </p>
-            <h3 style="margin: 0; font-size: 14px; color: #0f172a;"><?= $data['customer_name'] ?></h3>
+            <h3 style="margin: 0; font-size: 14px; color: #0f172a;">
+                <?= !empty($data['pr_creator_name']) ? $data['pr_creator_name'] : $data['customer_name'] ?>
+            </h3>
+            <?php if (!empty($data['pr_creator_sup'])): ?>
+                <div style="margin: 2px 0 0; font-size: 12px; color: #64748b;">
+                    <b>หน่วยงาน:</b> <?= $data['pr_creator_sup'] ?>
+                </div>
+            <?php endif; ?>
 
             <div style="margin: 5px 0 0; font-size: 11px; color: #64748b; line-height: 1.5;">
                 <?= nl2br($data['cust_address']) ?><br>
@@ -298,11 +314,18 @@ function ReadNumber($number)
                     <?= (!empty($data['due_date']) && $data['due_date'] != '0000-00-00') ? date('d/m/Y', strtotime($data['due_date'])) : '-' ?>
                 </span>
             </div>
+            <div
+                style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
+                <span style="color: #64748b;">Express Code</span>
+                <span style="color: #0f172a; font-weight: bold;"><?= $data['express_ref_code'] ?></span>
+            </div>
 
             <div style="display: flex; justify-content: space-between; padding: 6px 0;">
                 <span style="color: #64748b;">เลขที่อ้างอิง</span>
                 <span style="color: #0f172a; font-weight: bold;"><?= $data['reference_no'] ?></span>
             </div>
+
+
         </div>
     </div>
 
@@ -440,7 +463,14 @@ function ReadNumber($number)
             <div style="width: 30%;">
                 <div class="sig-box" style="border-bottom: 1px solid #cbd5e1; height: 60px; margin-bottom: 10px;"></div>
                 <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้รับสั่งซื้อ / ร้านค้า</p>
-                <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">( <?= $data['customer_name'] ?> )</p>
+                <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">( 
+                    <?= !empty($data['pr_creator_name']) ? $data['pr_creator_name'] : $data['customer_name'] ?> 
+                )</p>
+                <?php if (!empty($data['pr_creator_sup'])): ?>
+                    <p style="margin: 0; font-size: 9px; color: #94a3b8;">
+                        หน่วยงาน: <?= $data['pr_creator_sup'] ?>
+                    </p>
+                <?php endif; ?>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
             </div>
 

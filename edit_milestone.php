@@ -103,7 +103,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="use_vat" <?= (isset($m_data['vat_amount']) && $m_data['vat_amount'] > 0) ? 'checked' : '' ?> onchange="calculateMoney()"
                                         class="rounded text-indigo-500">
-                                    <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
+                                    <label class="text-[12px] font-bold text-slate-500 uppercase">VAT 7%</label>
                                 </div>
 
                                 <div
@@ -126,7 +126,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
 
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
-                                <label class="text-[10px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
+                                <label class="text-[12px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
                                 <input type="checkbox" id="use_wht" <?= (isset($m_data['wht_amount']) && $m_data['wht_amount'] > 0) ? 'checked' : '' ?> onchange="calculateMoney()"
                                     class="rounded text-rose-500">
                             </div>
@@ -142,7 +142,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                                     <input type="number" id="retention_percent" name="retention_percent"
                                         value="<?= isset($m_data['retention_percent']) ? (float) $m_data['retention_percent'] : 0 ?>"
                                         oninput="calculateMoney()"
-                                        class="w-8 text-center bg-transparent text-[10px] font-bold text-slate-600 focus:outline-none">
+                                        class="w-8 text-center bg-transparent text-[12px] font-bold text-slate-600 focus:outline-none">
                                     <span class="text-[9px] font-bold text-slate-400">%</span>
                                 </div>
                                 <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
@@ -155,14 +155,14 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                                 <input type="text" name="deduction_note" id="deduction_note"
                                     value="<?= htmlspecialchars($m_data['deduction_note'] ?? '') ?>"
                                     placeholder="หมายเหตุการหัก..."
-                                    class="w-full text-[10px] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none text-slate-600">
+                                    class="w-full text-[12px] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none text-slate-600">
                             </div>
                             <label class="text-[9px] font-bold text-slate-400 uppercase mt-1 block">เงินประกัน /
                                 หักอื่นๆ</label>
                         </div>
 
                         <div class="p-4 bg-indigo-600 rounded-xl text-white ">
-                            <label class="text-[10px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
+                            <label class="text-[12px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
                             <p class="text-xl font-black" id="total_request_display">0.00 ฿</p>
                         </div>
                     </div>
@@ -243,7 +243,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                     <h3 class="text-sm font-bold text-slate-800 mb-3">หลักฐานการเบิก (อัปโหลดใหม่เพื่อเปลี่ยน)</h3>
                     <?php if (!empty($m_data['claim_attachment'])): ?>
                         <div
-                            class="mb-3 p-2 bg-slate-50 rounded-lg border flex items-center gap-2 text-[10px] text-slate-500">
+                            class="mb-3 p-2 bg-slate-50 rounded-lg border flex items-center gap-2 text-[12px] text-slate-500">
                             <i class="fas fa-paperclip"></i> ไฟล์เดิม: <?= $m_data['claim_attachment'] ?>
                         </div>
                     <?php endif; ?>
@@ -251,7 +251,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                         class="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 cursor-pointer">
                         <input type="file" name="claim_attachment" class="absolute inset-0 opacity-0 cursor-pointer"
                             onchange="document.getElementById('file-label').innerText = this.files[0].name">
-                        <p id="file-label" class="text-[10px] text-slate-400 truncate">คลิกเพื่อเปลี่ยนไฟล์หลักฐาน</p>
+                        <p id="file-label" class="text-[12px] text-slate-400 truncate">คลิกเพื่อเปลี่ยนไฟล์หลักฐาน</p>
                     </div>
                 </div>
             </div>

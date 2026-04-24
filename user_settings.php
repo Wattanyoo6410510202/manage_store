@@ -6,24 +6,11 @@ include('assets/alert.php');
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
-<div class="max-w-7xl mx-auto space-y-6 p-4">
-    <div class="flex items-center justify-between">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-800">ตั้งค่าผู้ใช้งาน</h2>
-        </div>
-        <button type="button" onclick="resetUserForm()" class="text-sm text-indigo-600 hover:underline">
-            <i class="fas fa-plus-circle mr-1"></i> เพิ่มผู้ใช้งานใหม่
-        </button>
-    </div>
-
+<div class="container-fluid p-0">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-4">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden sticky top-6">
-                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
-                    <h3 id="form-title" class="font-bold text-slate-700">ลงทะเบียนผู้ใช้งาน</h3>
-                </div>
-
-                <form id="user-form" action="api/process_user.php" method="POST" class="p-6 space-y-4">
+                <form id="user-form" action="api/process_user.php" method="POST" class="p-2 space-y-4">
                     <input type="hidden" name="user_id" id="form-user-id" value="">
 
                     <div>
@@ -42,7 +29,7 @@ include('assets/alert.php');
                         <input type="password" name="password" id="form-password"
                             class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none transition"
                             placeholder="กำหนดรหัสผ่าน">
-                        <p id="pw-hint" class="text-[10px] text-indigo-400 mt-1 hidden italic">
+                        <p id="pw-hint" class="text-[12px] text-indigo-400 mt-1 hidden italic">
                             <i class="fas fa-info-circle mr-1"></i> เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่านเดิม
                         </p>
                     </div>
@@ -53,12 +40,30 @@ include('assets/alert.php');
                             <option value="staff">Staff (พนักงานทั่วไป)</option>
                             <option value="admin">Admin (ผู้ดูแลระบบ)</option>
                             <option value="gm">GM (ผู้จัดการ)</option>
-                             <option value="gmhok">GM HOK (ผู้จัดการ HOK)</option>
+                            <option value="mgr">Manager (ผู้จัดการ)</option>
+                            <option value="mgr2">Manager 2 (ผู้จัดการ 2)</option>
+                            <option value="acc">Account (บัญชี)</option>
+                            <option value="gmhok">GM HOK (ผู้จัดการ HOK)</option>
                             <option value="hok">HOK (ผู้ปฏิบัติงานพิเศษ)</option>
                             <option value="procure">Procurement (ผู้จัดซื้อ)</option>
                             <option value="fin">Finance (ผู้จัดการการเงิน)</option>
                             <option value="viewer">Viewer (ผู้ชม)</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <select name="supplier_id" id="form-supplier-id"
+                            class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none bg-white appearance-none">
+                            <option value="0">-- ไม่ระบุ Supplier --</option>
+                            <?php
+                            $sup_query = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
+                            while ($sup = mysqli_fetch_assoc($sup_query)): ?>
+                                <option value="<?= $sup['id'] ?>"><?= $sup['company_name'] ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                        <p class="text-[12px] text-slate-400 mt-1 italic">
+                            <i class="fas fa-info-circle mr-1"></i> ผูกผู้ใช้งานกับ Supplier (ถ้ามี)
+                        </p>
                     </div>
 
                     <div class="pt-2">
@@ -73,18 +78,25 @@ include('assets/alert.php');
 
         <div class="lg:col-span-8">
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center justify-between">
+                    <button type="button" onclick="resetUserForm()" class="text-sm text-indigo-600 hover:underline">
+                        <i class="fas fa-plus-circle mr-1"></i> เพิ่มผู้ใช้งานใหม่
+                    </button>
+                </div>
                 <table id="userTable" class="table table-hover w-full">
                     <thead>
-                        <tr class="text-slate-400 text-[11px] uppercase">
+                        <tr class="text-slate-800 text-[11px] uppercase">
                             <th>ผู้ใช้งาน</th>
                             <th>Username</th>
                             <th>ระดับสิทธิ์</th>
+                            <th>Supplier</th>
                             <th class="text-center">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
                         <?php
-                        $query = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
+                        // เปลี่ยนจาก users.supplier_id เป็น users.sup_id
+                        $query = mysqli_query($conn, "SELECT users.*, suppliers.company_name FROM users LEFT JOIN suppliers ON users.sup_id = suppliers.id ORDER BY users.id DESC");
                         while ($row = mysqli_fetch_assoc($query)):
                             $json_data = htmlspecialchars(json_encode($row, JSON_UNESCAPED_UNICODE));
                             ?>
@@ -105,10 +117,10 @@ include('assets/alert.php');
                                     $role_styles = [
                                         'admin' => 'bg-purple-100 text-purple-600',   // ผู้ดูแลระบบ (สีม่วง) - เหมือนเดิม
                                         'gm' => 'bg-amber-100 text-amber-600',     // ผู้จัดการ (สีส้ม/ทอง) - เหมือนเดิม
-                                        'staff' => 'bg-blue-100 text-blue-600', 
-                                         'procure' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า) - เหมือนเดิม
-                                         'fin' => 'bg-green-100 text-green-600',       // ผู้จัดการการเงิน (สีเขียว) - เพิ่มใหม่
-
+                                        'staff' => 'bg-blue-100 text-blue-600',
+                                        'procure' => 'bg-blue-100 text-blue-600',       // พนักงาน (สีฟ้า) - เหมือนเดิม
+                                        'fin' => 'bg-green-100 text-green-600',       // ผู้จัดการการเงิน (สีเขียว) - เพิ่มใหม่
+                                
                                         // --- จุดที่เปลี่ยนใหม่ให้ต่างกันครับจาร ---
                                 
                                         'gmhok' => 'bg-rose-100 text-rose-600',       // GM HOK (สีชมพูเข้ม/แดง) - ให้ดูเด่นระดับผู้บริหาร
@@ -121,10 +133,13 @@ include('assets/alert.php');
                                     ?>
 
                                     <span
-                                        class="px-3 py-1 rounded-full text-[10px] font-bold uppercase <?= $current_style ?>">
+                                        class="px-3 py-1 rounded-full text-[12px] font-bold uppercase <?= $current_style ?>">
                                         <i class="fas fa-circle text-[6px] mr-1 opacity-50"></i>
                                         <?= htmlspecialchars($row['role']) ?>
                                     </span>
+                                </td>
+                                <td class="text-slate-500 text-xs">
+                                    <?= $row['company_name'] ? htmlspecialchars($row['company_name']) : '<span class="text-slate-300 italic">ไม่ระบุ</span>' ?>
                                 </td>
                                 <td class="text-center space-x-2">
                                     <button type="button" class="text-indigo-400 hover:text-indigo-600 transition p-2"
@@ -165,6 +180,10 @@ include('assets/alert.php');
         $('#form-name').val(data.name);
         $('#form-username').val(data.username);
         $('#form-role').val(data.role);
+
+        // --- จุดที่ต้องแก้คือตรงนี้ครับจาร ---
+        // เปลี่ยนจาก data.supplier_id เป็น data.sup_id ให้ตรงกับ SQL ที่ Query ออกมา
+        $('#form-supplier-id').val(data.sup_id || '0');
 
         // สำหรับการแก้ไข รหัสผ่านไม่ต้อง Required
         $('#form-password').val('').attr('placeholder', 'ป้อนรหัสใหม่ถ้าต้องการเปลี่ยน');

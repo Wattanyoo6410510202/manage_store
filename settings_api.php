@@ -113,7 +113,7 @@ include 'header.php';
                     <i class="fas fa-search-plus text-5xl text-indigo-600"></i>
                 </div>
                 <div class="relative z-10">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">SerpApi Quota</p>
+                    <p class="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">SerpApi Quota</p>
                     <?php if ($serp_status): ?>
                         <div class="flex items-end gap-2 mb-3">
                             <span class="text-3xl font-extrabold text-slate-800"><?= $serp_status['remaining'] ?></span>
@@ -162,7 +162,7 @@ include 'header.php';
         </div>
 
         <?php if (strpos($msg_status, 'success') !== false): ?>
-            <script>Swal.fire({ icon: 'success', title: 'ดำเนินการสำเร็จ', timer: 1500, showConfirmButton: false });</script>
+            <script>Swal.fire({ icon: 'success', title: 'ดำเนินการสำเร็จ', timer: 1500, showConfirmButton: false, heightAuto: false });</script>
         <?php endif; ?>
 
         <div class="bg-white rounded-3xl  border border-slate-200 overflow-hidden">
@@ -180,13 +180,13 @@ include 'header.php';
                         <tr class="hover:bg-slate-50/50 transition">
                             <td class="p-4">
                                 <span
-                                    class="px-3 py-1 text-[10px] font-bold rounded-lg <?= $row['category'] == 'API' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600' ?>">
+                                    class="px-3 py-1 text-[12px] font-bold rounded-lg <?= $row['category'] == 'API' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600' ?>">
                                     <?= $row['category'] ?>
                                 </span>
                             </td>
                             <td class="p-4">
                                 <div class="font-mono text-sm font-bold text-slate-700"><?= $row['setting_key'] ?></div>
-                                <div class="text-[10px] text-slate-400 mt-1"><?= $row['description'] ?></div>
+                                <div class="text-[12px] text-slate-400 mt-1"><?= $row['description'] ?></div>
                             </td>
                             <td class="p-4">
                                 <form method="POST" class="flex gap-2">
@@ -260,7 +260,8 @@ include 'header.php';
                 showCancelButton: true,
                 confirmButtonColor: '#4F46E5',
                 confirmButtonText: 'ลบข้อมูล',
-                cancelButtonText: 'ยกเลิก'
+                cancelButtonText: 'ยกเลิก',
+                heightAuto: false
             }).then((result) => {
                 if (result.isConfirmed) { window.location.href = 'settings.php?delete_id=' + id; }
             })

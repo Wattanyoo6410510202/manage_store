@@ -51,7 +51,7 @@ $(document).ready(function () {
 
           const nameDisplay = `
                             <div class="font-bold text-slate-700">${rowData.customer_name}</div>
-                            <div class="text-[10px] text-slate-400">
+                            <div class="text-[12px] text-slate-400">
                                 <i class="fas fa-user mr-1"></i>${rowData.contact_person} | <i class="fas fa-phone mr-1"></i>${rowData.phone}
                             </div>
                         `;

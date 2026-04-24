@@ -33,19 +33,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         if ($is_valid) {
-            // --- เก็บแบบที่คุณให้จำ (สำหรับระบบใหม่) ---
-            $_SESSION['user_id'] = $user_data['id'];
-            $_SESSION['user'] = $user_data['username']; // <--- index.php เช็คตัวนี้ในบรรทัดที่ 4
-            $_SESSION['user_name'] = $user_data['name'];
-            $_SESSION['role'] = $user_data['role'];
+    // --- เก็บแบบที่คุณให้จำ (สำหรับระบบใหม่) ---
+    $_SESSION['user_id'] = $user_data['id'];
+    $_SESSION['user'] = $user_data['username'];
+    $_SESSION['user_name'] = $user_data['name'];
+    $_SESSION['role'] = $user_data['role'];
+    
+    // เพิ่มการเก็บ sup_id เข้า Session
+    $_SESSION['sup_id'] = $user_data['sup_id']; // <--- ดึงจาก Column ที่ 2 ใน DB มาเก็บไว้
 
-            // --- เก็บเพิ่มเพื่อให้ index.php แสดงผลได้ (สำหรับระบบเดิม) ---
-            $_SESSION['username'] = $user_data['username']; // <--- index.php ใช้ตัวนี้โชว์ชื่อที่เมนู
-            $_SESSION['is_logged_in'] = true;
-            $_SESSION['login_time'] = time();
+    // --- เก็บเพิ่มเพื่อให้ index.php แสดงผลได้ (สำหรับระบบเดิม) ---
+    $_SESSION['username'] = $user_data['username'];
+    $_SESSION['is_logged_in'] = true;
+    $_SESSION['login_time'] = time();
 
-            header("Location: index.php");
-            exit;
+    header("Location: e_service.php");
+    exit;
+
         } else {
             $error = "รหัสผ่านไม่ถูกต้อง";
         }
@@ -165,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="login-logo">
             <i class="bi bi-shield-lock-fill"></i>
         </div>
-        <h4 class="login-title">เข้าสู่ระบบจัดซื้อ</h4>
+        <h4 class="login-title">เข้าสู่ระบบ E-Service</h4>
 
         <?php if (isset($error)): ?>
             <div class="error-msg">

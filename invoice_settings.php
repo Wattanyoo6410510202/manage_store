@@ -56,7 +56,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                         </div>
 
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
                             <option value="0">ไม่ระบุ / อื่นๆ</option>
@@ -73,7 +73,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                                 <div id="comp_name" class="text-base font-black text-slate-800 leading-tight">-</div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <span
-                                        class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
+                                        class="text-[12px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
                                         ID</span>
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
@@ -96,21 +96,21 @@ $default_inv_no = "INV" . date('Ym') . "-001";
 
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่ออกบิล</label>
+                                    class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันที่ออกบิล</label>
                                 <input type="date" name="invoice_date" id="invoice_date" value="<?= date('Y-m-d') ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
 
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันครบกำหนด</label>
+                                    class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันครบกำหนด</label>
                                 <input type="date" name="due_date" id="due_date"
                                     value="<?= date('Y-m-d', strtotime('+30 days')) ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">สถานะ</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">สถานะ</label>
                                 <select name="status"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="pending" selected>รอชำระ</option>
@@ -120,7 +120,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">VAT (%)</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">VAT (%)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="7" selected>7%</option>
@@ -130,7 +130,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             </div>
 
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">WHT (%)</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">WHT (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="0" selected>0%</option>
@@ -184,7 +184,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียด (Description)</th>
@@ -239,7 +239,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                     class="p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-8">
                     <div class="w-full md:flex-grow">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase block mb-2 tracking-widest">หมายเหตุ
+                            class="text-[12px] font-bold text-slate-800 uppercase block mb-2 tracking-widest">หมายเหตุ
                             (Remark)</label>
                         <textarea name="remark" rows="3"
                             class="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-y"

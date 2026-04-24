@@ -57,22 +57,36 @@ $result = mysqli_query($conn, $sql);
             </select>
         </div>
 
+        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+            <button onclick="setViewMode('grid')" id="gridBtn"
+                class="w-9 h-9 flex items-center justify-center rounded-lg transition-all">
+                <i class="fas fa-th-large"></i>
+            </button>
+            <button onclick="setViewMode('table')" id="tableBtn"
+                class="w-9 h-9 flex items-center justify-center rounded-lg transition-all">
+                <i class="fas fa-list"></i>
+            </button>
+        </div>
+
         <button onclick="resetFilters()"
             class="text-slate-500 hover:text-indigo-600 text-sm font-medium transition-colors px-2">
             <i class="fas fa-undo-alt mr-1"></i> ล้างตัวกรอง
         </button>
         <button onclick="location.href='add_project.php'"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all ">
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all text-sm">
             <i class="fas fa-plus-circle"></i> สร้างงานใหม่
         </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <?php while ($row = mysqli_fetch_assoc($result)):
+    <!-- Grid View -->
+    <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <?php 
+        mysqli_data_seek($result, 0);
+        while ($row = mysqli_fetch_assoc($result)):
             $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
             $pj_id = $row['id'];
             ?>
-            <div class="project-card group bg-white rounded-2xl border border-slate-200 p-4 transition-all "
+            <div class="project-item project-card group bg-white rounded-2xl border border-slate-200 p-4 transition-all "
                 data-user="<?= $row['created_by'] ?>" data-name="<?= htmlspecialchars($row['project_name']) ?>"
                 data-company="<?= $row['supplier_id'] ?>">
                 <div class="flex gap-4">
@@ -115,7 +129,7 @@ $result = mysqli_query($conn, $sql);
                                             }
                                             ?>
                                             <i class="fas <?= $icon ?> <?= $color ?> text-5xl mb-2 opacity-50"></i>
-                                            <p class="text-[10px] font-bold text-slate-800 uppercase"><?= $ext ?> FILE</p>
+                                            <p class="text-[12px] font-bold text-slate-800 uppercase"><?= $ext ?> FILE</p>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -124,7 +138,7 @@ $result = mysqli_query($conn, $sql);
                             <div
                                 class="h-[220px] flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
                                 <i class="fas fa-file-circle-exclamation text-slate-200 text-3xl mb-2"></i>
-                                <p class="text-[10px] text-slate-800 uppercase font-bold tracking-widest">No Attachment</p>
+                                <p class="text-[12px] text-slate-800 uppercase font-bold tracking-widest">No Attachment</p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -133,29 +147,24 @@ $result = mysqli_query($conn, $sql);
                         <div>
                             <div class="flex justify-between items-start mb-3">
 
-                                <div class="flex flex-wrap gap-2 items-center">
+                                <div class="flex flex-wrap gap-1.5 items-center">
                                     <button onclick="viewProjectDetails(<?= $pj_id ?>)"
-                                        class="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-200 shadow-sm active:transform active:scale-95">
-                                        <i
-                                            class="fas fa-file-invoice-dollar text-[9px] opacity-70 group-hover:opacity-100"></i>
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
                                         เบิกงวด
                                     </button>
 
                                     <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
-                                        class="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all duration-200 shadow-sm active:transform active:scale-95">
-                                        <i class="fas fa-eye text-[9px] opacity-70 group-hover:opacity-100"></i>
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
                                         ดูงวด
                                     </a>
 
                                     <a href="edit_project.php?id=<?= $pj_id ?>"
-                                        class="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all duration-200 shadow-sm active:transform active:scale-95">
-                                        <i class="fas fa-edit text-[9px] opacity-70 group-hover:opacity-100"></i>
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
                                         แก้ไข
                                     </a>
 
                                     <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
-                                        class="group flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all duration-200 shadow-sm active:transform active:scale-95">
-                                        <i class="fas fa-trash-alt text-[9px] opacity-70 group-hover:opacity-100"></i>
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm">
                                         ลบ
                                     </button>
                                 </div>
@@ -163,13 +172,13 @@ $result = mysqli_query($conn, $sql);
 
                             <h3 class="font-bold text-slate-800 text-sm mb-0.5 truncate"
                                 title="<?= $row['project_name'] ?>"><?= $row['project_name'] ?></h3>
-                            <p class="text-[10px] text-slate-800 mb-3">
+                            <p class="text-[12px] text-slate-800 mb-3">
                                 <i class="far fa-calendar-alt mr-1"></i> จบงาน:
                                 <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
                             </p>
                             <div class="space-y-2.5">
                                 <div>
-                                    <div class="flex justify-between text-[10px] mb-1">
+                                    <div class="flex justify-between text-[12px] mb-1">
                                         <span class="text-slate-800">การเบิกเงิน</span>
                                         <span class="font-bold text-indigo-600"><?= number_format($progress, 1) ?>%</span>
                                     </div>
@@ -220,6 +229,93 @@ $result = mysqli_query($conn, $sql);
             </div>
         <?php endwhile; ?>
     </div>
+
+    <!-- Table View -->
+    <div id="tableView" class="hidden overflow-x-auto bg-white rounded-2xl border border-slate-200">
+        <table class="w-full text-left border-collapse min-w-[1000px]">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">โครงการ</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">มูลค่าสัญญา</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">รับแล้ว</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ความคืบหน้า</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php 
+                mysqli_data_seek($result, 0);
+                while ($row = mysqli_fetch_assoc($result)):
+                    $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
+                    $pj_id = $row['id'];
+                    ?>
+                    <tr class="project-item project-row hover:bg-slate-50/50 transition-colors"
+                        data-user="<?= $row['created_by'] ?>" data-name="<?= htmlspecialchars($row['project_name']) ?>"
+                        data-company="<?= $row['supplier_id'] ?>">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                                    <i class="fas fa-briefcase"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-800 line-clamp-1" title="<?= $row['project_name'] ?>">
+                                        <?= $row['project_name'] ?>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                                        <?= $row['project_no'] ?> • จบงาน: <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="inline-block text-[10px] px-2 py-0.5 rounded-md font-bold border <?= $row['project_status'] == 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-800 border-slate-200' ?>">
+                                <?php
+                                if ($row['project_status'] == 'active') echo 'กำลังดำเนินการ';
+                                elseif ($row['project_status'] == 'completed') echo 'เสร็จสิ้น';
+                                else echo 'รอดำเนินการ';
+                                ?>
+                            </span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="text-sm font-bold text-slate-700"><?= number_format($row['contract_value'], 2) ?></div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="text-sm font-bold text-emerald-600"><?= number_format($row['collected_money'], 2) ?></div>
+                        </td>
+                        <td class="p-4 min-w-[150px]">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-500 rounded-full" style="width: <?= $progress ?>%"></div>
+                                </div>
+                                <span class="text-[11px] font-bold text-indigo-600 whitespace-nowrap"><?= number_format($progress, 1) ?>%</span>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <div class="flex justify-center items-center gap-1.5">
+                                <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="เบิกงวด">
+                                    <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                </button>
+                                <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="ดูงวด">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </a>
+                                <a href="edit_project.php?id=<?= $pj_id ?>"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="แก้ไข">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </a>
+                                <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="ลบ">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div id="viewModal"
@@ -242,6 +338,35 @@ $result = mysqli_query($conn, $sql);
 </div>
 
 <script>
+    function setViewMode(mode) {
+        localStorage.setItem('project_view_mode', mode);
+        updateViewUI();
+    }
+
+    function updateViewUI() {
+        const mode = localStorage.getItem('project_view_mode') || 'grid';
+        const gridView = document.getElementById('gridView');
+        const tableView = document.getElementById('tableView');
+        const gridBtn = document.getElementById('gridBtn');
+        const tableBtn = document.getElementById('tableBtn');
+
+        if (mode === 'grid') {
+            gridView.classList.remove('hidden');
+            tableView.classList.add('hidden');
+            gridBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+            gridBtn.classList.remove('text-slate-400');
+            tableBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+            tableBtn.classList.add('text-slate-400');
+        } else {
+            gridView.classList.add('hidden');
+            tableView.classList.remove('hidden');
+            tableBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
+            tableBtn.classList.remove('text-slate-400');
+            gridBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
+            gridBtn.classList.add('text-slate-400');
+        }
+    }
+
     function viewProjectDetails(id) {
         // แทนที่จะเปิด Modal เราจะย้ายหน้าไปที่ไฟล์รายละเอียดโครงการแทน
         // โดยส่ง ID ผ่าน URL Parameter ครับจาร
@@ -289,12 +414,12 @@ $result = mysqli_query($conn, $sql);
         const search = document.getElementById('projectSearch').value.toLowerCase();
         const user = document.getElementById('userFilter').value;
         const company = document.getElementById('companyFilter').value;
-        const cards = document.querySelectorAll('.project-card');
+        const items = document.querySelectorAll('.project-item');
 
-        cards.forEach(card => {
-            const name = card.getAttribute('data-name').toLowerCase();
-            const userId = card.getAttribute('data-user');
-            const companyId = card.getAttribute('data-company'); // ค่าที่ดึงมาจาก $row['supplier_id']
+        items.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const userId = item.getAttribute('data-user');
+            const companyId = item.getAttribute('data-company'); // ค่าที่ดึงมาจาก $row['supplier_id']
 
             const matchSearch = name.includes(search);
             const matchUser = (user === "" || userId === user);
@@ -313,18 +438,20 @@ $result = mysqli_query($conn, $sql);
             // --------------------------
 
             if (matchSearch && matchUser && matchCompany) {
-                card.style.display = "";
+                item.style.display = "";
             } else {
-                card.style.display = "none";
+                item.style.display = "none";
             }
         });
     }
     function resetFilters() {
         document.getElementById('projectSearch').value = '';
         document.getElementById('userFilter').value = '';
+        document.getElementById('companyFilter').value = '';
         filterProjects();
     }
     document.addEventListener("DOMContentLoaded", function () {
+        updateViewUI();
         filterProjects();
     });
 </script>

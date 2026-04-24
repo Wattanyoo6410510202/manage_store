@@ -78,7 +78,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 </div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <span
-                                        class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
+                                        class="text-[12px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
                                         ID</span>
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
@@ -106,25 +106,25 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">เลขที่เอกสาร</label>
+                                    class="text-[12px] font-bold text-slate-800 uppercase block mb-1">เลขที่เอกสาร</label>
                                 <input type="text" name="doc_no" value="<?= htmlspecialchars($data['doc_no']) ?>"
                                     readonly
                                     class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold outline-none text-slate-500 cursor-not-allowed">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันที่</label>
                                 <input type="date" name="doc_date" value="<?= $data['doc_date'] ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ยืนราคา
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">ยืนราคา
                                     (วัน)</label>
                                 <input type="number" name="valid_until" value="<?= $data['valid_until'] ?? 30 ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                             </div>
                             <div>
                                 <label
-                                    class="text-[10px] font-bold text-slate-800 uppercase block mb-1">การชำระเงิน</label>
+                                    class="text-[12px] font-bold text-slate-800 uppercase block mb-1">การชำระเงิน</label>
                                 <select name="payment_term"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
                                     <option value="30" <?= ($data['payment_term'] == '30') ? 'selected' : '' ?>>เครดิต 30
@@ -135,7 +135,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">ภาษี (VAT
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">ภาษี (VAT
                                     %)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateTotal()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -148,7 +148,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย
                                     (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:border-indigo-500">
@@ -216,7 +216,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
+                            class="bg-slate-50 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียดสินค้า / บริการ</th>
@@ -276,7 +276,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <div
                     class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                     <div class="w-full md:flex-grow">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุ</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุ</label>
                         <textarea name="notes" rows="3"
                             class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"><?= htmlspecialchars($data['notes']) ?></textarea>
                     </div>

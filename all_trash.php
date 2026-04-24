@@ -71,7 +71,7 @@ $result = mysqli_query($conn, $sql);
                                 data-type="<?= $row['type'] ?>">
                         </td>
                         <td><span
-                                class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase <?= $row['type'] == 'pr' ? 'bg-blue-100 text-blue-600' : ($row['type'] == 'po' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600') ?>"><?= $row['type'] ?></span>
+                                class="px-2.5 py-1 rounded-md text-[12px] font-black uppercase <?= $row['type'] == 'pr' ? 'bg-blue-100 text-blue-600' : ($row['type'] == 'po' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600') ?>"><?= $row['type'] ?></span>
                         </td>
                         <td class="font-bold font-mono tracking-tighter"><?= $row['doc_no'] ?></td>
                         <td data-order="<?= strtotime($row['deleted_at']) ?>">

@@ -92,7 +92,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="use_vat" checked onchange="calculateMoney()"
                                         class="rounded text-indigo-500">
-                                    <label class="text-[10px] font-bold text-slate-500 uppercase">VAT 7%</label>
+                                    <label class="text-[12px] font-bold text-slate-500 uppercase">VAT 7%</label>
                                 </div>
 
                                 <div
@@ -113,7 +113,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
 
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
-                                <label class="text-[10px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
+                                <label class="text-[12px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
                                 <input type="checkbox" id="use_wht" checked onchange="calculateMoney()"
                                     class="rounded ">
                             </div>
@@ -131,7 +131,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                                         <span class="text-[9px] font-bold text-slate-400">หัก</span>
                                         <input type="number" id="retention_percent" name="retention_percent"
                                             value="<?= $m_data['retention_percent'] ?? 0 ?>" oninput="calculateMoney()"
-                                            class="w-8 text-center bg-transparent text-[10px] font-bold text-slate-600 focus:outline-none"
+                                            class="w-8 text-center bg-transparent text-[12px] font-bold text-slate-600 focus:outline-none"
                                             placeholder="0">
                                         <span class="text-[9px] font-bold text-slate-400">%</span>
                                     </div>
@@ -140,7 +140,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                                     <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
                                         class="rounded text-slate-500 w-3 h-3 focus:ring-0 cursor-pointer">
                                     <label for="use_deduction"
-                                        class="text-[10px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
+                                        class="text-[12px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
                                         / หักอื่นๆ</label>
                                 </div>
                             </div>
@@ -149,11 +149,11 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
 
                             <input type="text" id="deduction_note" name="deduction_note"
                                 value="<?= $m_data['deduction_note'] ?? '' ?>" placeholder="เงินประกัน/ หักอื่นๆ"
-                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[10px] text-slate-500 focus:outline-none placeholder:text-slate-300">
+                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[12px] text-slate-500 focus:outline-none placeholder:text-slate-300">
                         </div>
 
                         <div class="p-4 bg-indigo-600 rounded-xl -md text-white">
-                            <label class="text-[10px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
+                            <label class="text-[12px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
                             <p class="text-xl font-black" id="total_request_display">0.00 ฿</p>
                         </div>
                     </div>
@@ -234,7 +234,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                         class="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 cursor-pointer">
                         <input type="file" name="claim_attachment" class="absolute inset-0 opacity-0 cursor-pointer"
                             onchange="document.getElementById('file-label').innerText = this.files[0].name">
-                        <p id="file-label" class="text-[10px] text-slate-400 truncate">คลิกเพื่อเลือกไฟล์</p>
+                        <p id="file-label" class="text-[12px] text-slate-400 truncate">คลิกเพื่อเลือกไฟล์</p>
                     </div>
                 </div>
             </div>

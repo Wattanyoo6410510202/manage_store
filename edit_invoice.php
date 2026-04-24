@@ -53,7 +53,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </div>
                         </div>
 
-                        <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">เลือกบริษัทผู้ออกบิล</label>
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold text-slate-700 mb-5 outline-none focus:border-indigo-500">
                             <option value="0">ไม่ระบุ / อื่นๆ</option>
@@ -69,7 +69,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             <div>
                                 <div id="comp_name" class="text-base font-black text-slate-800 leading-tight">-</div>
                                 <div class="flex items-center gap-2 mt-2">
-                                    <span class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax ID</span>
+                                    <span class="text-[12px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax ID</span>
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
                             </div>
@@ -88,17 +88,17 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     <div class="bg-white p-6 rounded-2xl border border-slate-200">
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันที่ออกบิล</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันที่ออกบิล</label>
                                 <input type="date" name="invoice_date" value="<?= $invoice['invoice_date'] ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">วันครบกำหนด</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">วันครบกำหนด</label>
                                 <input type="date" name="due_date" value="<?= $invoice['due_date'] ?>"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">สถานะ</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">สถานะ</label>
                                 <select name="status" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none">
                                     <option value="pending" <?= ($invoice['status'] == 'pending') ? 'selected' : '' ?>>รอชำระ</option>
                                     <option value="paid" <?= ($invoice['status'] == 'paid') ? 'selected' : '' ?>>ชำระแล้ว</option>
@@ -106,7 +106,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">VAT (%)</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">VAT (%)</label>
                                 <select name="vat_percent" id="vat_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none">
                                     <option value="7" <?= ($invoice['vat_percent'] == 7) ? 'selected' : '' ?>>7%</option>
@@ -117,7 +117,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-slate-800 uppercase block mb-1">WHT (%)</label>
+                                <label class="text-[12px] font-bold text-slate-800 uppercase block mb-1">WHT (%)</label>
                                 <select name="wht_percent" id="wht_percent" onchange="calculateAll()"
                                     class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none">
                                     <option value="0" <?= ($invoice['wht_percent'] == 0) ? 'selected' : '' ?>>0%</option>
@@ -159,7 +159,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
-                        <thead class="bg-slate-50 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
+                        <thead class="bg-slate-50 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3 w-12 text-center">#</th>
                                 <th class="px-4 py-3">รายละเอียด (Description)</th>
@@ -212,7 +212,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 
                 <div class="p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-8">
                     <div class="w-full md:flex-grow">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase block mb-2 tracking-widest">หมายเหตุ (Remark)</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase block mb-2 tracking-widest">หมายเหตุ (Remark)</label>
                         <textarea name="remark" rows="3" class="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500"><?= htmlspecialchars($invoice['remark']) ?></textarea>
                     </div>
 

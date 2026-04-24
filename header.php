@@ -76,7 +76,11 @@ $is_quotation_active = in_array($current_page, ['doc_list.php', 'view_quotation.
 $is_pr_active = in_array($current_page, ['pr_list.php', 'view_pr.php', 'edit_pr.php', 'add_pr.php', 'pr_settings.php']);
 $is_po_active = in_array($current_page, ['po_list.php', 'view_po.php', 'edit_po.php', 'add_po.php', 'po_settings.php']);
 $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.php', 'edit_invoice.php', 'add_invoice.php', 'invoice_settings.php']);
-// 3. กลุ่ม "ตั้งค่า"
+
+// 3. กลุ่ม "ขอซื้อ"
+$is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
+
+// 4. กลุ่ม "ตั้งค่า"
 $is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php']);
 
 // ==========================================
@@ -91,7 +95,37 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
     exit;
 }
 // ==========================================
+// [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
+// ==========================================
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php'];
+$cat_settings = ['settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
+// อื่นๆ คือ cat_system
 
+$active_cat = 'system'; 
+if (in_array($current_page, $cat_main)) $active_cat = 'main';
+if (in_array($current_page, $cat_settings)) $active_cat = 'settings';
+
+// ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role ตัวเอง
+$pending_count = 0;
+require_once 'config.php';
+$user_role_for_count = $_SESSION['role'] ?? '';
+$pending_sql = "SELECT COUNT(*) as total FROM pr WHERE deleted_at IS NULL AND status = 'pending'";
+
+if ($user_role_for_count === 'procure') {
+    $pending_sql .= " AND approved_by IS NULL";
+} elseif ($user_role_for_count === 'acc') {
+    $pending_sql .= " AND approved_by_1 IS NULL";
+} elseif ($user_role_for_count === 'mgr') {
+    $pending_sql .= " AND approved_by_2 IS NULL";
+} elseif ($user_role_for_count === 'mgr2') {
+    $pending_sql .= " AND approved_by_3 IS NULL";
+}
+
+$pending_res = mysqli_query($conn, $pending_sql);
+if ($pending_res) {
+    $pending_row = mysqli_fetch_assoc($pending_res);
+    $pending_count = $pending_row['total'] ?? 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -173,110 +207,168 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 
         <nav id="sidebar-nav" class="flex-1 p-4 space-y-1 overflow-y-auto">
 
-            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Main Menu</p>
-            
-            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">PR/INTERNAL</p>
+            <?php if ($active_cat == 'main'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Main Menu</p>
+                <a href="e_service.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'e_service.php') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-bolt w-5 <?php echo ($current_page == 'e_service.php') ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                    <span class="font-medium">E-Service</span>
+                </a>
 
-            <a href="index.php"
-                class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'index.php') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
-                <i
-                    class="fas fa-th-large w-5 <?php echo ($current_page == 'index.php') ? 'text-white' : 'text-indigo-400'; ?>"></i>
-                <span class="font-medium">จัดการเอกสาร</span>
-            </a>
-
-            <?php if (can('docs')): ?>
                 <div class="space-y-1">
-                    <button onclick="toggleSubmenu('doc-submenu')"
-                        class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_list_active ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
+                    <button onclick="toggleSubmenu('req-buy-submenu')"
+                        class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_req_buy_group ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-list w-5 text-indigo-400"></i>
-                            <span class="font-medium">รายการเอกสาร</span>
+                            <i class="fas fa-shopping-basket w-5 text-emerald-400"></i>
+                            <span class="font-medium">ขอซื้อ</span>
                         </div>
-                        <i id="arrow-doc-submenu"
-                            class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_list_active ? 'rotate-180' : ''; ?>"></i>
+                        <i id="arrow-req-buy-submenu"
+                            class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_req_buy_group ? 'rotate-180' : ''; ?>"></i>
                     </button>
 
-                    <div id="doc-submenu"
-                        class="<?php echo $is_list_active ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
-                        <a href="doc_list.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_quotation_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <span
-                                class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_quotation_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
-                            <i class="fas fa-file-invoice text-[12px]"></i>
-                            <span class="text-sm font-medium">ใบเสนอราคา</span>
+                    <div id="req-buy-submenu"
+                        class="<?php echo $is_req_buy_group ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
+                        <a href="request_buy.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $current_page == 'request_buy.php' ? 'text-emerald-400 bg-emerald-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <span class="absolute -left-[2px] w-[2px] h-6 bg-emerald-500 transition-opacity <?php echo $current_page == 'request_buy.php' ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            <i class="fas fa-plus-circle text-[10px]"></i>
+                            <span class="text-sm font-medium">สร้างใบขอซื้อ</span>
                         </a>
-
-                        <a href="pr_list.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_pr_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <span
-                                class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_pr_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
-                            <i class="fas fa-cart-plus text-[12px]"></i>
-                            <span class="text-sm font-medium">ใบขอซื้อ</span>
-                        </a>
-
-                        <a href="po_list.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_po_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <span
-                                class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_po_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
-                            <i class="fas fa-file-signature text-[12px]"></i>
-                            <span class="text-sm font-medium">ใบสั่งซื้อ (PO)</span>
-                        </a>
-                        <a href="invoice_list.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_invoice_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <span
-                                class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_invoice_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
-                            <i class="fas fa-file-invoice text-[12px]"></i>
-                            <span class="text-sm font-medium">ใบแจ้งหนี้</span>
+                        <a href="request_buy_history.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $current_page == 'request_buy_history.php' || $current_page == 'view_pr_new.php' || $current_page == 'edit_pr_new.php' ? 'text-emerald-400 bg-emerald-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <span class="absolute -left-[2px] w-[2px] h-6 bg-emerald-500 transition-opacity <?php echo $current_page == 'request_buy_history.php' || $current_page == 'view_pr_new.php' || $current_page == 'edit_pr_new.php' ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            <i class="fas fa-history text-[10px]"></i>
+                            <span class="text-sm font-medium">ประวัติขอซื้อ</span>
                         </a>
                     </div>
                 </div>
-            <?php endif; ?>
 
-            <?php if (can('projects')): ?>
-                <a href="projects.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-tasks w-5 text-indigo-400"></i>
-                    <span class="font-medium">จัดการงวดงาน</span>
+                <a href="pending_approval.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>
+                    <span class="font-medium">รายการรออนุมัติ <?php echo ($pending_count > 0) ? "($pending_count)" : ""; ?></span>
                 </a>
-            <?php endif; ?>
 
-            <?php if (can('compare')): ?>
-                <a href="compare.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'compare.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
-                    <span class="font-medium">เปรียบเทียบราคา</span>
-                </a>
-            <?php endif; ?>
-
-            <?php if (can('setup')): ?>
+                <?php if (in_array($user_role, ['acc', 'mgr', 'mgr2', 'procure', 'admin'])): ?>
                 <div class="my-4 border-t border-slate-800/50"></div>
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Settings</p>
-
-                <a href="settings.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-cog w-5 text-indigo-400"></i>
-                    <span class="font-medium">ตั้งค่าระบบ</span>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">แผนก</p>
+                <a href="procurement.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'procurement.php') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-truck-loading w-5 <?php echo ($current_page == 'procurement.php') ? 'text-white' : 'text-amber-400'; ?>"></i>
+                    <span class="font-medium">จัดซื้อ</span>
                 </a>
-
-                <a href="user_settings.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'user_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-user-shield w-5 text-indigo-400"></i>
-                    <span class="font-medium">ตั้งค่าผู้ใช้งาน</span>
-                </a>
-
-                <a href="settings_api.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings_api.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-code w-5 text-indigo-400"></i>
-                    <span class="font-medium">ตั้งค่า API</span>
-                </a>
+                <?php endif; ?>
             <?php endif; ?>
 
-            <?php if (can('trash')): ?>
-                <a href="all_trash.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'all_trash.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-trash-alt w-5 text-indigo-400"></i>
-                    <span class="font-medium">ถังขยะ</span>
+            <?php if ($active_cat == 'system'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Management System</p>
+                <a href="index.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'index.php') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-th-large w-5 <?php echo ($current_page == 'index.php') ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                    <span class="font-medium">จัดการเอกสาร</span>
                 </a>
+
+                <?php if (can('docs')): ?>
+                    <div class="space-y-1">
+                        <button onclick="toggleSubmenu('doc-submenu')"
+                            class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_list_active ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-list w-5 text-indigo-400"></i>
+                                <span class="font-medium">รายการเอกสาร</span>
+                            </div>
+                            <i id="arrow-doc-submenu"
+                                class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_list_active ? 'rotate-180' : ''; ?>"></i>
+                        </button>
+
+                        <div id="doc-submenu"
+                            class="<?php echo $is_list_active ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
+                            <a href="doc_list.php"
+                                class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_quotation_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                                <span class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_quotation_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                                <i class="fas fa-file-invoice text-[10px]"></i>
+                                <span class="text-sm font-medium">ใบเสนอราคา</span>
+                            </a>
+                            <a href="pr_list.php"
+                                class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_pr_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                                <span class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_pr_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                                <i class="fas fa-cart-plus text-[10px]"></i>
+                                <span class="text-sm font-medium">ใบขอซื้อ</span>
+                            </a>
+                            <a href="po_list.php"
+                                class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_po_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                                <span class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_po_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                                <i class="fas fa-file-signature text-[10px]"></i>
+                                <span class="text-sm font-medium">ใบสั่งซื้อ (PO)</span>
+                            </a>
+                            <a href="invoice_list.php"
+                                class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $is_invoice_active ? 'text-indigo-400 bg-indigo-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                                <span class="absolute -left-[2px] w-[2px] h-6 bg-indigo-500 transition-opacity <?php echo $is_invoice_active ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                                <i class="fas fa-file-invoice text-[10px]"></i>
+                                <span class="text-sm font-medium">ใบแจ้งหนี้</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (can('projects')): ?>
+                    <a href="projects.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-tasks w-5 text-indigo-400"></i>
+                        <span class="font-medium">จัดการงวดงาน</span>
+                    </a>
+                <?php endif; ?>
+
+                <?php if (can('compare')): ?>
+                    <a href="compare.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'compare.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
+                        <span class="font-medium">เปรียบเทียบราคา</span>
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($active_cat == 'settings'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Settings</p>
+                <?php if (can('setup')): ?>
+                    <a href="settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-cog w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่าระบบ</span>
+                    </a>
+                    <a href="user_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'user_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-user-shield w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่าผู้ใช้งาน</span>
+                    </a>
+                    <a href="settings_api.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings_api.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-code w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่า API</span>
+                    </a>
+                    <a href="expense_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'expense_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-file-invoice-dollar w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่าหมวดค่าใช้จ่าย</span>
+                    </a>
+                    <a href="budget_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'budget_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-coins w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่าประเภทงบประมาณ</span>
+                    </a>
+                     <a href="objective_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'objective_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-bullseye w-5 text-indigo-400"></i>
+                        <span class="font-medium">ตั้งค่าวัตถุประสงค์</span>
+                    </a>
+                <?php endif; ?>
+
+                <?php if (can('trash')): ?>
+                    <a href="all_trash.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'all_trash.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-trash-alt w-5 text-indigo-400"></i>
+                        <span class="font-medium">ถังขยะ</span>
+                    </a>
+                <?php endif; ?>
             <?php endif; ?>
         </nav>
 
@@ -307,50 +399,47 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
                     class="md:hidden w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                <h1 class="text-lg font-bold text-slate-800">
-                    <?php
-                    $titles = [
-                        'index.php' => 'แดชบอร์ดจัดการเอกสาร',
-                        'doc_list.php' => 'รายการใบเสนอราคา',
-                        'view_quotation.php' => 'รายละเอียดใบเสนอราคา',
-                        'edit_quotation.php' => 'แก้ไขใบเสนอราคา',
-                        'quotation_settings.php' => 'ตั้งค่าใบเสนอราคา',
-                        'pr_list.php' => 'รายการใบขอซื้อ (PR)',
-                        'view_pr.php' => 'รายละเอียดใบขอซื้อ',
-                        'add_pr.php' => 'สร้างใบขอซื้อใหม่',
-                        'edit_pr.php' => 'แก้ไขใบขอซื้อ',
-                        'po_list.php' => 'รายการใบสั่งซื้อ (PO)',
-                        'view_po.php' => 'รายละเอียดใบสั่งซื้อ',
-                        'edit_po.php' => 'แก้ไขใบสั่งซื้อ',
-                        'add_po.php' => 'สร้างใบสั่งซื้อใหม่',
-                        'po_settings.php' => 'ตั้งค่าใบสั่งซื้อ',
-                        'compare.php' => 'เปรียบเทียบราคาสินค้า',
-                        'projects.php' => 'จัดการงาน',
-                        'inventory.php' => 'ระบบจัดการคลังสินค้า',
-                        'settings.php' => 'ตั้งค่าข้อมูลบริษัท',
-                        'user_settings.php' => 'จัดการสิทธิ์ผู้ใช้งาน',
-                        'settings_api.php' => 'ตั้งค่าการเชื่อมต่อ API',
-                        'all_trash.php' => 'ถังขยะระบบ',
-                        'add_project.php' => 'สร้างงานใหม่',
-                        'edit_project.php' => 'แก้ไขงาน',
-                        'detail_project.php' => 'รายละเอียดงาน',
-                        'view_milestones.php' => 'ดูงวดงาน',
-                        'add_milestone.php' => 'เพิ่มงวดงาน',
-                        'edit_milestone.php' => 'แก้ไขงวดงาน',
-                        'invoice_settings.php' => 'ตั้งค่าใบแจ้งหนี้',
-                        'billing_settings.php' => 'ตั้งค่าใบวางบิล'
-                    ];
-                    echo $titles[$current_page] ?? 'ProSystem Management';
-                    ?>
-                </h1>
-            </div>
+                <div class="flex h-16 items-center bg-white border-b border-slate-200">
+                    <a href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-home mr-2"></i>หน้าหลัก
+                    </a>
+                    
+                    <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
+                    <a href="index.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-th-large mr-2"></i>จัดการเอกสาร
+                    </a>
+                    <?php endif; ?>
+                    
+                    <?php if ($user_role !== 'staff' && can('setup')): ?>
+                    <a href="settings.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-cog mr-2"></i>ตั้งค่า
+                    </a>
+                    <?php endif; ?>
+                </div>            </div>
 
             <div class="flex items-center gap-3">
-                <div class="hidden md:block text-right">
-                    <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">ยินดีต้อนรับ</p>
-                    <p class="text-sm font-bold text-slate-700"><?php echo $_SESSION['username'] ?? 'User'; ?></p>
-                </div>
-            </div>
+    <div class="hidden md:block text-right">
+        <div class="flex items-center justify-end gap-2 mb-0.5">
+            <span class="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-black uppercase">
+                <?= $_SESSION['role'] ?? 'Guest'; ?>
+            </span>
+            <p class="text-sm font-black text-slate-700">
+                <?= $_SESSION['user_name'] ?? 'Guest User'; ?>
+            </p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 text-[10px] text-slate-400 font-medium">
+            <span>@<?= $_SESSION['user'] ?? '-'; ?></span>
+            <span class="text-slate-300">|</span>
+            <span>UID: <span class="text-slate-500 font-bold"><?= $_SESSION['user_id'] ?? '-'; ?></span></span>
+            
+            <?php if (!empty($_SESSION['sup_id'])): ?>
+                <span class="text-slate-300">|</span>
+                <span class="text-emerald-500 font-bold">SUP: <?= $_SESSION['sup_id']; ?></span>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50">
+        <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50">

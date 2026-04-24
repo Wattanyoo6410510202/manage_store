@@ -1,6 +1,10 @@
 <?php
 require_once '../config.php';
-session_start();
+
+// เช็คก่อนว่ามี session หรือยัง เพื่อแก้ปัญหา Notice: session_start()
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // --- 1. เพิ่มผู้ใช้ใหม่ (Save) ---
 if (isset($_POST['save_user'])) {
@@ -8,13 +12,15 @@ if (isset($_POST['save_user'])) {
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $role = $_POST['role'];
+    // รับค่าจากฟอร์ม (ในฟอร์มจารใช้ name="supplier_id" ผมเลยขอรับชื่อนี้แต่เอาไปลงคอลัมน์ sup_id)
+    $sup_id = intval($_POST['supplier_id'] ?? 0); 
 
-    // ✅ ตรวจสอบ Username ซ้ำ (เช็คทั้งตาราง)
     $check = mysqli_query($conn, "SELECT id FROM users WHERE username = '$username'");
     if (mysqli_num_rows($check) > 0) {
-        $_SESSION['flash_msg'] = 'duplicate'; // แจ้งเตือนว่าชื่อซ้ำ
+        $_SESSION['flash_msg'] = 'duplicate';
     } else {
-        $sql = "INSERT INTO users (name, username, password, role) VALUES ('$name', '$username', '$password', '$role')";
+        // แก้ชื่อคอลัมน์จาก supplier_id เป็น sup_id
+        $sql = "INSERT INTO users (name, username, password, role, sup_id) VALUES ('$name', '$username', '$password', '$role', $sup_id)";
         $_SESSION['flash_msg'] = mysqli_query($conn, $sql) ? 'success' : 'error';
     }
     header("Location: ../user_settings.php");
@@ -27,20 +33,20 @@ if (isset($_POST['update_user'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $role = $_POST['role'];
+    $sup_id = intval($_POST['supplier_id'] ?? 0); // รับจากฟอร์ม
 
-    // ✅ ตรวจสอบ Username ซ้ำ (ต้องไม่ซ้ำกับคนอื่น ยกเว้นตัวเอง)
     $check = mysqli_query($conn, "SELECT id FROM users WHERE username = '$username' AND id != $id");
     if (mysqli_num_rows($check) > 0) {
-        $_SESSION['flash_msg'] = 'duplicate'; // ถ้าชื่อไปตรงกับคนอื่นที่ไม่ใช่ id ตัวเอง
+        $_SESSION['flash_msg'] = 'duplicate';
     } else {
-        // จัดการเรื่องรหัสผ่าน (ถ้ามีการกรอกใหม่)
         $pw_sql = "";
         if (!empty($_POST['password'])) {
             $new_pw = password_hash($_POST['password'], PASSWORD_DEFAULT);
             $pw_sql = ", password = '$new_pw'";
         }
 
-        $sql = "UPDATE users SET name='$name', username='$username', role='$role' $pw_sql WHERE id = $id";
+        // แก้ชื่อคอลัมน์จาก supplier_id เป็น sup_id
+        $sql = "UPDATE users SET name='$name', username='$username', role='$role', sup_id=$sup_id $pw_sql WHERE id = $id";
         $_SESSION['flash_msg'] = mysqli_query($conn, $sql) ? 'updated' : 'error';
     }
     header("Location: ../user_settings.php");
@@ -48,11 +54,8 @@ if (isset($_POST['update_user'])) {
 }
 
 // --- 3. ลบผู้ใช้ (Delete) ---
-// (โค้ดเดิมของคุณดีอยู่แล้วครับ)
 if (isset($_GET['delete_id'])) {
     $id = intval($_GET['delete_id']);
-
-    // ดึง ID ของคนที่กำลังใช้งานอยู่จาก Session ตรงๆ (ถ้าเราเก็บ $_SESSION['user_id'] ไว้)
     $my_id = $_SESSION['user_id'] ?? 0;
 
     if ($id == $my_id) {

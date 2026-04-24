@@ -93,7 +93,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
     endif;
     ?>
                                 </select>
-                                <p class="mt-1 text-[10px] text-slate-400 font-medium">*
+                                <p class="mt-1 text-[12px] text-slate-400 font-medium">*
                                     หัวกระดาษ</p>
                             </div>
                         </div>
@@ -229,7 +229,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
                         <h3 class="font-bold text-indigo-300">สรุปมูลค่างาน</h3>
                        <div class="flex items-center gap-4"> 
     <label class="inline-flex items-center cursor-pointer">
-        <span class="mr-2 text-[10px] font-bold text-slate-400">VAT 7%</span>
+        <span class="mr-2 text-[12px] font-bold text-slate-400">VAT 7%</span>
         <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
             onchange="calculateNetValue()" class="hidden peer"
             <?php if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) echo 'checked'; ?>>
@@ -237,7 +237,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
     </label>
 
     <label class="inline-flex items-center cursor-pointer">
-        <span class="mr-2 text-[10px] font-bold text-slate-400">เป็น VAT ใน</span>
+        <span class="mr-2 text-[12px] font-bold text-slate-400">เป็น VAT ใน</span>
         <input type="hidden" name="vat_type_status" value="1">
         <input type="checkbox" id="vat_include_check" name="vat_type_status" value="0"
             onchange="calculateNetValue()" class="hidden peer"
@@ -248,7 +248,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
     </label>
 
     <label class="inline-flex items-center cursor-pointer">
-        <span class="mr-2 text-[10px] font-bold text-slate-400">WHT 3%</span>
+        <span class="mr-2 text-[12px] font-bold text-slate-400">WHT 3%</span>
         <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
             onchange="calculateNetValue()" class="hidden peer"
             <?php if (isset($pj['total_wht_amount']) && floatval($pj['total_wht_amount']) > 0) echo 'checked'; ?>>
@@ -296,7 +296,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
                         onclick="document.getElementById('attachment').click()">
                         <div id="upload-placeholder" class="<?= $pj['attachment_path'] ? 'hidden' : '' ?>">
                             <i class="fas fa-file-pdf text-3xl text-slate-300 mb-2"></i>
-                            <p class="text-[10px] text-slate-500 italic">คลิกเพื่อเปลี่ยนไฟล์สัญญาใหม่</p>
+                            <p class="text-[12px] text-slate-500 italic">คลิกเพื่อเปลี่ยนไฟล์สัญญาใหม่</p>
                         </div>
                         <input type="file" name="attachment" id="attachment" class="hidden" onchange="updateFileName()">
                         <div id="file-info" class="<?= $pj['attachment_path'] ? '' : 'hidden' ?>">
@@ -305,7 +305,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
                                 <?= $pj['attachment_path'] ?>
                             </p>
                             <button type="button" onclick="resetFile(event)"
-                                class="mt-3 text-[10px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100">เปลี่ยนไฟล์</button>
+                                class="mt-3 text-[12px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100">เปลี่ยนไฟล์</button>
                         </div>
                     </div>
                 </div>

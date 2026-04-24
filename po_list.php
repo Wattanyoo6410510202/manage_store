@@ -48,7 +48,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[200px]">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
                         <select id="filterSupplier"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด (Show All)</option>
@@ -62,24 +62,24 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[150px]">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
                         <input type="date" id="minDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
 
                     <div class="relative min-w-[150px]">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
                         <input type="date" id="maxDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
 
                     <button onclick="filterToday()"
-                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[10px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
+                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[12px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
                         <i class="fas fa-calendar-day text-indigo-500"></i> รายการวันนี้
                     </button>
 
                     <div class="relative min-w-[120px]">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
@@ -89,7 +89,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </div>
 
                     <button onclick="resetFilter()"
-                        class="self-end mb-2.5 text-[10px] text-slate-800 hover:text-indigo-600 transition-colors">
+                        class="self-end mb-2.5 text-[12px] text-slate-800 hover:text-indigo-600 transition-colors">
                         <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
                     </button>
 
@@ -99,7 +99,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             เลือกอยู่ <span id="selectedCount" class="underline">0</span> รายการ
                         </span>
                         <button onclick="bulkDeletePO()"
-                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
@@ -107,16 +107,18 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 </div>
                 <table id="poTable" class="w-full display hover border-none">
                     <thead>
-                        <tr class="bg-slate-50">
+                        <tr class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-800 font-black">
                             <th class="w-8 text-center !pr-2">
                                 <input type="checkbox" id="selectAll"
                                     class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                             </th>
                             <th class="w-8 text-center">ID</th>
                             <th>เลขที่เอกสาร</th>
+                            <th>Ref. PR</th>
                             <th>หน่วยงาน</th>
                             <th>รายละเอียด</th>
                             <th>ลูกค้า</th>
+                            <th class="text-center">ไฟล์แนบ</th>
                             <th class="text-right">ยอดรวม</th>
                             <th>สถานะ</th>
                             <th>วันที่</th>
@@ -138,12 +140,26 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
                                 <td>
-                                    <div class="font-semibold text-slate-700 truncate max-w-[200px]">
+                                    <?php if (!empty($row['reference_no']) && strpos($row['reference_no'], 'PR-') === 0): 
+                                        // ค้นหา ID ของ PR จาก doc_no เพื่อทำลิงก์
+                                        $ref_no = mysqli_real_escape_string($conn, $row['reference_no']);
+                                        $pr_find = mysqli_query($conn, "SELECT id FROM pr WHERE doc_no = '$ref_no' LIMIT 1");
+                                        $pr_data = mysqli_fetch_assoc($pr_find);
+                                        if ($pr_data):
+                                    ?>
+                                        <a href="view_pr_new.php?id=<?= $pr_data['id'] ?>" class="text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                                            <i class="fas fa-link text-[10px]"></i> <?= $row['reference_no'] ?>
+                                        </a>
+                                    <?php else: echo htmlspecialchars($row['reference_no']); endif; ?>
+                                    <?php else: echo htmlspecialchars($row['reference_no'] ?: '-'); endif; ?>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="font-semibold text-slate-700 truncate max-w-[220px]"
+                                    <div class="font-semibold text-slate-700 truncate max-w-[180px]"
                                         title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
                                         <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
                                     </div>
@@ -153,6 +169,17 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?= htmlspecialchars($row['customer_name'] ?: '-') ?>
                                     </div>
                                 </td>
+                                <td class="text-center">
+                                    <div class="flex justify-center gap-1">
+                                        <?php if (!empty($row['attachment_1'])): ?>
+                                            <a href="uploads/po/<?= htmlspecialchars($row['attachment_1']) ?>" target="_blank" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all" title="ไฟล์แนบ 1"><i class="fas fa-file-pdf text-xs"></i></a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($row['attachment_2'])): ?>
+                                            <a href="uploads/po/<?= htmlspecialchars($row['attachment_2']) ?>" target="_blank" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-md border border-red-100 hover:bg-red-100 transition-all" title="ไฟล์แนบ 2"><i class="fas fa-file-pdf text-xs"></i></a>
+                                        <?php endif; ?>
+                                        <?php if (empty($row['attachment_1']) && empty($row['attachment_2'])) echo '-'; ?>
+                                    </div>
+                                </td>
 
                                 <td>
                                     <div class="flex flex-col items-end gap-1">
@@ -160,7 +187,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <span
                                                 class="text-[8px] font-bold text-slate-800 uppercase tracking-tighter">Subtotal</span>
                                             <i class="fas fa-calculator text-[9px] text-slate-300"></i>
-                                            <span class="text-[10px] text-slate-500 font-mono font-medium">
+                                            <span class="text-[12px] text-slate-500 font-mono font-medium">
                                                 <?= number_format($row['subtotal'], 2) ?>
                                             </span>
                                         </div>
@@ -169,7 +196,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
                                             <span
                                                 class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
-                                            <i class="fas fa-coins text-[10px] text-amber-500"></i>
+                                            <i class="fas fa-coins text-[12px] text-amber-500"></i>
                                             <span class="text-[14px] font-mono font-black text-slate-900 leading-none">
                                                 <?= number_format($row['grand_total'], 2) ?>
                                             </span>
@@ -193,7 +220,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
                                         <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
 
-                                        <span class="text-[10px] font-bold uppercase tracking-wide">
+                                        <span class="text-[12px] font-bold uppercase tracking-wide">
                                             <?= $style['label'] ?>
                                         </span>
                                     </div>
@@ -206,13 +233,9 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         </span>
 
                                         <?php if (!empty($row['updated_at'])): ?>
-                                            <span class="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                            <span class="text-[12px] text-slate-600 mt-0.5 flex items-center gap-1">
                                                 <i class="fas fa-history text-[9px]"></i>
                                                 <?= date('d/m/y', strtotime($row['updated_at'])) ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-[10px] text-slate-300 mt-0.5">
-                                                No updates yet
                                             </span>
                                         <?php endif; ?>
                                     </div>
@@ -236,17 +259,17 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
                                         <a href="view_po.php?id=<?= $row['id'] ?>"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all">
-                                            <i class="fas fa-eye text-[10px]"></i>
+                                            <i class="fas fa-eye text-[12px]"></i>
                                         </a>
                                         <?php if ($row['status'] === 'pending'): ?>
                                             <a href="edit_po.php?id=<?= $row['id'] ?>"
                                                 class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all">
-                                                <i class="fas fa-edit text-[10px]"></i>
+                                                <i class="fas fa-edit text-[12px]"></i>
                                             </a>
                                         <?php endif; ?>
                                         <button onclick="deletePO(<?= $row['id'] ?>)"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all">
-                                            <i class="fas fa-trash text-[10px]"></i>
+                                            <i class="fas fa-trash text-[12px]"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -268,33 +291,31 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "pageLength": 10,
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
-            "order": [[8, "desc"]], // เรียงตามวันที่ล่าสุด
-            "columnDefs": [{ "orderable": false, "targets": [0, 9] }],
+            "order": [[10, "desc"]], // เรียงตามวันที่ล่าสุด (คอลัมน์ 10)
+            "columnDefs": [{ "orderable": false, "targets": [0, 13] }],
             "drawCallback": function () { updateBulkUI(); }
         });
 
         // 2. Custom Filters
-        $('#filterSupplier').on('change', function () { poTable.column(3).search(this.value).draw(); });
-        $('#filterStatus').on('change', function () { poTable.column(7).search(this.value).draw(); });
+        $('#filterSupplier').on('change', function () { poTable.column(4).search(this.value).draw(); });
+        $('#filterStatus').on('change', function () { poTable.column(9).search(this.value).draw(); });
 
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             let min = $('#minDate').val(); // ค่าจะเป็น YYYY-MM-DD
             let max = $('#maxDate').val(); // ค่าจะเป็น YYYY-MM-DD
 
-            // ดึงค่าจากคอลัมน์ที่ 8 (วันที่)
-            let dateStr = data[8] || "";
+            // ดึงค่าจากคอลัมน์ที่ 10 (วันที่)
+            let dateStr = data[10] || "";
             if (dateStr === "") return true;
 
-            // ตัดเอาเฉพาะวันที่ (เผื่อมี icon หรือช่องว่าง) และแยกส่วน d/m/y
-            // หมายเหตุ: ต้องระวังเรื่องเลขปี 2 หลัก (YY) กับ 4 หลัก (YYYY)
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
             if (!match) return true;
 
             let day = match[1];
             let month = match[2];
-            let year = "20" + match[3]; // เติม 20 ข้างหน้าเพื่อให้เป็น ค.ศ. 4 หลัก (2024)
+            let year = "20" + match[3];
 
-            let dateFormatted = `${year}-${month}-${day}`; // กลายเป็น YYYY-MM-DD
+            let dateFormatted = `${year}-${month}-${day}`;
 
             if ((min === "" && max === "") ||
                 (min === "" && dateFormatted <= max) ||
@@ -305,7 +326,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             return false;
         });
 
-        $('#minDate, #maxDate').on('change', () => prTable.draw());
+        $('#minDate, #maxDate').on('change', () => poTable.draw());
 
         // 3. Selection
         $('#selectAll').on('change', function () {
@@ -459,18 +480,15 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             const approvedBadge = `
                         <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span class="text-[10px] font-bold uppercase tracking-wide">อนุมัติ</span>
+                            <span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span>
                         </div>`;
 
-                            // 2. อัปเดตคอลัมน์ Status (คอลัมน์ที่ 8) ด้วย Badge ใหม่
-                            rowElement.find('td:nth-child(8)').html(approvedBadge);
+                            // 2. อัปเดตคอลัมน์ Status (คอลัมน์ที่ 9) ด้วย Badge ใหม่
+                            rowElement.find('td:nth-child(10)').html(approvedBadge);
 
                             // 3. ซ่อนปุ่ม Approve และปุ่ม Edit ทันทีที่อนุมัติเสร็จ
                             rowElement.find('button[onclick*="approvePo"]').fadeOut(300);
                             rowElement.find('a[href*="edit_po.php"]').fadeOut(300);
-
-                            // (Optional) ซ่อนปุ่มลบด้วยถ้าต้องการ
-                            // rowElement.find('button[onclick*="deletePO"]').fadeOut(300);
 
                         } else {
                             renderAlert('error', res.message || 'เกิดข้อผิดพลาด');
@@ -501,13 +519,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
     }
     function resetFilter() {
         $('#filterSupplier').val('');
-        $('#filterStatus').val(''); // ล้างค่าใน select status
+        $('#filterStatus').val(''); 
         $('#minDate').val('');
         $('#maxDate').val('');
 
-        // สั่งล้างการ search ทุกคอลัมน์แล้ววาดใหม่
-        poTable.column(3).search('');
-        poTable.column(7).search('');
+        poTable.column(4).search('');
+        poTable.column(9).search('');
         poTable.draw();
     }
 

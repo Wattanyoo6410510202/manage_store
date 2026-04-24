@@ -32,7 +32,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 }
 ?>
 
-<form action="api/update_po.php" method="POST">
+<form action="api/update_po.php" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="po_id" value="<?= $po_id ?>">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
@@ -41,7 +41,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white p-5 rounded-3xl border border-slate-200">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                         <div class="flex justify-between items-start mb-4">
                             <h3
                                 class="text-xs font-black text-slate-800 flex items-center gap-2 uppercase tracking-[0.2em]">
@@ -58,13 +58,13 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
 
-                            <option value="0" <?= (empty($pr_data['supplier_id'])) ? 'selected' : '' ?>>---
+                            <option value="0" <?= (empty($po_data['supplier_id'])) ? 'selected' : '' ?>>---
                                 กรุณาเลือกผู้ขาย ---</option>
 
                             <?php if (!empty($suppliers)): ?>
                                 <?php foreach ($suppliers as $sup): ?>
                                     <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'
-                                        <?= (isset($pr_data['supplier_id']) && $sup['id'] == $pr_data['supplier_id']) ? 'selected' : '' ?>>
+                                        <?= (isset($po_data['supplier_id']) && $sup['id'] == $po_data['supplier_id']) ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($sup['company_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -75,11 +75,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             class="p-5 bg-gradient-to-br from-indigo-50/50 to-slate-50 rounded-2xl border border-indigo-100/50 space-y-4">
                             <div>
                                 <div id="comp_name" class="text-base font-black text-slate-800 leading-tight">
-                                    <?= (!empty($pr_data['supplier_id'])) ? 'กำลังโหลดข้อมูล...' : 'ยังไม่ได้เลือกผู้ขาย' ?>
+                                    <?= (!empty($po_data['supplier_id'])) ? 'กำลังโหลดข้อมูล...' : 'ยังไม่ได้เลือกผู้ขาย' ?>
                                 </div>
                                 <div class="flex items-center gap-2 mt-2">
                                     <span
-                                        class="text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
+                                        class="text-[12px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Tax
                                         ID</span>
                                     <span id="comp_tax" class="text-xs font-mono font-bold text-slate-600">-</span>
                                 </div>
@@ -103,13 +103,51 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                     </div>
 
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="text-xs font-black text-slate-800 flex items-center gap-2 uppercase tracking-[0.2em]">
+                            <i class="fas fa-paperclip text-indigo-500 text-base"></i> Attachments / เอกสารแนบ
+                        </h3>
+                        
+                        <!-- ไฟล์แนบ 1 -->
+                        <div>
+                            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">ไฟล์แนบ 1 (PDF/Image)</label>
+                            <?php if (!empty($po_data['attachment_1'])): ?>
+                                <div class="flex items-center gap-2 mb-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                    <a href="uploads/po/<?= $po_data['attachment_1'] ?>" target="_blank" class="text-xs font-bold text-indigo-600 hover:underline truncate flex-grow">
+                                        <i class="fas fa-file-alt mr-1"></i> <?= $po_data['attachment_1'] ?>
+                                    </a>
+                                    <button type="button" onclick="deleteAttachment(1)" class="text-red-500 hover:text-red-700 p-1">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                    <input type="hidden" name="delete_attachment_1" id="delete_att_1" value="0">
+                                </div>
+                            <?php endif; ?>
+                            <input type="file" name="attachment_1" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all">
+                        </div>
 
+                        <!-- ไฟล์แนบ 2 -->
+                        <div>
+                            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">ไฟล์แนบ 2 (PDF/Image)</label>
+                            <?php if (!empty($po_data['attachment_2'])): ?>
+                                <div class="flex items-center gap-2 mb-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                    <a href="uploads/po/<?= $po_data['attachment_2'] ?>" target="_blank" class="text-xs font-bold text-indigo-600 hover:underline truncate flex-grow">
+                                        <i class="fas fa-file-alt mr-1"></i> <?= $po_data['attachment_2'] ?>
+                                    </a>
+                                    <button type="button" onclick="deleteAttachment(2)" class="text-red-500 hover:text-red-700 p-1">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                    <input type="hidden" name="delete_attachment_2" id="delete_att_2" value="0">
+                                </div>
+                            <?php endif; ?>
+                            <input type="file" name="attachment_2" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="lg:col-span-2 space-y-6 mb-4">
-                    <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-sm">
                         <div class="col-span-1">
-                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">เลขที่เอกสาร
+                            <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">เลขที่เอกสาร
                                 PO</label>
                             <input type="text" value="<?= $po_data['doc_no'] ?>"
                                 class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold outline-none text-slate-500"
@@ -117,23 +155,30 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
                         <div>
                             <label
-                                class="text-[10px] font-black text-slate-800 uppercase block mb-1">วันที่สั่งซื้อ</label>
+                                class="text-[12px] font-black text-slate-800 uppercase block mb-1">วันที่สั่งซื้อ</label>
                             <input type="date" name="po_date"
                                 value="<?= date('Y-m-d', strtotime($po_data['created_at'])) ?>"
                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">อ้างอิง
+                            <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">อ้างอิง
                                 (Ref.)</label>
                             <input type="text" name="reference_no"
                                 value="<?= htmlspecialchars($po_data['reference_no']) ?>"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20">
                         </div>
                         <div>
                             <label
-                                class="text-[10px] font-black text-slate-800 uppercase block mb-1">การชำระเงิน</label>
+                                class="text-[12px] font-black text-slate-800 uppercase block mb-1">Express Ref</label>
+                            <input type="text" name="express_ref_code"
+                                value="<?= htmlspecialchars($po_data['express_ref_code'] ?? '') ?>"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20">
+                        </div>
+                        <div>
+                            <label
+                                class="text-[12px] font-black text-slate-800 uppercase block mb-1">การชำระเงิน</label>
                             <select name="payment_term"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                                 <option value="30" <?= $po_data['payment_term'] == '30' ? 'selected' : '' ?>>เครดิต 30 วัน
                                 </option>
                                 <option value="60" <?= $po_data['payment_term'] == '60' ? 'selected' : '' ?>>เครดิต 60 วัน
@@ -143,10 +188,10 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">ภาษี (VAT
+                            <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ภาษี (VAT
                                 %)</label>
                             <select name="vat_percent" id="vat_percent" onchange="calculateTotal()"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                                 <option value="7" <?= $po_data['vat_percent'] == 7 ? 'selected' : '' ?>>7%</option>
                                 <option value="0" <?= $po_data['vat_percent'] == 0 ? 'selected' : '' ?>>0%</option>
                                 <option value="10" <?= $po_data['vat_percent'] == 10 ? 'selected' : '' ?>>10%</option>
@@ -156,10 +201,10 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         </div>
 
                         <div>
-                            <label class="text-[10px] font-black text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
+                            <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">หัก ณ ที่จ่าย (WHT
                                 %)</label>
                             <select name="wht_percent" id="wht_percent" onchange="calculateTotal()"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                                 <option value="0" <?= ($po_data['wht_percent'] ?? 0) == 0 ? 'selected' : '' ?>>0%
                                 </option>
                                 <option value="1" <?= ($po_data['wht_percent'] ?? 0) == 1 ? 'selected' : '' ?>>1%
@@ -207,7 +252,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="itemsTable">
                         <thead
-                            class="bg-slate-50/80 text-[10px] uppercase text-slate-800 font-black border-b border-slate-200">
+                            class="bg-slate-50/80 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                             <tr>
                                 <th class="px-6 py-4 w-12 text-center">#</th>
                                 <th class="px-2 py-4">รายละเอียดสินค้า</th>
@@ -276,7 +321,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     class="p-6 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-start gap-6">
                     <div class="w-full md:flex-grow">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุการสั่งซื้อ</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase block mb-2">หมายเหตุการสั่งซื้อ</label>
                         <textarea name="notes" rows="3"
                             class="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 resize-none"><?= htmlspecialchars($po_data['notes']) ?></textarea>
                     </div>
@@ -469,6 +514,18 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     function autoResize(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
+
+    // ฟังก์ชันลบไฟล์แนบ
+    function deleteAttachment(index) {
+        if (confirm('คุณต้องการลบไฟล์แนบนี้ใช่หรือไม่?')) {
+            const input = document.getElementById(`delete_att_${index}`);
+            if (input) {
+                input.value = "1";
+                // ซ่อนแสดงผลไฟล์เดิม
+                input.closest('div').style.display = 'none';
+            }
+        }
     }
 
     // เมื่อหน้าโหลดเสร็จ

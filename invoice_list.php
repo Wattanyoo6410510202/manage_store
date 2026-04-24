@@ -59,7 +59,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[200px]">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
                         <select id="filterSupplier"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด (Show All)</option>
@@ -73,24 +73,24 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="relative min-w-[150px]">
                         <label
-                            class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
                         <input type="date" id="minDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
 
                     <div class="relative min-w-[150px]">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
                         <input type="date" id="maxDate"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                     </div>
 
                     <button onclick="filterToday()"
-                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[10px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
+                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[12px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
                         <i class="fas fa-calendar-day text-indigo-500"></i> รายการวันนี้
                     </button>
 
                     <div class="relative min-w-[120px]">
-                        <label class="text-[10px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
+                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
@@ -102,7 +102,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </div>
 
                     <button onclick="resetFilter()"
-                        class="self-end mb-2.5 text-[10px] text-slate-800 hover:text-indigo-600 transition-colors">
+                        class="self-end mb-2.5 text-[12px] text-slate-800 hover:text-indigo-600 transition-colors">
                         <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
                     </button>
 
@@ -115,13 +115,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                         <div class="flex items-center gap-2 border-l border-slate-200 pl-3">
                             <button onclick="bulkBilling()"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
                                 <i class="fas fa-file-invoice-dollar"></i>
                                 ทำใบวางบิล
                             </button>
 
                             <button onclick="bulkDelete()"
-                                class="bg-white hover:bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-all flex items-center gap-2">
+                                class="bg-white hover:bg-red-50 text-red-500 border border-red-100 px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
                                 <i class="fas fa-trash-alt"></i>
                                 ลบรายการ
                             </button>
@@ -165,7 +165,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         data-status="<?= strtolower($row['status']) ?>"
                                         class="invoice-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                 </td>
-                                <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
+                                <td class="text-center text-slate-300 font-mono text-[12px]"><?= $i++ ?></td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[200px]">
@@ -190,7 +190,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <span
                                                 class="text-[8px] font-bold text-slate-800 uppercase tracking-tighter">Subtotal</span>
                                             <i class="fas fa-calculator text-[9px] text-slate-300"></i>
-                                            <span class="text-[10px] text-slate-500 font-mono font-medium">
+                                            <span class="text-[12px] text-slate-500 font-mono font-medium">
                                                 <?= number_format($row['subtotal'], 2) ?>
                                             </span>
                                         </div>
@@ -199,7 +199,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100 shadow-sm">
                                             <span
                                                 class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Net</span>
-                                            <i class="fas fa-coins text-[10px] text-amber-500"></i>
+                                            <i class="fas fa-coins text-[12px] text-amber-500"></i>
                                             <span class="text-[14px] font-mono font-black text-slate-900 leading-none">
                                                 <?= number_format($row['grand_total'], 2) ?>
                                             </span>
@@ -224,7 +224,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
                                         <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
 
-                                        <span class="text-[10px] font-bold uppercase tracking-wide">
+                                        <span class="text-[12px] font-bold uppercase tracking-wide">
                                             <?= $style['label'] ?>
                                         </span>
                                     </div>
@@ -237,12 +237,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         </span>
 
                                         <?php if (!empty($row['updated_at'])): ?>
-                                            <span class="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                            <span class="text-[12px] text-slate-600 mt-0.5 flex items-center gap-1">
                                                 <i class="fas fa-history text-[9px]"></i>
                                                 <?= date('d/m/y', strtotime($row['updated_at'])) ?>
                                             </span>
                                         <?php else: ?>
-                                            <span class="text-[10px] text-slate-300 mt-0.5">
+                                            <span class="text-[12px] text-slate-300 mt-0.5">
                                                 No updates yet
                                             </span>
                                         <?php endif; ?>
@@ -257,7 +257,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <button onclick="approveInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
                                                 class="w-7 h-7 flex items-center justify-center bg-white text-emerald-500 rounded-md hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all"
                                                 title="Approve Invoice">
-                                                <i class="fas fa-check-circle text-[10px]"></i>
+                                                <i class="fas fa-check-circle text-[12px]"></i>
                                             </button>
                                         <?php endif; ?>
 
@@ -265,21 +265,21 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <button onclick="payInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
                                                 class="w-7 h-7 flex items-center justify-center bg-white text-blue-500 rounded-md hover:bg-blue-50 hover:text-blue-600 border border-blue-100 shadow-sm transition-all"
                                                 title="Mark as Paid">
-                                                <i class="fas fa-hand-holding-usd text-[10px]"></i>
+                                                <i class="fas fa-hand-holding-usd text-[12px]"></i>
                                             </button>
                                         <?php endif; ?>
 
                                         <a href="view_invoice.php?id=<?= $row['id'] ?>"
                                             class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
                                             title="View Invoice">
-                                            <i class="fas fa-eye text-[10px]"></i>
+                                            <i class="fas fa-eye text-[12px]"></i>
                                         </a>
 
                                         <?php if ($row['status'] === 'pending'): ?>
                                             <a href="edit_invoice.php?id=<?= $row['id'] ?>"
                                                 class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
                                                 title="Edit Invoice">
-                                                <i class="fas fa-edit text-[10px]"></i>
+                                                <i class="fas fa-edit text-[12px]"></i>
                                             </a>
                                         <?php endif; ?>
 
@@ -288,15 +288,15 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                                 <a href="view_receipt.php?id=<?= $row['id'] ?>"
                                                     class="px-2 h-7 flex items-center justify-center gap-1.5 bg-white text-violet-500 rounded-md hover:bg-violet-50 hover:text-violet-600 border border-violet-100 shadow-sm transition-all"
                                                     title="ทำใบเสร็จ/กำกับภาษี" target="_blank">
-                                                    <i class="fas fa-file-invoice-dollar text-[10px]"></i>
-                                                    <span class="text-[10px] font-bold">ทำใบเสร็จ</span>
+                                                    <i class="fas fa-file-invoice-dollar text-[12px]"></i>
+                                                    <span class="text-[12px] font-bold">ทำใบเสร็จ</span>
                                                 </a>
                                             <?php endif; ?>
 
                                             <button onclick="deleteInvoice(<?= $row['id'] ?>)"
                                                 class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
                                                 title="Delete Invoice">
-                                                <i class="fas fa-trash text-[10px]"></i>
+                                                <i class="fas fa-trash text-[12px]"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -563,7 +563,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             const approvedBadge = `
         <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-[10px] font-bold uppercase tracking-wide">อนุมัติ</span>
+            <span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span>
         </div>`;
 
                             // 2. ปุ่มจ่ายเงิน (ดีไซน์เดิมของจารเป๊ะๆ)
@@ -571,7 +571,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         <button onclick="payInvoice(${id}, '${doc_no}')" 
                 class="w-7 h-7 flex items-center justify-center bg-white text-blue-500 rounded-md hover:bg-blue-50 hover:text-blue-600 border border-blue-100 shadow-sm transition-all"
                 title="Mark as Paid">
-            <i class="fas fa-hand-holding-usd text-[10px]"></i>
+            <i class="fas fa-hand-holding-usd text-[12px]"></i>
         </button>`;
 
                             // 3. หาแถวที่กด
@@ -633,7 +633,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             const badgeHtml = `
                         <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-green-50 border-green-100 text-green-600 shadow-sm">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                            <span class="text-[10px] font-bold uppercase tracking-wide">ชำระแล้ว</span>
+                            <span class="text-[12px] font-bold uppercase tracking-wide">ชำระแล้ว</span>
                         </div>`;
 
                             let row = $(`button[onclick*="payInvoice(${id}"]`).closest('tr');

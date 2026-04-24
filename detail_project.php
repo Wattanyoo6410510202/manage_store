@@ -41,8 +41,14 @@ $current_balance = $pj['contract_value'] - $total_paid_base;
 // 3. ดึงเอกสารที่ผูกไว้
 $docs = mysqli_query($conn, "SELECT * FROM project_documents WHERE project_id = $id");
 
-// 4. ดึงงวดงาน (เรียงตามวันที่ล่าสุดขึ้นก่อน)
-$milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE project_id = $id ORDER BY claim_date DESC");
+// 4. ดึงงวดงาน (เรียงตามวันที่ล่าสุดขึ้นก่อน) พร้อมข้อมูลการตรวจรับ
+$milestones_sql = "
+    SELECT m.*, i.id as inspection_id, i.result_status
+    FROM project_milestones m
+    LEFT JOIN milestone_inspections i ON m.id = i.milestone_id
+    WHERE m.project_id = $id 
+    ORDER BY m.claim_date DESC";
+$milestones = mysqli_query($conn, $milestones_sql);
 ?>
 
 <div>
@@ -61,7 +67,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
 
             <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
                 <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">มูลค่าสัญญาทั้งหมด (Base)
+                    <p class="text-[12px] font-bold text-emerald-500 uppercase tracking-wider">มูลค่าสัญญาทั้งหมด (Base)
                     </p>
                     <p class="text-2xl font-black text-emerald-700">
                         <?= number_format($pj['contract_value'], 2) ?> <span class="text-sm">฿</span>
@@ -70,13 +76,13 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-red-50 p-4 rounded-2xl border border-red-100">
-                        <p class="text-[10px] font-bold text-red-500 uppercase tracking-wider">เบิกแล้วสะสม</p>
+                        <p class="text-[12px] font-bold text-red-500 uppercase tracking-wider">เบิกแล้วสะสม</p>
                         <p class="text-xl font-black text-red-600">
                             <?= number_format($total_paid_base, 2) ?>
                         </p>
                     </div>
                     <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                        <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">คงเหลือเบิกได้</p>
+                        <p class="text-[12px] font-bold text-indigo-400 uppercase tracking-wider">คงเหลือเบิกได้</p>
                         <p class="text-xl font-black text-indigo-700">
                             <?= number_format($pj['contract_value'] - $total_paid_base, 2) ?>
                         </p>
@@ -109,7 +115,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
 
                 <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center">
                     <div>
-                        <span class="text-[10px] font-bold text-indigo-300 uppercase block">จ่ายจริงสะสม (Net
+                        <span class="text-[12px] font-bold text-indigo-300 uppercase block">จ่ายจริงสะสม (Net
                             Paid)</span>
                         <span class="text-xs text-slate-400">จากเป้าหมาย
                             <?= number_format($pj['net_contract_value'], 2) ?></span>
@@ -173,7 +179,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                 </div>
                 <table id="milestoneTable" class="w-full">
                     <thead>
-                        <tr class="text-[10px] text-slate-800 uppercase tracking-widest border-b border-slate-50">
+                        <tr class="text-[12px] text-slate-800 uppercase tracking-widest border-b border-slate-50">
                             <th class="px-4 py-3 text-left">
                                 <input type="checkbox" id="selectAll"
                                     class="rounded text-slate-800 focus:ring-indigo-500">
@@ -211,7 +217,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                         <?php else: ?>
                                             <div
                                                 class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-300 border border-dashed border-slate-200">
-                                                <i class="fas fa-eye-slash text-[10px]"></i>
+                                                <i class="fas fa-eye-slash text-[12px]"></i>
                                             </div>
                                         <?php endif; ?>
                                     </td>
@@ -225,27 +231,27 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                     </td>
                                     <td class="px-4 py-4 text-center">
                                         <span
-                                            class="text-[10px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
+                                            class="text-[12px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
                                             <?= $m['status'] == 'paid' ? 'ชำระเงินแล้ว' : 'ค้างชำระ' ?>
                                         </span>
                                     </td>
                                     <td class="px-4 py-4 text-right">
                                         <p
                                             class="text-base font-black text-slate-800 group-hover:text-emerald-600 transition-colors">
-                                            <?= number_format($m['net_amount'], 2) ?> <span class="text-[10px] italic">฿</span>
+                                            <?= number_format($m['net_amount'], 2) ?> <span class="text-[12px] italic">฿</span>
                                         </p>
                                     </td>
                                     <td class="px-4 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <button onclick="editMilestone(<?= $m['id'] ?>)"
-                                                    class="text-[10px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
+                                                    class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
                                                     title="แก้ไขข้อมูล">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                             <?php if ($m['status'] == 'pending'): ?>
                                                 
                                                 <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
-                                                    class="text-[10px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
+                                                    class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
                                                     title="ยืนยันชำระเงิน">
                                                     <i class="fas fa-check-circle"></i>
                                                 </button>
@@ -253,7 +259,7 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
 
 
                                                 <button onclick="deleteMilestone(<?= $m['id'] ?>)"
-                                                    class="text-[10px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
+                                                    class="text-[12px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
                                                     title="ลบรายการ">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
@@ -261,15 +267,32 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                                             <?php else: ?>
                                                 <div class="flex items-center gap-2 py-1.5">
                                                     <span
-                                                        class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[10px] font-black border border-emerald-100 uppercase tracking-tighter">
+                                                        class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[12px] font-black border border-emerald-100 uppercase tracking-tighter">
                                                         <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
                                                     </span>
                                                     <button
                                                         onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
-                                                        class="text-[10px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
+                                                        class="text-[12px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
                                                         title="คืนเงินประกัน">
                                                         <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
                                                     </button>
+                                                    
+                                                    <?php if ($m['inspection_id']): ?>
+                                                        <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
+                                                           class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                           title="ดูผลการตรวจรับงาน">
+                                                            <i class="fas fa-eye"></i> ดู
+                                                            <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
+                                                                <?= $m['result_status'] === 'pass' ? 'ผ่าน' : ($m['result_status'] === 'conditional_pass' ? 'เงื่อนไข' : 'ไม่ผ่าน') ?>
+                                                            </span>
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
+                                                           class="text-[12px] font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black shadow-sm transition-all"
+                                                           title="ตรวจงาน">
+                                                            <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
+                                                        </a>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -294,7 +317,8 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
             confirmButtonColor: '#6366f1',
             cancelButtonColor: '#64748b',
             confirmButtonText: 'ยืนยันคืนเงิน',
-            cancelButtonText: 'ยกเลิก'
+            cancelButtonText: 'ยกเลิก',
+            heightAuto: false
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -309,16 +333,30 @@ $milestones = mysqli_query($conn, "SELECT * FROM project_milestones WHERE projec
                     success: function (response) {
                         // เช็ค status ที่ส่งมาจาก PHP
                         if (response.status === 'success') {
-                            Swal.fire('สำเร็จ!', response.message, 'success')
-                                .then(() => location.reload());
+                            Swal.fire({
+                                title: 'สำเร็จ!',
+                                text: response.message,
+                                icon: 'success',
+                                heightAuto: false
+                            }).then(() => location.reload());
                         } else {
-                            Swal.fire('เกิดข้อผิดพลาด', response.message, 'error');
+                            Swal.fire({
+                                title: 'เกิดข้อผิดพลาด',
+                                text: response.message,
+                                icon: 'error',
+                                heightAuto: false
+                            });
                         }
                     },
                     error: function (xhr, status, error) {
                         // ถ้าเข้าตรงนี้แสดงว่าไฟล์ PHP error หรือ path ผิด
                         console.error(xhr.responseText); // ดู error จริงใน Console (F12)
-                        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ หรือไฟล์มีปัญหา', 'error');
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ หรือไฟล์มีปัญหา',
+                            icon: 'error',
+                            heightAuto: false
+                        });
                     }
                 });
             }

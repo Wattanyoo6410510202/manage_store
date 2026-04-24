@@ -79,7 +79,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                                     endif;
                                     ?>
                                 </select>
-                                <p class="mt-1 text-[10px] text-slate-400 font-medium">*
+                                <p class="mt-1 text-[12px] text-slate-400 font-medium">*
                                     หัวกระดาษ</p>
                             </div>
                         </div>
@@ -224,7 +224,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
 
                         <div class="flex gap-4">
                             <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">คิดภาษี VAT
+                                <span class="mr-2 text-[12px] font-bold text-slate-400 uppercase">คิดภาษี VAT
                                     (7%)</span>
                                 <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
                                     class="hidden peer" onchange="calculateNetValue()">
@@ -233,7 +233,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                                 </div>
                             </label>
                             <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">เป็น VAT ใน</span>
+                                <span class="mr-2 text-[12px] font-bold text-slate-400 uppercase">เป็น VAT ใน</span>
 
                                 <input type="hidden" name="vat_type_status" value="1">
 
@@ -246,7 +246,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                             </label>
 
                             <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[10px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
+                                <span class="mr-2 text-[12px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
                                     (3%)</span>
                                 <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
                                     class="hidden peer" onchange="calculateNetValue()">
@@ -279,7 +279,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                             <input type="hidden" name="net_contract_value" id="net_contract_value">
                             <div class="text-right">
                                 <span id="display_net" class="font-bold text-lg text-indigo-400">0.00</span>
-                                <p class="text-[10px] text-slate-500 font-normal">บาท (รวม VAT หัก WHT)</p>
+                                <p class="text-[12px] text-slate-500 font-normal">บาท (รวม VAT หัก WHT)</p>
                             </div>
                         </div>
                     </div>
@@ -296,7 +296,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         <div id="upload-placeholder">
                             <i
                                 class="fas fa-file-pdf text-3xl text-slate-300 mb-2 group-hover:text-indigo-400 transition-colors"></i>
-                            <p class="text-[10px] text-slate-500">สัญญา หรือ BOQ (PDF, JPG)</p>
+                            <p class="text-[12px] text-slate-500">สัญญา หรือ BOQ (PDF, JPG)</p>
                             <p class="text-[9px] text-indigo-400 mt-1 italic">คลิกเพื่อเลือกไฟล์ หรือเปลี่ยนไฟล์ใหม่</p>
                         </div>
 
@@ -306,7 +306,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                             <i class="fas fa-check-circle text-2xl text-indigo-500 mb-2"></i>
                             <p id="file-name-display" class="text-xs text-slate-700 font-bold truncate px-4"></p>
                             <button type="button" onclick="resetFile(event)"
-                                class="mt-3 text-[10px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100 transition-all">
+                                class="mt-3 text-[12px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100 transition-all">
                                 <i class="fas fa-sync-alt mr-1"></i> เลือกไฟล์ใหม่
                             </button>
                         </div>

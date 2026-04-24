@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $customer_id = (int) ($_POST['customer_id'] ?? 0);
     $supplier_id = (int) ($_POST['supplier_id'] ?? 0);
     $reference_no = mysqli_real_escape_string($conn, $_POST['reference_no'] ?? '');
+    $express_ref_code = mysqli_real_escape_string($conn, $_POST['express_ref_code'] ?? '');
     $due_date = !empty($_POST['due_date']) ? mysqli_real_escape_string($conn, $_POST['due_date']) : null;
     $payment_term = mysqli_real_escape_string($conn, $_POST['payment_term'] ?? '');
     $requested_by = mysqli_real_escape_string($conn, $_POST['requested_by'] ?? '');
@@ -24,7 +25,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // รับค่า % ภาษี และ % หัก ณ ที่จ่าย
     $vat_percent = floatval($_POST['vat_percent'] ?? 0);
-    $wht_percent = floatval($_POST['wht_percent'] ?? 0); // เพิ่มรับค่า WHT
+    $wht_percent = floatval($_POST['wht_percent'] ?? 0);
+
+    // --- จัดการไฟล์แนบ ---
+    $attachment_1 = null;
+    $attachment_2 = null;
+    $upload_dir = "../uploads/po/";
+
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0777, true);
+    }
+
+    if (!empty($_FILES['attachment_1']['name'])) {
+        $ext = pathinfo($_FILES['attachment_1']['name'], PATHINFO_EXTENSION);
+        $file_name = "po_att1_" . time() . "_" . rand(1000, 9999) . "." . $ext;
+        if (move_uploaded_file($_FILES['attachment_1']['tmp_name'], $upload_dir . $file_name)) {
+            $attachment_1 = $file_name;
+        }
+    }
+
+    if (!empty($_FILES['attachment_2']['name'])) {
+        $ext = pathinfo($_FILES['attachment_2']['name'], PATHINFO_EXTENSION);
+        $file_name = "po_att2_" . time() . "_" . rand(1000, 9999) . "." . $ext;
+        if (move_uploaded_file($_FILES['attachment_2']['tmp_name'], $upload_dir . $file_name)) {
+            $attachment_2 = $file_name;
+        }
+    }
 
     mysqli_begin_transaction($conn);
 
@@ -47,24 +73,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // คำนวณ VAT และ WHT
         $vat_amount = $subtotal * ($vat_percent / 100);
-        $wht_amount = $subtotal * ($wht_percent / 100); // หัก ณ ที่จ่าย คำนวณจากยอดก่อน VAT
+        $wht_amount = $subtotal * ($wht_percent / 100);
         
         // ยอดสุทธิ = (ยอดสินค้า + VAT) - หัก ณ ที่จ่าย
         $grand_total = ($subtotal + $vat_amount) - $wht_amount;
 
-        // 4. บันทึกหัวเอกสาร (เพิ่มฟิลด์ wht_percent, wht_amount)
+        // 4. บันทึกหัวเอกสาร (เพิ่มฟิลด์ express_ref_code, attachment_1, attachment_2)
         $sql_po = "INSERT INTO po (
-            doc_no, customer_id, supplier_id, reference_no, 
+            doc_no, customer_id, supplier_id, reference_no, express_ref_code,
             due_date, payment_term, requested_by, 
             notes, subtotal, vat_percent, vat_amount, 
             wht_percent, wht_amount, grand_total, 
-            status, created_by, created_at
+            status, created_by, created_at, attachment_1, attachment_2
         ) VALUES (
-            '', '$customer_id', '$supplier_id', '$reference_no', 
+            '', '$customer_id', '$supplier_id', '$reference_no', '$express_ref_code',
             " . ($due_date ? "'$due_date'" : "NULL") . ", '$payment_term', '$requested_by', 
             '$notes', '$subtotal', '$vat_percent', '$vat_amount', 
             '$wht_percent', '$wht_amount', '$grand_total', 
-            'pending', '$created_by', NOW()
+            'pending', '$created_by', NOW(), " . 
+            ($attachment_1 ? "'$attachment_1'" : "NULL") . ", " . 
+            ($attachment_2 ? "'$attachment_2'" : "NULL") . "
         )";
 
         if (!mysqli_query($conn, $sql_po)) {
