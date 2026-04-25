@@ -30,7 +30,7 @@ $permissions = [
 
     // 6. Viewer: ดูได้อย่างเดียว (Dashboard และรายการเอกสาร)
     'viewer' => ['dashboard', 'docs'],
-    'procure' => ['dashboard', 'docs', 'projects', 'compare'],
+    'procure' => ['dashboard', 'docs', 'projects', 'compare', 'setup', 'trash'],
     'fin' => ['dashboard', 'docs', 'projects', 'compare']
 ];
 
@@ -81,13 +81,13 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
 // 4. กลุ่ม "ตั้งค่า"
-$is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php']);
+$is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
 
 // ==========================================
 // [เพิ่มใหม่] บล็อกการเข้าหน้าทางตรง (URL Security)
 // ==========================================
 if ($is_setup_active && !can('setup')) {
-    echo "<script>alert('เฉพาะ Admin เท่านั้นที่เข้าถึงส่วนการตั้งค่าได้'); window.location.href='index.php';</script>";
+    echo "<script>alert('เฉพาะ Admin หรือ จัดซื้อ เท่านั้นที่เข้าถึงส่วนการตั้งค่าได้'); window.location.href='index.php';</script>";
     exit;
 }
 if ($current_page == 'all_trash.php' && !can('trash')) {
