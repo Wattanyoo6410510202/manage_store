@@ -15,7 +15,6 @@ $ids_string = implode(',', $ids);
 $sql = "SELECT m.*, 
                p.project_name, p.project_no, p.contractor_name, p.contract_value, 
                p.total_vat_amount, p.total_wht_amount, p.net_contract_value,
-               -- เพิ่ม 3 ฟิลด์นี้ครับจาร (เช็คชื่อคอลัมน์ใน DB ของจารอีกทีนะครับ)
                p.bank_name, p.bank_account_name, p.bank_account_no, 
                p.start_date, p.end_date, p.project_remarks,
                s.company_name as my_company, s.address as my_address, 
@@ -36,6 +35,12 @@ if (empty($milestones)) {
 }
 
 $first = $milestones[0]; // ใช้ข้อมูลโครงการจากแถวแรก
+
+// ดึงลายเซ็นคนล็อคอินปัจจุบัน (สำหรับส่วนผู้จัดทำ)
+$my_user_id = $_SESSION['user_id'] ?? 0;
+$my_sig_res = mysqli_query($conn, "SELECT path FROM signatures WHERE users_id = '$my_user_id' LIMIT 1");
+$my_sig_row = mysqli_fetch_assoc($my_sig_res);
+$prepared_sig = !empty($my_sig_row['path']) ? 'uploads/signatures/' . $my_sig_row['path'] : '';
 
 
 // แก้บรรทัดนี้: เปลี่ยนจาก $pj['id'] เป็น $first['project_id']
@@ -449,8 +454,8 @@ if ($num_rows <= 5) {
                 <div style="width: 32%;">
                     <div
                         style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-                        <?php if (!empty($first['creator_signature'])): ?>
-                            <img src="uploads/signatures/<?= $first['creator_signature'] ?>"
+                        <?php if (!empty($prepared_sig)): ?>
+                            <img src="<?= $prepared_sig ?>?v=<?= time() ?>"
                                 style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
                     </div>
@@ -467,8 +472,8 @@ if ($num_rows <= 5) {
                 <div style="width: 32%;">
                     <div
                         style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-                        <?php if (($first['status'] ?? '') === 'approved' && !empty($first['approver_signature'])): ?>
-                            <img src="uploads/signatures/<?= $first['approver_signature'] ?>"
+                        <?php if (!empty($first['approver_signature'])): ?>
+                            <img src="uploads/signatures/<?= $first['approver_signature'] ?>?v=<?= time() ?>"
                                 style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
                     </div>
