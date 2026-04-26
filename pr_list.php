@@ -47,13 +47,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
         <div class="p-4">
             <div class="overflow-x-auto">
-                <div class="flex flex-wrap items-center gap-3 mb-4 w-full">
+                <div class="flex flex-wrap items-center gap-2 mb-3 w-full">
 
-                    <div class="relative min-w-[200px]">
+                    <div class="relative min-w-[160px]">
                         <label
-                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
+                            class="text-[10px] font-bold text-slate-500 uppercase mb-0.5 block ml-1">กรองตามหน่วยงาน</label>
                         <select id="filterSupplier"
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                             <option value="">ทั้งหมด (Show All)</option>
                             <?php foreach ($suppliers as $s): ?>
                                 <option value="<?= htmlspecialchars($s['company_name']) ?>">
@@ -63,41 +63,50 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         </select>
                     </div>
 
-                    <div class="relative min-w-[150px]">
+                    <div class="relative min-w-[130px]">
                         <label
-                            class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ตั้งแต่วันที่</label>
+                            class="text-[10px] font-bold text-slate-500 uppercase mb-0.5 block ml-1">ตั้งแต่วันที่</label>
                         <input type="date" id="minDate"
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                     </div>
 
-                    <div class="relative min-w-[150px]">
-                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">ถึงวันที่</label>
+                    <div class="relative min-w-[130px]">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-0.5 block ml-1">ถึงวันที่</label>
                         <input type="date" id="maxDate"
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                     </div>
 
-                    <button onclick="filterToday()"
-                        class="self-end mb-[2px] border border-indigo-100 px-3 py-2 rounded-lg text-[12px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
-                        <i class="fas fa-calendar-day text-indigo-500"></i> รายการวันนี้
-                    </button>
-
-                    <div class="relative min-w-[120px]">
-                        <label class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
+                    <div class="relative min-w-[100px]">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase mb-0.5 block ml-1">สถานะ</label>
                         <select id="filterStatus"
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                             <option value="">ทั้งหมด</option>
-                            <option value="รอ">รออนุมัติ (Pending)</option>
-                            <option value="อนุมัติ">อนุมัติแล้ว (Approved)</option>
+                            <option value="รอ">รออนุมัติ</option>
+                            <option value="อนุมัติ">อนุมัติแล้ว</option>
                         </select>
                     </div>
 
-                    <button onclick="resetFilter()"
-                        class="self-end mb-2.5 text-[12px] text-slate-800 hover:text-indigo-600 transition-colors">
-                        <i class="fas fa-undo mr-1"></i> ล้างตัวกรอง
-                    </button>
+                    <div class="flex items-center gap-2 self-end mb-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
+                        <input type="checkbox" id="filterMyWork" 
+                            class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                            <?= $_SESSION['role'] !== 'admin' ? 'checked' : '' ?>>
+                        <label for="filterMyWork" class="text-[11px] font-bold text-slate-600 cursor-pointer">งานของฉัน</label>
+                    </div>
+
+                    <div class="flex items-center gap-2 self-end mb-1">
+                        <button onclick="filterToday()"
+                            class="border border-indigo-100 px-2.5 py-1.5 rounded-lg text-[11px] text-slate-700 hover:bg-indigo-50 transition-all flex items-center gap-1">
+                            <i class="fas fa-calendar-day text-indigo-500"></i> วันนี้
+                        </button>
+
+                        <button onclick="resetFilter()"
+                            class="text-[11px] text-slate-500 hover:text-indigo-600 transition-colors px-1">
+                            <i class="fas fa-undo mr-1"></i> ล้าง
+                        </button>
+                    </div>
 
                     <div id="bulkActions"
-                        class="hidden ml-auto self-end p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in">
+                        class="hidden ml-auto self-end p-1 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 transition-all animate-fade-in">
                         <span class="text-[11px] font-bold text-red-700 ml-2">
                             เลือกอยู่ <span id="selectedCount" class="underline">0</span> รายการ
                         </span>
@@ -264,6 +273,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
 <script>
     let prTable;
+    const currentUserName = <?= json_encode($_SESSION['user_name'] ?? $_SESSION['user']) ?>;
+
     $(document).ready(function () {
         // 1. Init DataTable
         prTable = $('#prTable').DataTable({
@@ -271,32 +282,35 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[8, "desc"]], // เรียงตามวันที่ล่าสุด
-            "columnDefs": [{ "orderable": false, "targets": [0, 9] }],
+            "columnDefs": [{ "orderable": false, "targets": [0, 11] }],
             "drawCallback": function () { updateBulkUI(); }
         });
 
         // 2. Custom Filters
         $('#filterSupplier').on('change', function () { prTable.column(3).search(this.value).draw(); });
         $('#filterStatus').on('change', function () { prTable.column(7).search(this.value).draw(); });
+        $('#filterMyWork').on('change', function () { prTable.draw(); });
 
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-            let min = $('#minDate').val(); // ค่าจะเป็น YYYY-MM-DD
-            let max = $('#maxDate').val(); // ค่าจะเป็น YYYY-MM-DD
+            // A. กรองงานของฉัน
+            if ($('#filterMyWork').is(':checked')) {
+                const creatorName = data[9] || "";
+                if (creatorName.trim() !== currentUserName.trim()) return false;
+            }
 
-            // ดึงค่าจากคอลัมน์ที่ 8 (วันที่)
+            // B. กรองวันที่
+            let min = $('#minDate').val(); 
+            let max = $('#maxDate').val(); 
             let dateStr = data[8] || "";
             if (dateStr === "") return true;
 
-            // ตัดเอาเฉพาะวันที่ (เผื่อมี icon หรือช่องว่าง) และแยกส่วน d/m/y
-            // หมายเหตุ: ต้องระวังเรื่องเลขปี 2 หลัก (YY) กับ 4 หลัก (YYYY)
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
             if (!match) return true;
 
             let day = match[1];
             let month = match[2];
-            let year = "20" + match[3]; // เติม 20 ข้างหน้าเพื่อให้เป็น ค.ศ. 4 หลัก (2024)
-
-            let dateFormatted = `${year}-${month}-${day}`; // กลายเป็น YYYY-MM-DD
+            let year = "20" + match[3];
+            let dateFormatted = `${year}-${month}-${day}`;
 
             if ((min === "" && max === "") ||
                 (min === "" && dateFormatted <= max) ||

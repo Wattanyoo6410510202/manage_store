@@ -5,10 +5,10 @@ session_start();
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']);
 
-    // 1. ดึงข้อมูลไฟล์แนบก่อนลบ Record
-    $sql_file = "SELECT attachment_path FROM projects WHERE id = $id";
-    $res_file = mysqli_query($conn, $sql_file);
-    $pj = mysqli_fetch_assoc($res_file);
+    // 1. ดึงข้อมูลโครงการเพื่อเอาเลขที่โครงการ (สำหรับหาโฟลเดอร์) และไฟล์แนบ
+    $sql_pj = "SELECT project_no, attachment_path, attachment_contract, attachment_boq FROM projects WHERE id = $id";
+    $res_pj = mysqli_query($conn, $sql_pj);
+    $pj = mysqli_fetch_assoc($res_pj);
 
     // 2. ดึงข้อมูลไฟล์แนบของ "งวดงาน" (ถ้ามี)
     $sql_milestones = "SELECT claim_attachment FROM project_milestones WHERE project_id = $id";
@@ -19,12 +19,20 @@ if (isset($_GET['id'])) {
 
     try {
         // --- ลบไฟล์ในเครื่อง ---
-        // ลบไฟล์สัญญาโครงการ
-        if (!empty($pj['attachment_path'])) {
-            @unlink("../uploads/projects/" . $pj['attachment_path']);
+        if ($pj) {
+            $folder_path = "../uploads/projects/" . $pj['project_no'] . "/";
+            
+            // ลบไฟล์ในโฟลเดอร์โครงการ
+            if (is_dir($folder_path)) {
+                $files = glob($folder_path . '*'); 
+                foreach($files as $file){
+                    if(is_file($file)) @unlink($file);
+                }
+                @rmdir($folder_path); // ลบโฟลเดอร์โครงการ
+            }
         }
 
-        // ลบไฟล์ใบเบิกงวดงาน
+        // ลบไฟล์ใบเบิกงวดงาน (ถ้ายังเก็บแยกที่ /uploads/claims/)
         while ($ms = mysqli_fetch_assoc($res_milestones)) {
             if (!empty($ms['claim_attachment'])) {
                 @unlink("../uploads/claims/" . $ms['claim_attachment']);

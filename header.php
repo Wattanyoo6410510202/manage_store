@@ -25,13 +25,19 @@ $permissions = [
     // 4. HOK: สิทธิ์ระดับหัวหน้าส่วนงาน
     'hok' => ['dashboard', 'docs', 'projects', 'compare'],
 
-    // 5. Staff: พนักงานปฏิบัติการ
-    'staff' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
+    // 5. Staff: พนักงานปฏิบัติการ (เอา projects และ docs ออกตามสั่ง)
+    'staff' => ['dashboard', 'compare', 'inventory'],
 
-    // 6. Viewer: ดูได้อย่างเดียว (Dashboard และรายการเอกสาร)
-    'viewer' => ['dashboard', 'docs'],
+    // 6. Viewer: ดูได้อย่างเดียว (Dashboard)
+    'viewer' => ['dashboard'],
     'procure' => ['dashboard', 'docs', 'projects', 'compare', 'setup', 'trash'],
-    'fin' => ['dashboard', 'docs', 'projects', 'compare']
+    
+    // 7. ฝ่ายบัญชี/บริหาร (acc, mgr, mgr2) - เอา projects และ docs ออก
+    'acc' => ['dashboard', 'compare'],
+    'mgr' => ['dashboard', 'compare'],
+    'mgr2' => ['dashboard', 'compare'],
+    
+    'fin' => ['dashboard', 'compare']
 ];
 
 // ฟังก์ชันเช็คสิทธิ์สำหรับใช้ใน Side Bar และปุ่มต่างๆ
@@ -80,7 +86,10 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 // 3. กลุ่ม "ขอซื้อ"
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
-// 4. กลุ่ม "ตั้งค่า"
+// 4. กลุ่ม "ก่อสร้าง"
+$is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php']);
+
+// 5. กลุ่ม "ตั้งค่า"
 $is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
 
 // ==========================================
@@ -90,12 +99,20 @@ if ($is_setup_active && !can('setup')) {
     echo "<script>alert('เฉพาะ Admin หรือ จัดซื้อ เท่านั้นที่เข้าถึงส่วนการตั้งค่าได้'); window.location.href='index.php';</script>";
     exit;
 }
-if ($current_page == 'all_trash.php' && !can('trash')) {
-    echo "<script>window.location.href='index.php';</script>";
+if ($is_construction_group && !can('projects')) {
+    echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหมวดก่อสร้าง'); window.location.href='e_service.php';</script>";
     exit;
 }
-if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure'])) {
-    echo "<script>alert('เฉพาะ Admin และ จัดซื้อ เท่านั้นที่เข้าถึงหน้านี้ได้'); window.location.href='index.php';</script>";
+if (($is_list_active || $current_page == 'index.php') && !can('docs')) {
+    echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงส่วนจัดการเอกสาร'); window.location.href='e_service.php';</script>";
+    exit;
+}
+if ($current_page == 'all_trash.php' && !can('trash')) {
+    echo "<script>window.location.href='e_service.php';</script>";
+    exit;
+}
+if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure', 'acc', 'mgr', 'mgr2'])) {
+    echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
     exit;
 }
 // ==========================================
@@ -103,11 +120,13 @@ if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', '
 // ==========================================
 $cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php'];
 $cat_settings = ['settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
+$cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php'];
 // อื่นๆ คือ cat_system
 
 $active_cat = 'system'; 
 if (in_array($current_page, $cat_main)) $active_cat = 'main';
 if (in_array($current_page, $cat_settings)) $active_cat = 'settings';
+if (in_array($current_page, $cat_construction)) $active_cat = 'construction';
 
 // ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role ตัวเอง
 $pending_count = 0;
@@ -314,19 +333,22 @@ if ($pending_res) {
                     </div>
                 <?php endif; ?>
 
-                <?php if (can('projects')): ?>
-                    <a href="projects.php"
-                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                        <i class="fas fa-tasks w-5 text-indigo-400"></i>
-                        <span class="font-medium">จัดการงวดงาน</span>
-                    </a>
-                <?php endif; ?>
-
                 <?php if (can('compare')): ?>
                     <a href="compare.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'compare.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
                         <span class="font-medium">เปรียบเทียบราคา</span>
+                    </a>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($active_cat == 'construction'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Construction</p>
+                <?php if (can('projects')): ?>
+                    <a href="projects.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $is_construction_group ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-tasks w-5 <?php echo $is_construction_group ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                        <span class="font-medium">จัดการงวดงาน</span>
                     </a>
                 <?php endif; ?>
             <?php endif; ?>
@@ -411,6 +433,12 @@ if ($pending_res) {
                     <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
                     <a href="index.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-th-large mr-2"></i>จัดการเอกสาร
+                    </a>
+                    <?php endif; ?>
+
+                    <?php if (can('projects')): ?>
+                    <a href="projects.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'construction' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-hammer mr-2"></i>หมวดก่อสร้าง
                     </a>
                     <?php endif; ?>
                     

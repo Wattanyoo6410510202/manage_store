@@ -41,26 +41,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
     $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
 
+    // 1. รับค่าพื้นฐาน
+    $project_id = mysqli_real_escape_string($conn, $_POST['project_id']);
+
+    // ดึงเลขที่โครงการมาใช้สร้างชื่อโฟลเดอร์
+    $pj_res = mysqli_query($conn, "SELECT project_no FROM projects WHERE id = '$project_id'");
+    $pj_data = mysqli_fetch_assoc($pj_res);
+    $project_no = $pj_data['project_no'];
+
     // 2. จัดการไฟล์แนบ
-    $file_sql = "";
-    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
-        $target_dir = "../uploads/projects/";
-        if (!file_exists($target_dir))
-            mkdir($target_dir, 0777, true);
+    $target_dir = "../uploads/projects/" . $project_no . "/";
+    if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
 
-        $file_ext = pathinfo($_FILES["attachment"]["name"], PATHINFO_EXTENSION);
-        $new_file_name = "PJ_" . time() . "." . $file_ext;
-        $target_file = $target_dir . $new_file_name;
+    function updateProjectFile($input_name, $prefix, $dir, $project_id, $column, $conn) {
+        if (isset($_FILES[$input_name]) && $_FILES[$input_name]['error'] == 0) {
+            $file_ext = pathinfo($_FILES[$input_name]["name"], PATHINFO_EXTENSION);
+            $new_name = $prefix . "_" . time() . "_" . rand(100, 999) . "." . $file_ext;
 
-        if (move_uploaded_file($_FILES["attachment"]["tmp_name"], $target_file)) {
-            $old_file_res = mysqli_query($conn, "SELECT attachment_path FROM projects WHERE id = '$project_id'");
-            $old_file = mysqli_fetch_assoc($old_file_res);
-            if ($old_file['attachment_path'] && file_exists($target_dir . $old_file['attachment_path'])) {
-                unlink($target_dir . $old_file['attachment_path']);
+            if (move_uploaded_file($_FILES[$input_name]["tmp_name"], $dir . $new_name)) {
+                // ลบไฟล์เก่า
+                $old_file_res = mysqli_query($conn, "SELECT $column FROM projects WHERE id = '$project_id'");
+                $old_file = mysqli_fetch_assoc($old_file_res);
+                if ($old_file[$column] && file_exists($dir . $old_file[$column])) {
+                    unlink($dir . $old_file[$column]);
+                }
+                return ", $column = '$new_name'";
             }
-            $file_sql = ", attachment_path = '$new_file_name'";
         }
+        return "";
     }
+    $file_sql = updateProjectFile('attachment', 'PJ', $target_dir, $project_id, 'attachment_path', $conn);
+    $file_sql .= updateProjectFile('attachment_contract', 'CON', $target_dir, $project_id, 'attachment_contract', $conn);
+    $file_sql .= updateProjectFile('attachment_boq', 'BOQ', $target_dir, $project_id, 'attachment_boq', $conn);
 
     // 3. UPDATE ข้อมูลหลัก (เพิ่มฟิลด์ has_vat ลงไปด้วย)
     $sql_update = "UPDATE projects SET 

@@ -1,295 +1,535 @@
 <?php
 require_once 'config.php';
 include('header.php');
+include('assets/alert.php');
 
-$project_id = intval($_GET['project_id']);
-
-// 1. ดึงข้อมูลโปรเจกต์
-$sql_pj = "SELECT * FROM projects WHERE id = $project_id";
-$res_pj = mysqli_query($conn, $sql_pj);
-$pj = mysqli_fetch_assoc($res_pj);
-
-if (!$pj) {
-    echo "<script>alert('ไม่พบข้อมูลโครงการ'); window.location.href='projects.php';</script>";
-    exit;
-}
-
-// 2. นับงวดงานถัดไป
-$sql_count = "SELECT COUNT(*) as total FROM project_milestones WHERE project_id = $project_id";
-$count = mysqli_fetch_assoc(mysqli_query($conn, $sql_count))['total'] + 1;
-
-// 3. คำนวณหายอดรวมที่เบิกไปแล้ว (Gross Amount)
-$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
+// ดึงข้อมูลโปรเจกต์
+$sql = "SELECT p.*, created_by,
+        (SELECT SUM(net_amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
+        -- เพิ่มบรรทัดนี้ครับจาร เพื่อรวบ ID งวดงานทั้งหมด
+        (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
+        FROM projects p ORDER BY p.id DESC";
+$result = mysqli_query($conn, $sql);
 ?>
 
 <div>
-    <form action="api/save_milestone.php" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="project_id" value="<?= $project_id ?>">
-        <input type="hidden" name="vat_amount" id="vat_amount_val">
-        <input type="hidden" name="wht_amount" id="wht_amount_val">
-        <input type="hidden" name="total_request_amount" id="total_request_amount_val">
-        <input type="hidden" name="remaining_balance" id="remaining_balance_val">
-        <input type="hidden" name="retention_amount" id="retention_amount_val">
-        <input type="hidden" name="other_deduction_amount" id="other_deduction_amount_val">
-
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-800">บันทึกใบเบิกงวดงาน</h2>
-                <p class="text-slate-500 text-sm">โครงการ: <span
-                        class="text-indigo-600 font-bold"><?= $pj['project_no'] ?> - <?= $pj['project_name'] ?></span>
-                </p>
+    <div
+        class="bg-white p-3 rounded-xl  border border-slate-200 mb-4 flex flex-wrap gap-2 items-center">
+        <div class="flex flex-wrap gap-2 items-center flex-1">
+            <div class="relative min-w-[200px] flex-1 max-w-sm">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="projectSearch" placeholder="ค้นหาชื่อโครงการ..."
+                    class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[12px] focus:ring-2 focus:ring-indigo-500 transition-all"
+                    onkeyup="filterProjects()">
             </div>
-            <div class="flex gap-3">
-                <button type="submit"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl font-bold -lg -indigo-200 transition-all">
-                    <i class="fas fa-check-circle mr-2"></i> บันทึกข้อมูล
+
+            <div class="relative min-w-[150px]">
+                <select id="userFilter" onchange="filterProjects()"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all">
+                    <option value="">ผู้ใช้งานทั้งหมด</option>
+                    <?php
+                    $my_id = $_SESSION['user_id'] ?? '';
+                    $user_query = $conn->query("SELECT id, name FROM users ORDER BY name ASC");
+                    while ($u = $user_query->fetch_assoc()):
+                        $selected = ($u['id'] == $my_id) ? 'selected' : '';
+                        ?>
+                        <option value="<?= $u['id'] ?>" <?= $selected ?>>
+                            <?= htmlspecialchars($u['name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+
+            <div class="relative min-w-[150px]">
+                <select id="companyFilter" onchange="filterProjects()"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all">
+                    <option value="">ทุกบริษัท/คู่ค้า</option>
+                    <option value="none">-- ไม่มีบริษัท --</option>
+                    <?php
+                    $supplier_query = $conn->query("SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
+                    while ($s = $supplier_query->fetch_assoc()):
+                        ?>
+                        <option value="<?= $s['id'] ?>">
+                            <?= htmlspecialchars($s['company_name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+
+            <button onclick="resetFilters()"
+                class="text-slate-500 hover:text-indigo-600 text-[11px] font-bold transition-colors px-1">
+                <i class="fas fa-undo-alt mr-1"></i> ล้าง
+            </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                <button onclick="setViewMode('grid')" id="gridBtn"
+                    class="w-7 h-7 flex items-center justify-center rounded-md transition-all text-xs">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button onclick="setViewMode('table')" id="tableBtn"
+                    class="w-7 h-7 flex items-center justify-center rounded-md transition-all text-xs">
+                    <i class="fas fa-list"></i>
                 </button>
             </div>
+
+            <button onclick="location.href='add_project.php'"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold ">
+                <i class="fas fa-plus-circle"></i> สร้างงานใหม่
+            </button>
         </div>
+    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-file-invoice-dollar text-indigo-500"></i> รายละเอียดใบแจ้งหนี้
-                    </h3>
+    <!-- Grid View -->
+    <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <?php 
+        mysqli_data_seek($result, 0);
+        while ($row = mysqli_fetch_assoc($result)):
+            $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
+            $pj_id = $row['id'];
+            ?>
+            <div class="project-item project-card group bg-white rounded-2xl border border-slate-200 p-4 transition-all "
+                data-user="<?= $row['created_by'] ?>" data-name="<?= htmlspecialchars($row['project_name']) ?>"
+                data-company="<?= $row['supplier_id'] ?>">
+                <div class="flex gap-4">
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">งวดที่ / รายละเอียดงาน <span
-                                    class="text-red-500">*</span></label>
-                            <input type="text" name="milestone_name" required value="งวดที่ <?= $count ?>: "
-                                class="w-full border border-slate-200 rounded-xl p-2.5 ">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1 ">ยอดเงินตั้งเบิก
-                                (ก่อนภาษี)</label>
-                            <div class="relative">
-                                <input type="number" step="0.01" name="amount" id="amount" oninput="calculateMoney()"
-                                    required class="w-full border-2  rounded-xl p-2.5 pl-8 " placeholder="0.00">
-                                <span class="absolute left-3 top-3 text-slate-400">฿</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เรียกเก็บ</label>
-                            <input type="date" name="claim_date" value="<?= date('Y-m-d') ?>"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (เพิ่มเติม)</label>
-                            <textarea name="remarks" rows="2"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none "
-                                placeholder="ระบุรายละเอียดเพิ่มเติม เช่น หักค่าของ, จ่ายล่วงหน้า..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div class="flex justify-between items-center mb-1">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="use_vat" checked onchange="calculateMoney()"
-                                        class="rounded text-indigo-500">
-                                    <label class="text-[12px] font-bold text-slate-500 uppercase">VAT 7%</label>
-                                </div>
+                    <div class="w-[40%] flex flex-col">
+                        <?php if ($row['attachment_path']):
+                            $ext = strtolower(pathinfo($row['attachment_path'], PATHINFO_EXTENSION));
+                            ?>
+                            <a href="uploads/projects/<?= $row['attachment_path'] ?>" target="_blank"
+                                class="block group/preview">
 
                                 <div
-                                    class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                    <input type="checkbox" id="vat_include_check" onchange="calculateMoney()"
-                                        class="w-3 h-3 rounded text-emerald-500 focus:ring-0">
-                                    <label for="vat_include_check"
-                                        class="text-[9px] font-bold text-slate-400 uppercase cursor-pointer">VAT
-                                        ใน</label>
+                                    class=" overflow-hidden relative flex items-center justify-center p-2 transition-all duration-300 ">
+
+                                    <?php if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])): ?>
+                                        <img src="uploads/projects/<?= $row['attachment_path'] ?>"
+                                            class="w-full h-full object-contain transition-transform duration-500 "
+                                            alt="Image Preview">
+
+                                    <?php elseif ($ext === 'pdf'): ?>
+                                        <iframe src="uploads/projects/<?= $row['attachment_path'] ?>#toolbar=0&navpanes=0&view=Fit"
+                                            class="w-full h-full border-0 pointer-events-none" frameborder="0">
+                                        </iframe>
+                                        <div class="absolute inset-0 z-10"></div>
+
+                                    <?php else: ?>
+                                        <div class="text-center transition-transform duration-300 ">
+                                            <?php
+                                            $icon = 'fa-file-alt';
+                                            $color = 'text-slate-300';
+                                            if (in_array($ext, ['doc', 'docx'])) {
+                                                $icon = 'fa-file-word';
+                                                $color = 'text-blue-500';
+                                            } elseif (in_array($ext, ['xls', 'xlsx'])) {
+                                                $icon = 'fa-file-excel';
+                                                $color = 'text-emerald-500';
+                                            } elseif (in_array($ext, ['zip', 'rar'])) {
+                                                $icon = 'fa-file-archive';
+                                                $color = 'text-amber-500';
+                                            }
+                                            ?>
+                                            <i class="fas <?= $icon ?> <?= $color ?> text-5xl mb-2 opacity-50"></i>
+                                            <p class="text-[12px] font-bold text-slate-800 uppercase"><?= $ext ?> FILE</p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </a>
+                        <?php else: ?>
+                            <div
+                                class="h-[220px] flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                                <i class="fas fa-file-circle-exclamation text-slate-200 text-3xl mb-2"></i>
+                                <p class="text-[12px] text-slate-800 uppercase font-bold tracking-widest">No Attachment</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="w-[60%] flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+
+                                <div class="flex flex-wrap gap-1.5 items-center">
+                                    <?php if ($row['project_status'] == 'active'): ?>
+                                        <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                            class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all ">
+                                            เบิกงวด
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if ($row['project_status'] != 'on_hold'): ?>
+                                    <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all ">
+                                        ดูงวด
+                                    </a>
+                                    <?php endif; ?>
+
+                                    <a href="edit_project.php?id=<?= $pj_id ?>"
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all ">
+                                        แก้ไข
+                                    </a>
+
+                                    <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all ">
+                                        ลบ
+                                    </button>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between items-end">
-                                <p class="text-lg font-bold text-slate-700" id="vat_display">0.00 ฿</p>
-                                <input type="hidden" id="vat_type_status" name="has_vat" value="1">
-                            </div>
-                        </div>
-
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="text-[12px] font-bold text-slate-500 uppercase">หัก ณ ที่จ่าย 3%</label>
-                                <input type="checkbox" id="use_wht" checked onchange="calculateMoney()"
-                                    class="rounded ">
-                            </div>
-                            <p class="text-lg font-bold " id="wht_display">0.00 ฿</p>
-                        </div>
-
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 relative overflow-hidden transition-all"
-                            id="deduction_card">
-                            <div class="flex justify-between items-center mb-1">
-
-
-                                <div class="flex gap-2">
-                                    <div
-                                        class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                        <span class="text-[9px] font-bold text-slate-400">หัก</span>
-                                        <input type="number" id="retention_percent" name="retention_percent"
-                                            value="<?= $m_data['retention_percent'] ?? 0 ?>" oninput="calculateMoney()"
-                                            class="w-8 text-center bg-transparent text-[12px] font-bold text-slate-600 focus:outline-none"
-                                            placeholder="0">
-                                        <span class="text-[9px] font-bold text-slate-400">%</span>
+                            <h3 class="font-bold text-slate-800 text-sm mb-0.5 truncate"
+                                title="<?= $row['project_name'] ?>"><?= $row['project_name'] ?></h3>
+                            <p class="text-[12px] text-slate-800 mb-3">
+                                <i class="far fa-calendar-alt mr-1"></i> จบงาน:
+                                <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
+                            </p>
+                            <div class="space-y-2.5">
+                                <div>
+                                    <div class="flex justify-between text-[12px] mb-1">
+                                        <span class="text-slate-800">การเบิกเงิน</span>
+                                        <span class="font-bold text-indigo-600"><?= number_format($progress, 1) ?>%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-500 h-full transition-all duration-1000"
+                                            style="width: <?= $progress ?>%"></div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
-                                        class="rounded text-slate-500 w-3 h-3 focus:ring-0 cursor-pointer">
-                                    <label for="use_deduction"
-                                        class="text-[12px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
-                                        / หักอื่นๆ</label>
+
+                                <div class="bg-slate-50 rounded-xl p-2.5 space-y-1">
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-[9px] text-slate-800 uppercase font-medium">สัญญา</p>
+                                        <p class="text-[11px] font-bold text-slate-700">
+                                            <?= number_format($row['contract_value'], 2) ?>
+                                        </p>
+                                    </div>
+                                    <div class="flex justify-between items-center border-t border-slate-100 pt-1">
+                                        <p class="text-[9px] text-slate-800 uppercase font-medium">รับแล้ว</p>
+                                        <p class="text-[11px] font-bold text-emerald-600">
+                                            <?= number_format($row['collected_money'], 2) ?>
+                                        </p>
+                                    </div>
+                                    
+                                    <!-- ไฟล์แนบ (Text Links) -->
+                                    <div class="mt-2 pt-1 border-t border-slate-200 space-y-1">
+                                        <?php if ($row['attachment_contract']): ?>
+                                            <div class="truncate text-[9px]">
+                                                <a href="uploads/projects/<?= $row['attachment_contract'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                                    <i class="fas fa-file-contract"></i> <?= htmlspecialchars($row['attachment_contract']) ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($row['attachment_boq']): ?>
+                                            <div class="truncate text-[9px]">
+                                                <a href="uploads/projects/<?= $row['attachment_boq'] ?>" target="_blank" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                                                    <i class="fas fa-file-excel"></i> <?= htmlspecialchars($row['attachment_boq']) ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Status Buttons Only -->
+                                    <?php if ($user_role === 'admin'): ?>
+                                        <div class="mt-2 w-full">
+                                            <?php if ($row['project_status'] == 'on_hold'): ?>
+                                                <button onclick="changeProjectStatus(<?= $pj_id ?>, 'active', 'ยืนยันการอนุมัติงาน?')"
+                                                    class="w-full py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all ">
+                                                    อนุมัติงาน
+                                                </button>
+                                            <?php elseif ($row['project_status'] == 'active'): ?>
+                                                <button onclick="changeProjectStatus(<?= $pj_id ?>, 'completed', 'ยืนยันการปิดงานโครงการนี้?')"
+                                                    class="w-full py-1.5 text-[11px] font-bold rounded-lg bg-slate-700 text-white hover:bg-slate-800 transition-all ">
+                                                    ปิดงาน
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-
-                            <p class="text-lg font-bold text-slate-700" id="deduction_total_display">0.00 ฿</p>
-
-                            <input type="text" id="deduction_note" name="deduction_note"
-                                value="<?= $m_data['deduction_note'] ?? '' ?>" placeholder="เงินประกัน/ หักอื่นๆ"
-                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[12px] text-slate-500 focus:outline-none placeholder:text-slate-300">
                         </div>
 
-                        <div class="p-4 bg-indigo-600 rounded-xl -md text-white">
-                            <label class="text-[12px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>
-                            <p class="text-xl font-black" id="total_request_display">0.00 ฿</p>
-                        </div>
-                    </div>
-                </div>
+                        <div class="mt-3 flex justify-between items-center">
+                            <span
+                                class="text-[9px] px-2 py-0.5 rounded-md <?= $row['project_status'] == 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-800 border-slate-200' ?> font-bold border">
+                                <?php
+                                if ($row['project_status'] == 'active') {
+                                    echo 'กำลังดำเนินการ';
+                                } elseif ($row['project_status'] == 'completed') {
+                                    echo 'เสร็จสิ้น';
+                                } else {
+                                    echo 'รอดำเนินการ';
+                                }
+                                ?>
+                            </span>
 
-                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-university text-blue-500"></i> บัญชีธนาคารสำหรับโอนเงิน
-                    </h3>
-                    <div class="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center -sm">
-                            <i class="fas fa-wallet text-blue-500 text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700"><?= $pj['bank_name'] ?>: <span
-                                    class="text-blue-700 font-black"><?= $pj['bank_account_no'] ?></span></p>
-                            <p class="text-[11px] text-slate-500">ชื่อบัญชี: <?= $pj['bank_account_name'] ?></p>
+                            <span
+                                class="text-[9px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-md uppercase tracking-wider border border-indigo-100">
+                                <?= $row['project_no'] ?>
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
+        <?php endwhile; ?>
+    </div>
 
-            <div class="space-y-6">
-                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <label class="block text-sm font-bold text-slate-700 mb-4">สถานะการจ่ายเงิน</label>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="cursor-pointer group">
-                            <input type="radio" name="status" value="pending" class="peer hidden" checked>
-                            <div
-                                class="flex flex-col items-center justify-center py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 transition-all 
-                    peer-checked:border-amber-400 peer-checked:bg-amber-50 peer-checked:text-amber-500 shadow-sm group-hover:bg-white">
-                                <i class="fas fa-hourglass-half text-2xl mb-2"></i>
-                                <span class="text-[11px] font-black uppercase tracking-wider">รอชำระ</span>
+    <!-- Table View -->
+    <div id="tableView" class="hidden overflow-x-auto bg-white rounded-2xl border border-slate-200">
+        <table class="w-full text-left border-collapse min-w-[1000px]">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">โครงการ</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">มูลค่าสัญญา</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">รับแล้ว</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ความคืบหน้า</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                <?php 
+                mysqli_data_seek($result, 0);
+                while ($row = mysqli_fetch_assoc($result)):
+                    $progress = ($row['contract_value'] > 0) ? ($row['collected_money'] / $row['contract_value']) * 100 : 0;
+                    $pj_id = $row['id'];
+                    ?>
+                    <tr class="project-item project-row hover:bg-slate-50/50 transition-colors"
+                        data-user="<?= $row['created_by'] ?>" data-name="<?= htmlspecialchars($row['project_name']) ?>"
+                        data-company="<?= $row['supplier_id'] ?>">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                                    <i class="fas fa-briefcase"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-800 line-clamp-1" title="<?= $row['project_name'] ?>">
+                                        <?= $row['project_name'] ?>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                                        <?= $row['project_no'] ?> • จบงาน: <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
+                                    </div>
+                                </div>
                             </div>
-                        </label>
-
-                        <label class="cursor-pointer group">
-                            <input type="radio" name="status" value="paid" class="peer hidden">
-                            <div
-                                class="flex flex-col items-center justify-center py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 transition-all 
-                    peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-500 shadow-sm group-hover:bg-white">
-                                <i class="fas fa-check-circle text-2xl mb-2"></i>
-                                <span class="text-[11px] font-black uppercase tracking-wider">จ่ายแล้ว</span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="inline-block text-[10px] px-2 py-0.5 rounded-md font-bold border <?= $row['project_status'] == 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-800 border-slate-200' ?>">
+                                <?php
+                                if ($row['project_status'] == 'active') echo 'กำลังดำเนินการ';
+                                elseif ($row['project_status'] == 'completed') echo 'เสร็จสิ้น';
+                                else echo 'รอดำเนินการ';
+                                ?>
+                            </span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="text-sm font-bold text-slate-700"><?= number_format($row['contract_value'], 2) ?></div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="text-sm font-bold text-emerald-600"><?= number_format($row['collected_money'], 2) ?></div>
+                        </td>
+                        <td class="p-4 min-w-[150px]">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-500 rounded-full" style="width: <?= $progress ?>%"></div>
+                                </div>
+                                <span class="text-[11px] font-bold text-indigo-600 whitespace-nowrap"><?= number_format($progress, 1) ?>%</span>
                             </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 rounded-3xl p-6 text-white -xl">
-                    <h4 class="font-bold mb-4 flex items-center gap-2 text-indigo-400">
-                        <i class="fas fa-calculator"></i> สถานะงบประมาณ
-                    </h4>
-                    <div class="space-y-4 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">มูลค่ารวม:</span>
-                            <span class="font-bold"><?= number_format($pj['contract_value'], 2) ?></span>
-                        </div>
-                        <div class="flex justify-between border-t border-slate-800 pt-2">
-                            <span class="text-slate-400">เบิกไปแล้ว:</span>
-                            <span class="text-white"><?= number_format($collected, 2) ?></span>
-                        </div>
-                        <div class="flex justify-between text-indigo-400 font-bold">
-                            <span>งวดนี้:</span>
-                            <span id="current_claim_display">0.00</span>
-                        </div>
-                        <div
-                            class="flex justify-between font-black text-lg pt-2 mt-2 border-t border-dashed border-slate-700">
-                            <span>คงเหลือสุทธิ:</span>
-                            <span id="remaining_balance_display" class="text-indigo-400">0.00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl -sm border border-slate-200 p-6">
-                    <h3 class="text-sm font-bold text-slate-800 mb-3">หลักฐานการเบิก (สลิป/ใบแจ้งหนี้)</h3>
-                    <div
-                        class="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-indigo-400 cursor-pointer">
-                        <input type="file" name="claim_attachment" class="absolute inset-0 opacity-0 cursor-pointer"
-                            onchange="document.getElementById('file-label').innerText = this.files[0].name">
-                        <p id="file-label" class="text-[12px] text-slate-400 truncate">คลิกเพื่อเลือกไฟล์</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
+                        </td>
+                        <td class="p-4">
+                            <div class="flex justify-center items-center gap-1.5">
+                                <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all " title="เบิกงวด">
+                                    <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                </button>
+                                <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all " title="ดูงวด">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </a>
+                                <a href="edit_project.php?id=<?= $pj_id ?>"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all " title="แก้ไข">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </a>
+                                <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all " title="ลบ">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
+<div id="viewModal"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden  animate-fade-in-up">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="text-xl font-bold text-slate-800" id="modalTitle">รายละเอียดโครงการ</h3>
+            <button onclick="closeModal()"
+                class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white  text-slate-800 transition-all">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-8 overflow-y-auto" id="modalContent" style="max-height: calc(90vh - 80px);">
+            <div class="text-center py-10">
+                <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
+                <p class="mt-2 text-slate-800">กำลังโหลดข้อมูล...</p>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .swal2-container { z-index: 99999 !important; }
+</style>
 <script>
-    function calculateMoney() {
-        // 1. ดึงค่าพื้นฐาน
-        let amount = parseFloat(document.getElementById('amount').value) || 0;
-        let contractValue = <?= (float) $pj['contract_value'] ?>;
-        let collectedBefore = <?= (float) $collected ?>;
-
-        // 2. คำนวณภาษี
-        let vat = document.getElementById('use_vat').checked ? (amount * 0.07) : 0;
-        let wht = document.getElementById('use_wht').checked ? (amount * 0.03) : 0;
-
-        // 3. คำนวณเงินประกัน / หักอื่นๆ
-        let useDeduction = document.getElementById('use_deduction').checked;
-        let retPercent = parseFloat(document.getElementById('retention_percent').value) || 0;
-        let deductionAmount = useDeduction ? (amount * (retPercent / 100)) : 0;
-
-        // 4. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือ
-        let totalRequest = (amount + vat) - wht - deductionAmount;
-        let remaining = contractValue - (collectedBefore + amount);
-
-        // 5. แสดงผลบน UI
-        document.getElementById('vat_display').innerText = vat.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('wht_display').innerText = '- ' + wht.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('deduction_total_display').innerText = '- ' + deductionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('total_request_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' ฿';
-        document.getElementById('current_claim_display').innerText = totalRequest.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('remaining_balance_display').innerText = remaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-        // 6. อัปเดตค่าลง Hidden Inputs (ต้องมี ID ใน HTML ให้ครบ)
-        if (document.getElementById('vat_amount_val')) document.getElementById('vat_amount_val').value = vat.toFixed(2);
-        if (document.getElementById('wht_amount_val')) document.getElementById('wht_amount_val').value = wht.toFixed(2);
-        if (document.getElementById('total_request_amount_val')) document.getElementById('total_request_amount_val').value = totalRequest.toFixed(2);
-        if (document.getElementById('remaining_balance_val')) document.getElementById('remaining_balance_val').value = remaining.toFixed(2);
-
-        // บันทึกเงินประกัน
-        if (document.getElementById('retention_amount_val')) {
-            document.getElementById('retention_amount_val').value = deductionAmount.toFixed(2);
-        }
-        // บันทึกยอดหักอื่นๆ (ใน DB จารมีคอลัมน์นี้ด้วย)
-        if (document.getElementById('other_deduction_amount_val')) {
-            document.getElementById('other_deduction_amount_val').value = deductionAmount.toFixed(2);
-        }
-
-        document.getElementById('deduction_card').style.opacity = useDeduction ? '1' : '0.6';
+    function setViewMode(mode) {
+        localStorage.setItem('project_view_mode', mode);
+        updateViewUI();
     }
 
-    // เรียกทำงานทันทีที่โหลดหน้า
-    calculateMoney();
+    function updateViewUI() {
+        const mode = localStorage.getItem('project_view_mode') || 'grid';
+        const gridView = document.getElementById('gridView');
+        const tableView = document.getElementById('tableView');
+        const gridBtn = document.getElementById('gridBtn');
+        const tableBtn = document.getElementById('tableBtn');
+
+        if (mode === 'grid') {
+            gridView.classList.remove('hidden');
+            tableView.classList.add('hidden');
+            gridBtn.classList.add('bg-white', 'text-indigo-600', '');
+            gridBtn.classList.remove('text-slate-400');
+            tableBtn.classList.remove('bg-white', 'text-indigo-600', '');
+            tableBtn.classList.add('text-slate-400');
+        } else {
+            gridView.classList.add('hidden');
+            tableView.classList.remove('hidden');
+            tableBtn.classList.add('bg-white', 'text-indigo-600', '');
+            tableBtn.classList.remove('text-slate-400');
+            gridBtn.classList.remove('bg-white', 'text-indigo-600', '');
+            gridBtn.classList.add('text-slate-400');
+        }
+    }
+
+    function viewProjectDetails(id) {
+        // แทนที่จะเปิด Modal เราจะย้ายหน้าไปที่ไฟล์รายละเอียดโครงการแทน
+        // โดยส่ง ID ผ่าน URL Parameter ครับจาร
+        window.location.href = 'detail_project.php?id=' + id;
+    }
+
+    function closeModal() {
+        $('#viewModal').addClass('hidden').removeClass('flex');
+    }
+
+    // ปิด Modal เมื่อคลิกพื้นหลัง
+    $(window).on('click', function (e) {
+        if ($(e.target).is('#viewModal')) closeModal();
+    });
+
+    function deleteProject(id, name) {
+        Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: `คุณกำลังจะลบโครงการ "${name}" และข้อมูลที่เกี่ยวข้องทั้งหมด (รวมถึงไฟล์แนบ)`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'ใช่, ลบเลย!',
+            cancelButtonText: 'ยกเลิก',
+
+            heightAuto: false // กันหน้าดีด
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // ส่งไปที่ไฟล์ลบ
+                window.location.href = `api/delete_project.php?id=${id}`;
+            }
+        })
+    }
+
+    function togglePreview() {
+        const container = document.getElementById('preview_container');
+        if (container.classList.contains('hidden')) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+    function filterProjects() {
+        const search = document.getElementById('projectSearch').value.toLowerCase();
+        const user = document.getElementById('userFilter').value;
+        const company = document.getElementById('companyFilter').value;
+        const items = document.querySelectorAll('.project-item');
+
+        items.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const userId = item.getAttribute('data-user');
+            const companyId = item.getAttribute('data-company');
+
+            const matchSearch = name.includes(search);
+            const matchUser = (user === "" || userId === user);
+
+            let matchCompany = false;
+            if (company === "") {
+                matchCompany = true;
+            } else if (company === "none") {
+                matchCompany = (companyId === "" || companyId === "0" || companyId === "null" || companyId === null);
+            } else {
+                matchCompany = (companyId === company);
+            }
+
+            if (matchSearch && matchUser && matchCompany) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    }
+    function resetFilters() {
+        document.getElementById('projectSearch').value = '';
+        document.getElementById('userFilter').value = '';
+        document.getElementById('companyFilter').value = '';
+        filterProjects();
+    }
+
+    function changeProjectStatus(id, targetStatus, confirmText) {
+        Swal.fire({
+            title: confirmText,
+            text: targetStatus === 'completed' ? "โครงการที่ปิดแล้วจะถือว่าเสร็จสมบูรณ์" : "เมื่ออนุมัติแล้ว สถานะจะเปลี่ยนเป็น 'กำลังดำเนินการ'",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: targetStatus === 'active' ? '#10b981' : '#64748b',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            heightAuto: false,
+            width: '400px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const fd = new FormData();
+                fd.append('project_id', id);
+                fd.append('status', targetStatus);
+
+                fetch('api/update_project_status.php', {
+                    method: 'POST',
+                    body: fd
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({title: 'สำเร็จ!', text: 'อัปเดตสถานะเรียบร้อยแล้ว', icon: 'success', heightAuto: false, width: '400px'})
+                        .then(() => location.reload());
+                    } else {
+                        Swal.fire({title: 'ผิดพลาด!', text: data.message || 'ไม่สามารถอัปเดตได้', icon: 'error', heightAuto: false, width: '400px'});
+                    }
+                });
+            }
+        })
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateViewUI();
+        filterProjects();
+    });
 </script>
 
 <?php include('footer.php'); ?>

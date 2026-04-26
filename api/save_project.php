@@ -72,34 +72,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     // ----------------------------------------------
 
-    // 3. จัดการไฟล์แนบ
-    $attachment_name = "";
-    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
-        $target_dir = "../uploads/projects/";
-        if (!file_exists($target_dir))
-            mkdir($target_dir, 0777, true);
-        $file_ext = pathinfo($_FILES["attachment"]["name"], PATHINFO_EXTENSION);
-        $attachment_name = "PJ_" . time() . "." . $file_ext;
-        move_uploaded_file($_FILES["attachment"]["tmp_name"], $target_dir . $attachment_name);
-    }
-
-    // 4. สร้างเลขที่โครงการอัตโนมัติ
+    // 4. สร้างเลขที่โครงการอัตโนมัติ (ขยับขึ้นมาเพื่อให้ได้เลขก่อนอัปโหลดไฟล์)
     if (empty($project_no)) {
         $year = (date('Y') + 543) % 100;
         $project_no = "PJ-" . $year . "-" . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
     }
 
-    // 5. บันทึกลงตารางหลัก (หมายเหตุ: $has_vat ไม่ใส่ Single Quote เพราะเป็นตัวเลขหรือ NULL)
+    // 3. จัดการไฟล์แนบ (แยกเป็นโฟลเดอร์ตามเลขที่โครงการ)
+    $target_dir = "../uploads/projects/" . $project_no . "/";
+    if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
+
+    function uploadProjectFile($input_name, $prefix, $dir) {
+        if (isset($_FILES[$input_name]) && $_FILES[$input_name]['error'] == 0) {
+            $file_ext = pathinfo($_FILES[$input_name]["name"], PATHINFO_EXTENSION);
+            $new_name = $prefix . "_" . time() . "_" . rand(100, 999) . "." . $file_ext;
+            if (move_uploaded_file($_FILES[$input_name]["tmp_name"], $dir . $new_name)) {
+                return $new_name;
+            }
+        }
+        return "";
+    }
+
+    $attachment_name = uploadProjectFile('attachment', 'PJ', $target_dir);
+    $attachment_contract = uploadProjectFile('attachment_contract', 'CON', $target_dir);
+    $attachment_boq = uploadProjectFile('attachment_boq', 'BOQ', $target_dir);
+
+    // 5. บันทึกลงตารางหลัก
     $sql = "INSERT INTO projects (
                 project_name, contractor_name, bank_name, bank_account_no, bank_account_name,
                 project_no, customer_id, contract_value, total_vat_amount, total_wht_amount, 
-                net_contract_value, has_vat, start_date, end_date, attachment_path, retention_percent, supplier_id, 
-                wht_percent, project_remarks, created_by, created_at
+                net_contract_value, has_vat, start_date, end_date, attachment_path, 
+                attachment_contract, attachment_boq,
+                retention_percent, supplier_id, 
+                wht_percent, project_remarks, created_by, created_at, project_status
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
-                '$net_contract_value', $has_vat, '$start_date', '$end_date', '$attachment_name', '$retention_percent', $supplier_id,
-                '$wht_percent', '$project_remarks', $created_by, NOW()
+                '$net_contract_value', $has_vat, '$start_date', '$end_date', '$attachment_name', 
+                '$attachment_contract', '$attachment_boq',
+                '$retention_percent', $supplier_id,
+                '$wht_percent', '$project_remarks', $created_by, NOW(), 'on_hold'
             )";
 
     if (mysqli_query($conn, $sql)) {

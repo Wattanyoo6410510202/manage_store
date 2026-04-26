@@ -289,26 +289,60 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                     <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                         <i class="fas fa-paperclip text-indigo-500"></i> ไฟล์แนบงาน
                     </h3>
-                    <div id="file-container"
-                        class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-indigo-300 transition-all cursor-pointer relative group"
-                        onclick="document.getElementById('attachment').click()">
-
-                        <div id="upload-placeholder">
-                            <i
-                                class="fas fa-file-pdf text-3xl text-slate-300 mb-2 group-hover:text-indigo-400 transition-colors"></i>
-                            <p class="text-[12px] text-slate-500">สัญญา หรือ BOQ (PDF, JPG)</p>
-                            <p class="text-[9px] text-indigo-400 mt-1 italic">คลิกเพื่อเลือกไฟล์ หรือเปลี่ยนไฟล์ใหม่</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- ไฟล์สัญญา -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">ไฟล์สัญญา (Contract)</label>
+                            <div id="container-contract"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group"
+                                onclick="document.getElementById('attachment_contract').click()">
+                                <div id="placeholder-contract">
+                                    <i class="fas fa-file-contract text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบสัญญา</p>
+                                </div>
+                                <input type="file" name="attachment_contract" id="attachment_contract" class="hidden" onchange="updateFilePreview('contract')">
+                                <div id="info-contract" class="hidden">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-contract" class="text-[10px] text-slate-700 font-bold truncate"></p>
+                                </div>
+                            </div>
                         </div>
 
-                        <input type="file" name="attachment" id="attachment" class="hidden" onchange="updateFileName()">
+                        <!-- ไฟล์ BOQ -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">ไฟล์ BOQ</label>
+                            <div id="container-boq"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group"
+                                onclick="document.getElementById('attachment_boq').click()">
+                                <div id="placeholder-boq">
+                                    <i class="fas fa-file-excel text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบ BOQ</p>
+                                </div>
+                                <input type="file" name="attachment_boq" id="attachment_boq" class="hidden" onchange="updateFilePreview('boq')">
+                                <div id="info-boq" class="hidden">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-boq" class="text-[10px] text-slate-700 font-bold truncate"></p>
+                                </div>
+                            </div>
+                        </div>
 
-                        <div id="file-info" class="hidden">
-                            <i class="fas fa-check-circle text-2xl text-indigo-500 mb-2"></i>
-                            <p id="file-name-display" class="text-xs text-slate-700 font-bold truncate px-4"></p>
-                            <button type="button" onclick="resetFile(event)"
-                                class="mt-3 text-[12px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100 transition-all">
-                                <i class="fas fa-sync-alt mr-1"></i> เลือกไฟล์ใหม่
-                            </button>
+                        <!-- ไฟล์รูปภาพ/อื่นๆ -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">รูปภาพ/อื่นๆ (Thumbnail)</label>
+                            <div id="container-main"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group"
+                                onclick="document.getElementById('attachment').click()">
+                                <div id="placeholder-main">
+                                    <i class="fas fa-image text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบรูป</p>
+                                </div>
+                                <input type="file" name="attachment" id="attachment" class="hidden" onchange="updateFilePreview('main')">
+                                <div id="info-main" class="hidden">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-main" class="text-[10px] text-slate-700 font-bold truncate"></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -568,6 +602,21 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
 
         // คืนสีเส้นขอบ
         document.getElementById('file-container').classList.replace('border-indigo-200', 'border-slate-200');
+    }
+    function updateFilePreview(type) {
+        const fileInput = document.getElementById('attachment' + (type === 'main' ? '' : '_' + type));
+        const placeholder = document.getElementById('placeholder-' + type);
+        const info = document.getElementById('info-' + type);
+        const nameDisplay = document.getElementById('name-' + type);
+        const container = document.getElementById('container-' + type);
+
+        if (fileInput.files && fileInput.files[0]) {
+            placeholder.classList.add('hidden');
+            info.classList.remove('hidden');
+            nameDisplay.innerText = fileInput.files[0].name;
+            container.classList.replace('border-slate-200', 'border-indigo-300');
+            container.classList.add('bg-indigo-50/30');
+        }
     }
 </script>
 <?php include('footer.php'); ?>

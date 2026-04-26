@@ -22,6 +22,129 @@ $sql_docs = "SELECT * FROM project_documents WHERE project_id = '$pj_id'";
 $res_docs = mysqli_query($conn, $sql_docs);
 ?>
 
+<script>
+window.deleteFile = function(projectId, field, containerId, placeholderId, infoId) {
+    Swal.fire({
+        title: 'ยืนยันการลบไฟล์?',
+        text: "ไฟล์ที่ลบจะไม่สามารถกู้คืนได้",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'ลบไฟล์',
+        cancelButtonText: 'ยกเลิก',
+        heightAuto: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const fd = new FormData();
+            fd.append('project_id', projectId);
+            fd.append('field', field);
+
+            fetch('api/delete_project_file.php', {
+                method: 'POST',
+                body: fd
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const container = document.getElementById(containerId);
+                    const placeholder = document.getElementById(placeholderId);
+                    const info = document.getElementById(infoId);
+                    
+                    info.classList.add('hidden');
+                    placeholder.classList.remove('hidden');
+                    container.classList.remove('bg-indigo-50/30', 'border-indigo-300');
+                    container.classList.add('border-slate-200');
+                    
+                    Swal.fire({title: 'สำเร็จ!', icon: 'success', heightAuto: false});
+                } else {
+                    Swal.fire({title: 'ผิดพลาด!', text: data.message, icon: 'error', heightAuto: false});
+                }
+            });
+        }
+    });
+};
+
+function calculateNetValue() {
+    let contractInput = document.getElementById('contract_value');
+    let inputValue = parseFloat(contractInput.value) || 0;
+    let vatToggle = document.getElementById('vat_toggle');
+    let vatInToggle = document.getElementById('vat_include_check');
+    let whtToggle = document.getElementById('wht_toggle');
+
+    let isVat = (vatToggle && vatToggle.checked);
+    let isVatIn = (vatInToggle && vatInToggle.checked);
+    let isWht = (whtToggle && whtToggle.checked);
+
+    let actualBase = inputValue;
+    let vatAmount = 0;
+    let whtAmount = 0;
+
+    if (isVat) {
+        if (isVatIn) {
+            actualBase = inputValue / 1.07;
+            vatAmount = inputValue - actualBase;
+        } else {
+            actualBase = inputValue;
+            vatAmount = inputValue * 0.07;
+        }
+    }
+
+    whtAmount = isWht ? (actualBase * 0.03) : 0;
+    let netValue = isVatIn ? (inputValue - whtAmount) : (inputValue + vatAmount - whtAmount);
+
+    const fmt = (num) => num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (document.getElementById('display_base')) {
+        let displayBaseValue = (isVat && isVatIn) ? actualBase : inputValue;
+        document.getElementById('display_base').innerText = fmt(displayBaseValue);
+    }
+    if (document.getElementById('display_vat')) {
+        document.getElementById('display_vat').innerText = (isVat ? '+ ' : '') + fmt(vatAmount);
+        document.getElementById('vat_row').style.opacity = isVat ? '1' : '0.3';
+    }
+    if (document.getElementById('display_wht')) {
+        document.getElementById('display_wht').innerText = (isWht ? '- ' : '') + fmt(whtAmount);
+        document.getElementById('wht_row').style.opacity = isWht ? '1' : '0.3';
+    }
+    if (document.getElementById('display_net')) {
+        document.getElementById('display_net').innerText = fmt(netValue);
+    }
+
+    if (document.getElementById('total_wht_amount')) document.getElementById('total_wht_amount').value = whtAmount.toFixed(2);
+    if (document.getElementById('total_vat_amount')) document.getElementById('total_vat_amount').value = vatAmount.toFixed(2);
+    if (document.getElementById('net_contract_value')) document.getElementById('net_contract_value').value = netValue.toFixed(2);
+}
+
+function addDocRow() {
+    const tbody = document.getElementById('docBody');
+    const newRow = document.createElement('tr');
+    newRow.className = "border-b border-slate-50";
+    newRow.innerHTML = `
+        <td class="py-3 pr-2">
+            <select name="doc_type[]" class="w-full border border-slate-200 rounded-lg p-2 outline-none">
+                <option value="quotation">Quotation</option>
+                <option value="pr">PR</option>
+                <option value="po">PO</option>
+            </select>
+        </td>
+        <td class="py-3 pr-2">
+            <input type="text" name="doc_no[]" required class="w-full border border-slate-200 rounded-lg p-2 outline-none" placeholder="ระบุเลขที่เอกสาร...">
+        </td>
+        <td class="py-3 text-center">
+            <button type="button" onclick="deleteDocRow(this)" class="text-rose-400 hover:text-rose-600"><i class="fas fa-times"></i></button>
+        </td>
+    `;
+    tbody.appendChild(newRow);
+}
+
+function deleteDocRow(btn) {
+    btn.closest('tr').remove();
+}
+
+document.addEventListener('DOMContentLoaded', calculateNetValue);
+</script>
+
 <div>
     <form action="api/update_project.php" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="project_id" value="<?= $pj['id'] ?>">
@@ -64,6 +187,7 @@ $res_docs = mysqli_query($conn, $sql_docs);
                                 <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
                                 <select name="customer_id"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                                    <option value="">-- เลือกลูกค้า --</option>
                                     <?php while ($c = mysqli_fetch_assoc($customers)): ?>
                                     <option value="<?= $c['id'] ?>"
                                         <?= ($c['id'] == $pj['customer_id']) ? 'selected' : '' ?>>
@@ -288,24 +412,80 @@ $res_docs = mysqli_query($conn, $sql_docs);
 
                 <div class="bg-white rounded-2xl border border-slate-200 p-6">
                     <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-paperclip text-indigo-500"></i> ไฟล์แนบ (เดิม:
-                        <?= $pj['attachment_path'] ?: 'ไม่มี' ?>)
+                        <i class="fas fa-paperclip text-indigo-500"></i> ไฟล์แนบงาน
                     </h3>
-                    <div id="file-container"
-                        class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-indigo-300 transition-all cursor-pointer relative"
-                        onclick="document.getElementById('attachment').click()">
-                        <div id="upload-placeholder" class="<?= $pj['attachment_path'] ? 'hidden' : '' ?>">
-                            <i class="fas fa-file-pdf text-3xl text-slate-300 mb-2"></i>
-                            <p class="text-[12px] text-slate-500 italic">คลิกเพื่อเปลี่ยนไฟล์สัญญาใหม่</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- ไฟล์สัญญา -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">ไฟล์สัญญา (Contract)</label>
+                            <div id="container-contract"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group <?= $pj['attachment_contract'] ? 'bg-indigo-50/30 border-indigo-300' : '' ?>"
+                                onclick="document.getElementById('attachment_contract').click()">
+                                <div id="placeholder-contract" class="<?= $pj['attachment_contract'] ? 'hidden' : '' ?>">
+                                    <i class="fas fa-file-contract text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบสัญญา</p>
+                                </div>
+                                <input type="file" name="attachment_contract" id="attachment_contract" class="hidden" onchange="updateFilePreview('contract')">
+                                <div id="info-contract" class="<?= $pj['attachment_contract'] ? '' : 'hidden' ?>">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-contract" class="text-[10px] text-slate-700 font-bold truncate">
+                                        <?= $pj['attachment_contract'] ?: '' ?>
+                                    </p>
+                                    <button type="button" onclick="deleteFile(<?= $pj['id'] ?>, 'attachment_contract', 'container-contract', 'placeholder-contract', 'info-contract')"
+                                        class="mt-2 text-[9px] bg-rose-50 text-rose-500 px-2 py-1 rounded hover:bg-rose-100 transition-all">
+                                        <i class="fas fa-trash"></i> ลบไฟล์
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <input type="file" name="attachment" id="attachment" class="hidden" onchange="updateFileName()">
-                        <div id="file-info" class="<?= $pj['attachment_path'] ? '' : 'hidden' ?>">
-                            <i class="fas fa-check-circle text-2xl text-emerald-500 mb-2"></i>
-                            <p id="file-name-display" class="text-xs text-slate-700 font-bold truncate">
-                                <?= $pj['attachment_path'] ?>
-                            </p>
-                            <button type="button" onclick="resetFile(event)"
-                                class="mt-3 text-[12px] bg-red-50 text-red-500 px-3 py-1 rounded-full hover:bg-red-100">เปลี่ยนไฟล์</button>
+
+                        <!-- ไฟล์ BOQ -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">ไฟล์ BOQ</label>
+                            <div id="container-boq"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group <?= $pj['attachment_boq'] ? 'bg-indigo-50/30 border-indigo-300' : '' ?>"
+                                onclick="document.getElementById('attachment_boq').click()">
+                                <div id="placeholder-boq" class="<?= $pj['attachment_boq'] ? 'hidden' : '' ?>">
+                                    <i class="fas fa-file-excel text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบ BOQ</p>
+                                </div>
+                                <input type="file" name="attachment_boq" id="attachment_boq" class="hidden" onchange="updateFilePreview('boq')">
+                                <div id="info-boq" class="<?= $pj['attachment_boq'] ? '' : 'hidden' ?>">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-boq" class="text-[10px] text-slate-700 font-bold truncate">
+                                        <?= $pj['attachment_boq'] ?: '' ?>
+                                    </p>
+                                    <button type="button" onclick="deleteFile(<?= $pj['id'] ?>, 'attachment_boq', 'container-boq', 'placeholder-boq', 'info-boq')"
+                                        class="mt-2 text-[9px] bg-rose-50 text-rose-500 px-2 py-1 rounded hover:bg-rose-100 transition-all">
+                                        <i class="fas fa-trash"></i> ลบไฟล์
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ไฟล์รูปภาพ/อื่นๆ -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase">รูปภาพ/อื่นๆ (Thumbnail)</label>
+                            <div id="container-main"
+                                class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-all cursor-pointer relative group <?= $pj['attachment_path'] ? 'bg-indigo-50/30 border-indigo-300' : '' ?>"
+                                onclick="document.getElementById('attachment').click()">
+                                <div id="placeholder-main" class="<?= $pj['attachment_path'] ? 'hidden' : '' ?>">
+                                    <i class="fas fa-image text-2xl text-slate-300 mb-1 group-hover:text-indigo-400"></i>
+                                    <p class="text-[10px] text-slate-500">คลิกเพื่อแนบรูป</p>
+                                </div>
+                                <input type="file" name="attachment" id="attachment" class="hidden" onchange="updateFilePreview('main')">
+                                <div id="info-main" class="<?= $pj['attachment_path'] ? '' : 'hidden' ?>">
+                                    <i class="fas fa-check-circle text-xl text-indigo-500 mb-1"></i>
+                                    <p id="name-main" class="text-[10px] text-slate-700 font-bold truncate">
+                                        <?= $pj['attachment_path'] ?: '' ?>
+                                    </p>
+                                    <button type="button" onclick="deleteFile(<?= $pj['id'] ?>, 'attachment_path', 'container-main', 'placeholder-main', 'info-main')"
+                                        class="mt-2 text-[9px] bg-rose-50 text-rose-500 px-2 py-1 rounded hover:bg-rose-100 transition-all">
+                                        <i class="fas fa-trash"></i> ลบไฟล์
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -334,142 +514,3 @@ $res_docs = mysqli_query($conn, $sql_docs);
         </div>
     </form>
 </div>
-
-<script>
-// 1. ฟังก์ชันคำนวณ (ใช้ Logic จากหน้าสร้างงาน)
-function calculateNetValue() {
-    // 1. ดึงค่าจาก Input หลัก (ยอดที่จารกรอก)
-    const inputValue = parseFloat(document.getElementById('contract_value').value) || 0;
-
-    // 2. เช็คสถานะ Toggle
-    const isVatEnabled = document.getElementById('vat_toggle').checked;
-    const isWhtEnabled = document.getElementById('wht_toggle').checked;
-    const isVatIn = document.getElementById('vat_include_check').checked; // ติ๊กคือ VAT ใน (0)
-
-    let actualBase = inputValue; // เนื้อเงินก่อนภาษี (ฐานสำหรับคำนวณ WHT)
-    let vat = 0;
-    let wht = 0;
-    let net = inputValue;
-
-    // 3. Logic คำนวณ VAT
-    if (isVatEnabled) {
-        if (isVatIn) {
-            // กรณี VAT ใน: ถอด VAT ออกมา (เนื้อเงิน = ยอดกรอก / 1.07)
-            actualBase = inputValue / 1.07;
-            vat = inputValue - actualBase;
-            // ยอดสุทธิยังเป็นค่าเดิม (inputValue)
-        } else {
-            // กรณี VAT นอก: ยอดกรอกคือเนื้อเงินอยู่แล้ว
-            actualBase = inputValue;
-            vat = inputValue * 0.07;
-            net = inputValue + vat; // บวก VAT เพิ่มเข้าไปในยอดจ่าย
-        }
-    }
-
-    // 4. คำนวณ WHT 3% (จากเนื้อเงิน actualBase เสมอ)
-    if (isWhtEnabled) {
-        wht = actualBase * 0.03;
-    }
-
-    // 5. คำนวณยอดสุทธิสุดท้าย
-    net = net - wht; // ไม่ว่าเป็น VAT แบบไหน ต้องหัก WHT ออกจากยอดที่จะจ่ายเสมอ
-
-    // 6. อัปเดตค่าลงใน Hidden Input (ส่งไป Save)
-    const setHidden = (id, val) => {
-        let el = document.getElementById(id);
-        if (el) el.value = val.toFixed(2);
-    };
-    setHidden('total_vat_amount', vat);
-    setHidden('total_wht_amount', wht);
-    setHidden('net_contract_value', net);
-
-    // 7. อัปเดตการแสดงผลบน UI (จุดที่จารต้องการแก้)
-    const formatNum = (num) => num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    if (document.getElementById('display_base')) {
-        /**
-         * ถ้าเป็น VAT ใน: แสดง actualBase (ยอดที่ถอดภาษีแล้ว)
-         * ถ้าเป็น VAT นอก/ไม่มี VAT: แสดง inputValue ตามปกติ
-         */
-        let displayBase = (isVatEnabled && isVatIn) ? actualBase : inputValue;
-        document.getElementById('display_base').innerText = formatNum(displayBase);
-    }
-
-    if (document.getElementById('display_vat')) {
-        // เพิ่มคำนำหน้าเพื่อให้รู้ว่าเป็น VAT ในหรือนอก
-        let vatPrefix = isVatEnabled ? (isVatIn ? "" : "+ ") : "";
-        document.getElementById('display_vat').innerText = vatPrefix + formatNum(vat);
-    }
-
-    if (document.getElementById('display_wht')) {
-        document.getElementById('display_wht').innerText = "- " + formatNum(wht);
-    }
-
-    if (document.getElementById('display_net')) {
-        document.getElementById('display_net').innerText = formatNum(net);
-    }
-
-    // 8. ปรับความจางของแถว
-    if (document.getElementById('vat_row')) {
-        document.getElementById('vat_row').style.opacity = isVatEnabled ? '1' : '0.3';
-    }
-    if (document.getElementById('wht_row')) {
-        document.getElementById('wht_row').style.opacity = isWhtEnabled ? '1' : '0.3';
-    }
-}
-
-// ดักจับการเปลี่ยนค่า (Event Listener)
-document.addEventListener('change', function(e) {
-    const ids = ['vat_toggle', 'wht_toggle', 'vat_include_check'];
-    if (ids.includes(e.target.id)) {
-        calculateNetValue();
-    }
-});
-// 2. จัดการหน้าจอเมื่อโหลดเสร็จ
-document.addEventListener('DOMContentLoaded', () => {
-    calculateNetValue(); // คำนวณยอดทันทีที่เข้าหน้า
-});
-
-// 3. จัดการไฟล์ และ Doc Rows (ใช้ฟังก์ชันเดิมที่จารมีในหน้าสร้างงานได้เลย)
-function addDocRow() {
-    const tbody = document.getElementById('docBody');
-    const newRow = document.createElement('tr');
-    newRow.className = "border-b border-slate-50";
-    newRow.innerHTML = `
-            <td class="py-3 pr-2">
-                <select name="doc_type[]" class="w-full border border-slate-200 rounded-lg p-2 outline-none">
-                    <option value="quotation">Quotation</option>
-                    <option value="pr">PR</option>
-                    <option value="po">PO</option>
-                </select>
-            </td>
-            <td class="py-3 pr-2">
-                <input type="text" name="doc_no[]" required class="w-full border border-slate-200 rounded-lg p-2 outline-none" placeholder="เลขที่เอกสาร...">
-            </td>
-            <td class="py-3 text-center">
-                <button type="button" onclick="deleteDocRow(this)" class="text-rose-400 hover:text-rose-600"><i class="fas fa-times"></i></button>
-            </td>
-        `;
-    tbody.appendChild(newRow);
-}
-
-function deleteDocRow(btn) {
-    btn.closest('tr').remove();
-}
-
-function updateFileName() {
-    const fileInput = document.getElementById('attachment');
-    if (fileInput.files && fileInput.files[0]) {
-        document.getElementById('upload-placeholder').classList.add('hidden');
-        document.getElementById('file-info').classList.remove('hidden');
-        document.getElementById('file-name-display').innerText = fileInput.files[0].name;
-    }
-}
-
-function resetFile(event) {
-    event.stopPropagation();
-    document.getElementById('attachment').value = '';
-    document.getElementById('upload-placeholder').classList.remove('hidden');
-    document.getElementById('file-info').classList.add('hidden');
-}
-</script>

@@ -14,68 +14,71 @@ $result = mysqli_query($conn, $sql);
 
 <div>
     <div
-        class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-4 flex flex-wrap gap-4 items-center justify-between">
-        <div class="flex flex-wrap gap-3 items-center flex-1">
-            <div class="relative flex-1 min-w-[280px]">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="projectSearch" placeholder="ค้นหาชื่อโครงการ, เลขที่ หรือผู้รับจ้าง..."
-                    class="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+        class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-wrap gap-2 items-center">
+        <div class="flex flex-wrap gap-2 items-center flex-1">
+            <div class="relative min-w-[200px] flex-1 max-w-sm">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="projectSearch" placeholder="ค้นหาชื่อโครงการ..."
+                    class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[12px] focus:ring-2 focus:ring-indigo-500 transition-all"
                     onkeyup="filterProjects()">
             </div>
 
-            <select id="userFilter" onchange="filterProjects()"
-                class="bg-slate-50 border-none rounded-xl text-sm py-2.5 px-4 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                <option value="">ผู้ใช้งานทั้งหมด</option>
-                <?php
-                // ID ของเราที่ Login อยู่ (สมมติว่าเป็น SESSION นะครับ)
-                $my_id = $_SESSION['user_id'] ?? '';
+            <div class="relative min-w-[150px]">
+                <select id="userFilter" onchange="filterProjects()"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all">
+                    <option value="">ผู้ใช้งานทั้งหมด</option>
+                    <?php
+                    $my_id = $_SESSION['user_id'] ?? '';
+                    $user_query = $conn->query("SELECT id, name FROM users ORDER BY name ASC");
+                    while ($u = $user_query->fetch_assoc()):
+                        $selected = ($u['id'] == $my_id) ? 'selected' : '';
+                        ?>
+                        <option value="<?= $u['id'] ?>" <?= $selected ?>>
+                            <?= htmlspecialchars($u['name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
 
-                $user_query = $conn->query("SELECT id, name FROM users ORDER BY name ASC");
-                while ($u = $user_query->fetch_assoc()):
-                    // ถ้า ID ใน Loop ตรงกับ ID เรา ให้ใส่คำว่า selected
-                    $selected = ($u['id'] == $my_id) ? 'selected' : '';
-                    ?>
-                    <option value="<?= $u['id'] ?>" <?= $selected ?>>
-                        <?= htmlspecialchars($u['name']) ?>
-                    </option>
-                <?php endwhile; ?>
-            </select>
+            <div class="relative min-w-[150px]">
+                <select id="companyFilter" onchange="filterProjects()"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] py-1.5 px-3 focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all">
+                    <option value="">ทุกบริษัท/คู่ค้า</option>
+                    <option value="none">-- ไม่มีบริษัท --</option>
+                    <?php
+                    $supplier_query = $conn->query("SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
+                    while ($s = $supplier_query->fetch_assoc()):
+                        ?>
+                        <option value="<?= $s['id'] ?>">
+                            <?= htmlspecialchars($s['company_name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
 
-            <select id="companyFilter" onchange="filterProjects()"
-                class="bg-slate-50 border-none rounded-xl text-sm py-2.5 px-4 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                <option value="">ทุกบริษัท/คู่ค้า</option>
-                <option value="none">-- ไม่มีบริษัท --</option>
-
-                <?php
-                $supplier_query = $conn->query("SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
-                while ($s = $supplier_query->fetch_assoc()):
-                    ?>
-                    <option value="<?= $s['id'] ?>">
-                        <?= htmlspecialchars($s['company_name']) ?>
-                    </option>
-                <?php endwhile; ?>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-            <button onclick="setViewMode('grid')" id="gridBtn"
-                class="w-9 h-9 flex items-center justify-center rounded-lg transition-all">
-                <i class="fas fa-th-large"></i>
-            </button>
-            <button onclick="setViewMode('table')" id="tableBtn"
-                class="w-9 h-9 flex items-center justify-center rounded-lg transition-all">
-                <i class="fas fa-list"></i>
+            <button onclick="resetFilters()"
+                class="text-slate-500 hover:text-indigo-600 text-[11px] font-bold transition-colors px-1">
+                <i class="fas fa-undo-alt mr-1"></i> ล้าง
             </button>
         </div>
 
-        <button onclick="resetFilters()"
-            class="text-slate-500 hover:text-indigo-600 text-sm font-medium transition-colors px-2">
-            <i class="fas fa-undo-alt mr-1"></i> ล้างตัวกรอง
-        </button>
-        <button onclick="location.href='add_project.php'"
-            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all text-sm">
-            <i class="fas fa-plus-circle"></i> สร้างงานใหม่
-        </button>
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                <button onclick="setViewMode('grid')" id="gridBtn"
+                    class="w-7 h-7 flex items-center justify-center rounded-md transition-all text-xs">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button onclick="setViewMode('table')" id="tableBtn"
+                    class="w-7 h-7 flex items-center justify-center rounded-md transition-all text-xs">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+
+            <button onclick="location.href='add_project.php'"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold shadow-sm">
+                <i class="fas fa-plus-circle"></i> สร้างงานใหม่
+            </button>
+        </div>
     </div>
 
     <!-- Grid View -->
@@ -148,15 +151,19 @@ $result = mysqli_query($conn, $sql);
                             <div class="flex justify-between items-start mb-3">
 
                                 <div class="flex flex-wrap gap-1.5 items-center">
-                                    <button onclick="viewProjectDetails(<?= $pj_id ?>)"
-                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                                        เบิกงวด
-                                    </button>
+                                    <?php if ($row['project_status'] == 'active'): ?>
+                                        <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                            class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                            เบิกงวด
+                                        </button>
+                                    <?php endif; ?>
 
+                                    <?php if ($row['project_status'] != 'on_hold'): ?>
                                     <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
                                         class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
                                         ดูงวด
                                     </a>
+                                    <?php endif; ?>
 
                                     <a href="edit_project.php?id=<?= $pj_id ?>"
                                         class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
@@ -170,8 +177,9 @@ $result = mysqli_query($conn, $sql);
                                 </div>
                             </div>
 
-                            <h3 class="font-bold text-slate-800 text-sm mb-0.5 truncate"
-                                title="<?= $row['project_name'] ?>"><?= $row['project_name'] ?></h3>
+                            <a href="view_approval.php?id=<?= $pj_id ?>" class="block font-bold text-slate-800 text-sm mb-0.5 truncate hover:text-indigo-600 transition-colors" title="<?= $row['project_name'] ?>">
+                                <?= $row['project_name'] ?>
+                            </a>
                             <p class="text-[12px] text-slate-800 mb-3">
                                 <i class="far fa-calendar-alt mr-1"></i> จบงาน:
                                 <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
@@ -201,6 +209,41 @@ $result = mysqli_query($conn, $sql);
                                             <?= number_format($row['collected_money'], 2) ?>
                                         </p>
                                     </div>
+                                    
+                                    <!-- ไฟล์แนบ (Text Links) -->
+                                    <div class="mt-2 pt-1 border-t border-slate-200 space-y-1">
+                                        <?php if ($row['attachment_contract']): ?>
+                                            <div class="truncate text-[9px]">
+                                                <a href="uploads/projects/<?= $row['attachment_contract'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                                    <i class="fas fa-file-contract"></i> <?= htmlspecialchars($row['attachment_contract']) ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($row['attachment_boq']): ?>
+                                            <div class="truncate text-[9px]">
+                                                <a href="uploads/projects/<?= $row['attachment_boq'] ?>" target="_blank" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                                                    <i class="fas fa-file-excel"></i> <?= htmlspecialchars($row['attachment_boq']) ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Status Buttons Only -->
+                                    <?php if ($user_role === 'admin'): ?>
+                                        <div class="mt-2 w-full">
+                                            <?php if ($row['project_status'] == 'on_hold'): ?>
+                                                <button onclick="changeProjectStatus(<?= $pj_id ?>, 'active', 'ยืนยันการอนุมัติงาน?')"
+                                                    class="w-full py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm">
+                                                    อนุมัติงาน
+                                                </button>
+                                            <?php elseif ($row['project_status'] == 'active'): ?>
+                                                <button onclick="changeProjectStatus(<?= $pj_id ?>, 'completed', 'ยืนยันการปิดงานโครงการนี้?')"
+                                                    class="w-full py-1.5 text-[11px] font-bold rounded-lg bg-slate-700 text-white hover:bg-slate-800 transition-all shadow-sm">
+                                                    ปิดงาน
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -336,7 +379,9 @@ $result = mysqli_query($conn, $sql);
         </div>
     </div>
 </div>
-
+<style>
+    .swal2-container { z-index: 99999 !important; }
+</style>
 <script>
     function setViewMode(mode) {
         localStorage.setItem('project_view_mode', mode);
@@ -419,23 +464,19 @@ $result = mysqli_query($conn, $sql);
         items.forEach(item => {
             const name = item.getAttribute('data-name').toLowerCase();
             const userId = item.getAttribute('data-user');
-            const companyId = item.getAttribute('data-company'); // ค่าที่ดึงมาจาก $row['supplier_id']
+            const companyId = item.getAttribute('data-company');
 
             const matchSearch = name.includes(search);
             const matchUser = (user === "" || userId === user);
 
-            // --- ปรับ Logic ตรงนี้ครับ ---
             let matchCompany = false;
             if (company === "") {
-                matchCompany = true; // เลือก "ทุกบริษัท" -> ผ่านหมด
+                matchCompany = true;
             } else if (company === "none") {
-                // เลือก "ไม่มีคู่ค้า" -> เช็คว่าใน data-company เป็นค่าว่าง, 0 หรือ null หรือไม่
-                matchCompany = (companyId === "" || companyId === "0" || companyId === null);
+                matchCompany = (companyId === "" || companyId === "0" || companyId === "null" || companyId === null);
             } else {
-                // เลือกบริษัทใดบริษัทหนึ่ง -> เช็ค ID ให้ตรงกัน
                 matchCompany = (companyId === company);
             }
-            // --------------------------
 
             if (matchSearch && matchUser && matchCompany) {
                 item.style.display = "";
@@ -450,6 +491,42 @@ $result = mysqli_query($conn, $sql);
         document.getElementById('companyFilter').value = '';
         filterProjects();
     }
+
+    function changeProjectStatus(id, targetStatus, confirmText) {
+        Swal.fire({
+            title: confirmText,
+            text: targetStatus === 'completed' ? "โครงการที่ปิดแล้วจะถือว่าเสร็จสมบูรณ์" : "เมื่ออนุมัติแล้ว สถานะจะเปลี่ยนเป็น 'กำลังดำเนินการ'",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: targetStatus === 'active' ? '#10b981' : '#64748b',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            heightAuto: false,
+            width: '400px'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const fd = new FormData();
+                fd.append('project_id', id);
+                fd.append('status', targetStatus);
+
+                fetch('api/update_project_status.php', {
+                    method: 'POST',
+                    body: fd
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({title: 'สำเร็จ!', text: 'อัปเดตสถานะเรียบร้อยแล้ว', icon: 'success', heightAuto: false, width: '400px'})
+                        .then(() => location.reload());
+                    } else {
+                        Swal.fire({title: 'ผิดพลาด!', text: data.message || 'ไม่สามารถอัปเดตได้', icon: 'error', heightAuto: false, width: '400px'});
+                    }
+                });
+            }
+        })
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         updateViewUI();
         filterProjects();
