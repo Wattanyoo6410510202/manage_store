@@ -253,7 +253,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             $row['approved_by_3'] == $user_id
                                         );
 
-                                        if ($row['status'] === 'pending' && in_array($role, ['admin', 'gmhok', 'procure', 'acc', 'mgr', 'mgr2']) && !$already_approved)
+                                        if ($row['status'] === 'pending' && in_array($role, ['admin', 'gmhok', 'procure', 'acc', 'mgr', 'mgr2']) && !$already_approved && !is_viewer())
                                             $can_approve = true;
                                         if ($can_approve): ?>
                                             <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
@@ -264,10 +264,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <a href="view_pr_new.php?id=<?= $row['id'] ?>" title="ดูรายละเอียด"
                                             class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i
                                                 class="fas fa-eye text-xs"></i></a>
-                                        <?php if ($row['status'] === 'pending'): ?>
-                                            <a href="edit_pr_new.php?id=<?= $row['id'] ?>" title="แก้ไข"
-                                                class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i
-                                                    class="fas fa-edit text-xs"></i></a>
+                                        <?php if (!is_viewer()): ?>
+                                            <?php if ($row['status'] === 'pending'): ?>
+                                                <a href="edit_pr_new.php?id=<?= $row['id'] ?>" title="แก้ไข"
+                                                    class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all active:scale-90"><i
+                                                        class="fas fa-edit text-xs"></i></a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
                                 </td>

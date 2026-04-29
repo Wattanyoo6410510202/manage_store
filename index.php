@@ -39,10 +39,12 @@ include('assets/alert.php');
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fas fa-users text-indigo-500"></i> เลือกลูกค้าสำหรับทำรายการ
                 </h2>
+                <?php if ($_SESSION['role'] === 'admin'): ?>
                 <button id="btnDeleteSelected" onclick="deleteSelected()"
                     class="hidden px-4 py-2 bg-red-100 text-red-600 text-xs font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all flex items-center gap-2">
                     <i class="fas fa-trash-alt"></i> ลบที่เลือก (<span id="selectedCount">0</span>)
                 </button>
+                <?php endif; ?>
             </div>
 
             <div class="overflow-x-auto">
@@ -82,12 +84,16 @@ include('assets/alert.php');
                                 </td>
                                 <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                     <div class="flex justify-center gap-1">
+                                        <?php if (!is_viewer()): ?>
                                         <button onclick='editCustomer(<?= $json_data ?>)'
                                             class="w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-lg"><i
                                                 class="fas fa-edit"></i></button>
                                         <button onclick="deleteCustomer(<?= $row['id'] ?>)"
                                             class="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg"><i
                                                 class="fas fa-trash-alt"></i></button>
+                                        <?php else: ?>
+                                            <span class="text-slate-400 text-xs">-</span>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -98,6 +104,7 @@ include('assets/alert.php');
         </div>
     </div>
 
+    <?php if (!is_viewer()): ?>
     <div class="w-full xl:w-[30%] order-1 xl:order-2">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-6"
             id="customerFormSection">
@@ -168,6 +175,8 @@ include('assets/alert.php');
             </form>
         </div>
     </div>
+    <?php endif; ?>
+</div>
 </div>
 
 <script src="assets/js/mock-helper.js"></script>

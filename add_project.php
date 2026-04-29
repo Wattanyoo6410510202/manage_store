@@ -19,10 +19,16 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                 <p class="text-slate-500 text-sm">ระบุรายละเอียดงานและตั้งค่าการชำระเงิน</p>
             </div>
             <div class="flex gap-3">
+                <?php if (!is_viewer()): ?>
                 <button type="submit"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl font-bold  transition-all">
                     <i class="fas fa-save mr-2"></i> บันทึกงาน
                 </button>
+                <?php else: ?>
+                <div class="bg-slate-200 text-slate-500 px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-not-allowed">
+                    <i class="fas fa-eye"></i> ดูได้อย่างเดียว
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 

@@ -416,10 +416,16 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                         <span id="grandtotal_display">0.00</span>
                     </div>
 
+                    <?php if (!is_viewer()): ?>
                     <button type="submit"
                         class="w-full mt-4 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700  transition-all flex items-center justify-center gap-2 active:scale-95">
                         <i class="fas fa-save"></i>บันทึกและออกเอกสาร
                     </button>
+                    <?php else: ?>
+                    <div class="w-full mt-4 py-3 bg-slate-200 text-slate-500 font-black rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                        <i class="fas fa-eye"></i>ดูได้อย่างเดียว (ไม่มีสิทธิ์บันทึก)
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

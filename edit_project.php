@@ -156,10 +156,16 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                         class="font-mono font-bold text-indigo-600"><?= $pj['project_no'] ?></span></p>
             </div>
             <div class="flex gap-3">
+                <?php if (!is_viewer()): ?>
                 <button type="submit"
                     class="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold  transition-all">
                     <i class="fas fa-sync-alt mr-2"></i> อัปเดตข้อมูล
                 </button>
+                <?php else: ?>
+                <div class="bg-slate-200 text-slate-500 px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 cursor-not-allowed">
+                    <i class="fas fa-eye"></i> ดูได้อย่างเดียว
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 

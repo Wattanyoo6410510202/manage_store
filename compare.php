@@ -65,11 +65,18 @@ include('header.php');
                 <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                     <i class="fas fa-search"></i>
                 </div>
+                <?php if (!is_viewer()): ?>
                 <button onclick="askAI()"
                     class="mt-3 md:mt-0 md:absolute md:right-2 md:top-2 md:bottom-2 w-full md:w-auto bg-indigo-600 text-white px-8 py-3 md:py-0 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
                     <span id="btnText">เปรียบเทียบ</span>
                     <i class="fas fa-magic"></i>
                 </button>
+                <?php else: ?>
+                <div class="mt-3 md:mt-0 md:absolute md:right-2 md:top-2 md:bottom-2 w-full md:w-auto bg-slate-200 text-slate-500 px-8 py-3 md:py-0 rounded-xl font-bold flex items-center justify-center gap-2 cursor-not-allowed">
+                    <span id="btnText">ดูได้อย่างเดียว</span>
+                    <i class="fas fa-eye"></i>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

@@ -31,7 +31,8 @@ $result = mysqli_query($conn, $sql);
                     $my_id = $_SESSION['user_id'] ?? '';
                     $user_query = $conn->query("SELECT id, name FROM users ORDER BY name ASC");
                     while ($u = $user_query->fetch_assoc()):
-                        $selected = ($u['id'] == $my_id) ? 'selected' : '';
+                        // ถ้าไม่ใช่ admin และไม่ใช่ viewer ให้เลือกตัวเองเป็นค่าเริ่มต้น
+                        $selected = ($u['id'] == $my_id && $_SESSION['role'] !== 'admin' && !is_viewer()) ? 'selected' : '';
                         ?>
                         <option value="<?= $u['id'] ?>" <?= $selected ?>>
                             <?= htmlspecialchars($u['name']) ?>
@@ -73,12 +74,14 @@ $result = mysqli_query($conn, $sql);
                     <i class="fas fa-list"></i>
                 </button>
             </div>
-
-            <button onclick="location.href='add_project.php'"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold shadow-sm">
-                <i class="fas fa-plus-circle"></i> สร้างงานใหม่
-            </button>
         </div>
+
+        <?php if (!is_viewer()): ?>
+        <button onclick="location.href='add_project.php'"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold shadow-sm">
+            <i class="fas fa-plus-circle"></i> สร้างงานใหม่
+        </button>
+        <?php endif; ?>
     </div>
 
     <!-- Grid View -->
@@ -165,15 +168,17 @@ $result = mysqli_query($conn, $sql);
                                     </a>
                                     <?php endif; ?>
 
-                                    <a href="edit_project.php?id=<?= $pj_id ?>"
-                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
-                                        แก้ไข
-                                    </a>
+                                    <?php if (!is_viewer()): ?>
+                                        <a href="edit_project.php?id=<?= $pj_id ?>"
+                                            class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
+                                            แก้ไข
+                                        </a>
 
-                                    <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
-                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm">
-                                        ลบ
-                                    </button>
+                                        <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                            class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-50 text-rose-500 border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                                            ลบ
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -229,7 +234,7 @@ $result = mysqli_query($conn, $sql);
                                     </div>
 
                                     <!-- Status Buttons Only -->
-                                    <?php if ($user_role === 'admin'): ?>
+                                    <?php if ($user_role === 'admin' && !is_viewer()): ?>
                                         <div class="mt-2 w-full">
                                             <?php if ($row['project_status'] == 'on_hold'): ?>
                                                 <button onclick="changeProjectStatus(<?= $pj_id ?>, 'active', 'ยืนยันการอนุมัติงาน?')"
@@ -335,23 +340,27 @@ $result = mysqli_query($conn, $sql);
                             </div>
                         </td>
                         <td class="p-4">
-                            <div class="flex justify-center items-center gap-1.5">
-                                <button onclick="viewProjectDetails(<?= $pj_id ?>)"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="เบิกงวด">
-                                    <i class="fas fa-file-invoice-dollar text-xs"></i>
-                                </button>
+                                <div class="flex justify-center items-center gap-1.5">
+                                    <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="เบิกงวด">
+                                        <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                    </button>
+
                                 <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="ดูงวด">
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
-                                <a href="edit_project.php?id=<?= $pj_id ?>"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="แก้ไข">
-                                    <i class="fas fa-edit text-xs"></i>
-                                </a>
-                                <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="ลบ">
-                                    <i class="fas fa-trash-alt text-xs"></i>
-                                </button>
+
+                                <?php if (!is_viewer()): ?>
+                                    <a href="edit_project.php?id=<?= $pj_id ?>"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="แก้ไข">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </a>
+                                    <button onclick="deleteProject(<?= $pj_id ?>, '<?= $row['project_name'] ?>')"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="ลบ">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

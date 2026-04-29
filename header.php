@@ -28,8 +28,8 @@ $permissions = [
     // 5. Staff: พนักงานปฏิบัติการ (เอา projects และ docs ออกตามสั่ง)
     'staff' => ['dashboard', 'compare', 'inventory'],
 
-    // 6. Viewer: ดูได้อย่างเดียว (Dashboard)
-    'viewer' => ['dashboard'],
+    // 6. Viewer: ดูได้ทุกอย่าง (ยกเว้นตั้งค่า) แต่จะไปคุมที่ปุ่มห้าม เพิ่ม/แก้ไข/ลบ
+    'viewer' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     'procure' => ['dashboard', 'docs', 'projects', 'compare', 'setup', 'trash'],
     
     // 7. ฝ่ายบัญชี/บริหาร (acc, mgr, mgr2) - เอา projects และ docs ออก
@@ -45,6 +45,12 @@ function can($module)
 {
     global $user_role, $permissions;
     return in_array($module, $permissions[$user_role] ?? []);
+}
+
+// ฟังก์ชันช่วยเช็คว่าเป็น Viewer หรือไม่ (เพื่อซ่อนปุ่ม)
+function is_viewer() {
+    global $user_role;
+    return $user_role === 'viewer';
 }
 // ==========================================
 // ==========================================
@@ -111,7 +117,7 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
     echo "<script>window.location.href='e_service.php';</script>";
     exit;
 }
-if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure', 'acc', 'mgr', 'mgr2'])) {
+if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure', 'acc', 'mgr', 'mgr2', 'viewer'])) {
     echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
     exit;
 }

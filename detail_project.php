@@ -166,15 +166,19 @@ $milestones = mysqli_query($conn, $milestones_sql);
                                 class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">
                                 <i class="fas fa-print mr-1"></i> พิมพ์ที่เลือก
                             </button>
+                            <?php if (!is_viewer()): ?>
                             <button onclick="bulkDelete()"
                                 class="text-xs font-bold text-white bg-rose-500 px-4 py-2 rounded-xl hover:bg-rose-600 transition-all">
                                 <i class="fas fa-trash-alt mr-1"></i> ลบที่เลือก
                             </button>
+                            <?php endif; ?>
                         </div>
+                        <?php if (!is_viewer()): ?>
                         <button onclick="location.href='add_milestone.php?project_id=<?= $id ?>'"
                             class="flex-1 sm:flex-none text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 -md transition-all">
                             <i class="fas fa-plus mr-1"></i> เพิ่มงวดเบิก
                         </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <table id="milestoneTable" class="w-full">
@@ -243,6 +247,7 @@ $milestones = mysqli_query($conn, $milestones_sql);
                                     </td>
                                     <td class="px-4 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
+                                            <?php if (!is_viewer()): ?>
                                             <button onclick="editMilestone(<?= $m['id'] ?>)"
                                                 class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
                                                 title="แก้ไขข้อมูล">
@@ -296,6 +301,16 @@ $milestones = mysqli_query($conn, $milestones_sql);
                                                     title="ตรวจงาน">
                                                     <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
                                                 </a>
+                                            <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-slate-400 text-xs italic">View Only</span>
+                                                <?php if ($m['inspection_id']): ?>
+                                                    <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
+                                                        class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                        title="ดูผลการตรวจรับงาน">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </div>
                                     </td>

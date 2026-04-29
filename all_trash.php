@@ -40,6 +40,7 @@ $result = mysqli_query($conn, $sql);
             </div>
 
             <div class="flex gap-2">
+                <?php if (!is_viewer()): ?>
                 <button onclick="bulkAction('restore')" id="bulkRestoreBtn"
                     class="hidden px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold  transition-all active:scale-95">
                     <i class="fas fa-undo mr-2"></i> กู้คืน (<span class="selected-count">0</span>)
@@ -48,6 +49,7 @@ $result = mysqli_query($conn, $sql);
                     class="hidden px-5 py-2.5 bg-rose-500 text-white rounded-xl text-sm font-bold  transition-all active:scale-95">
                     <i class="fas fa-fire mr-2"></i> ลบถาวร (<span class="selected-count">0</span>)
                 </button>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -80,12 +82,16 @@ $result = mysqli_query($conn, $sql);
                         <td><?= $row['deleted_by_name'] ?></td>
                         <td class="text-center">
                             <div class="flex justify-center gap-1.5">
+                                <?php if (!is_viewer()): ?>
                                 <button onclick="singleAction('restore', '<?= $row['type'] ?>', <?= $row['id'] ?>)"
                                     class="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all"><i
                                         class="fas fa-undo-alt text-xs"></i></button>
                                 <button onclick="singleAction('permanent_delete', '<?= $row['type'] ?>', <?= $row['id'] ?>)"
                                     class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all"><i
                                         class="fas fa-trash-alt text-xs"></i></button>
+                                <?php else: ?>
+                                    <span class="text-slate-400 text-xs">-</span>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>

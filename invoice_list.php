@@ -99,7 +99,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     <div class="flex items-center gap-2 self-end mb-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
                         <input type="checkbox" id="filterMyWork" 
                             class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                            <?= $_SESSION['role'] !== 'admin' ? 'checked' : '' ?>>
+                            <?= ($_SESSION['role'] !== 'admin' && !is_viewer()) ? 'checked' : '' ?>>
                         <label for="filterMyWork" class="text-[11px] font-bold text-slate-600 cursor-pointer">งานของฉัน</label>
                     </div>
 
@@ -262,20 +262,22 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
                                 <td>
                                     <div class="flex justify-center gap-1">
-                                        <?php if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok')): ?>
-                                            <button onclick="approveInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-emerald-500 rounded-md hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all"
-                                                title="Approve Invoice">
-                                                <i class="fas fa-check-circle text-[12px]"></i>
-                                            </button>
-                                        <?php endif; ?>
+                                        <?php if (!is_viewer()): ?>
+                                            <?php if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok')): ?>
+                                                <button onclick="approveInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white text-emerald-500 rounded-md hover:bg-emerald-50 hover:text-emerald-600 border border-emerald-100 shadow-sm transition-all"
+                                                    title="Approve Invoice">
+                                                    <i class="fas fa-check-circle text-[12px]"></i>
+                                                </button>
+                                            <?php endif; ?>
 
-                                        <?php if ($row['status'] === 'approved'): ?>
-                                            <button onclick="payInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-blue-500 rounded-md hover:bg-blue-50 hover:text-blue-600 border border-blue-100 shadow-sm transition-all"
-                                                title="Mark as Paid">
-                                                <i class="fas fa-hand-holding-usd text-[12px]"></i>
-                                            </button>
+                                            <?php if ($row['status'] === 'approved'): ?>
+                                                <button onclick="payInvoice(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white text-blue-500 rounded-md hover:bg-blue-50 hover:text-blue-600 border border-blue-100 shadow-sm transition-all"
+                                                    title="Mark as Paid">
+                                                    <i class="fas fa-hand-holding-usd text-[12px]"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         <?php endif; ?>
 
                                         <a href="view_invoice.php?id=<?= $row['id'] ?>"
@@ -284,12 +286,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <i class="fas fa-eye text-[12px]"></i>
                                         </a>
 
-                                        <?php if ($row['status'] === 'pending'): ?>
-                                            <a href="edit_invoice.php?id=<?= $row['id'] ?>"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
-                                                title="Edit Invoice">
-                                                <i class="fas fa-edit text-[12px]"></i>
-                                            </a>
+                                        <?php if (!is_viewer()): ?>
+                                            <?php if ($row['status'] === 'pending'): ?>
+                                                <a href="edit_invoice.php?id=<?= $row['id'] ?>"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
+                                                    title="Edit Invoice">
+                                                    <i class="fas fa-edit text-[12px]"></i>
+                                                </a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
 
                                         <div class="flex justify-center gap-1">
@@ -302,11 +306,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                                 </a>
                                             <?php endif; ?>
 
-                                            <button onclick="deleteInvoice(<?= $row['id'] ?>)"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
-                                                title="Delete Invoice">
-                                                <i class="fas fa-trash text-[12px]"></i>
-                                            </button>
+                                            <?php if (!is_viewer()): ?>
+                                                <button onclick="deleteInvoice(<?= $row['id'] ?>)"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
+                                                    title="Delete Invoice">
+                                                    <i class="fas fa-trash text-[12px]"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </td>

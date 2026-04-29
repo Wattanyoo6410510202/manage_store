@@ -93,7 +93,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     <div class="flex items-center gap-2 self-end mb-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
                         <input type="checkbox" id="filterMyWork" 
                             class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                            <?= $_SESSION['role'] !== 'admin' ? 'checked' : '' ?>>
+                            <?= ($_SESSION['role'] !== 'admin' && !is_viewer()) ? 'checked' : '' ?>>
                         <label for="filterMyWork" class="text-[11px] font-bold text-slate-600 cursor-pointer">งานของฉัน</label>
                     </div>
 
@@ -258,18 +258,20 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             title="View">
                                             <i class="fas fa-eye text-[12px]"></i>
                                         </a>
-                                        <?php if ($row['status'] === 'pending'): ?>
-                                            <a href="edit_quotation.php?id=<?= $row['id'] ?>"
-                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
-                                                title="Edit">
-                                                <i class="fas fa-edit text-[12px]"></i>
-                                            </a>
+                                        <?php if (!is_viewer()): ?>
+                                            <?php if ($row['status'] === 'pending'): ?>
+                                                <a href="edit_quotation.php?id=<?= $row['id'] ?>"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-amber-50 hover:text-amber-600 border border-slate-200 shadow-sm transition-all"
+                                                    title="Edit">
+                                                    <i class="fas fa-edit text-[12px]"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <button onclick="deleteQuote(<?= $row['id'] ?>)"
+                                                class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
+                                                title="Delete">
+                                                <i class="fas fa-trash text-[12px]"></i>
+                                            </button>
                                         <?php endif; ?>
-                                        <button onclick="deleteQuote(<?= $row['id'] ?>)"
-                                            class="w-7 h-7 flex items-center justify-center bg-white text-slate-800 rounded-md hover:bg-red-50 hover:text-red-600 border border-slate-200 shadow-sm transition-all"
-                                            title="Delete">
-                                            <i class="fas fa-trash text-[12px]"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
