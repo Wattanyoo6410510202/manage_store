@@ -10,10 +10,14 @@ include('header.php');
         <div class="lg:col-span-3 space-y-6">
             <?php
             $services = [
-                'HR' => ['icon' => 'fas fa-users', 'color' => 'blue', 'title' => 'งานบุคคล (HR)', 'items' => ['ลงเวลาทำงาน', 'ยื่นใบลาออนไลน์', 'ตรวจสอบวันลา', 'เบิกสวัสดิการ', 'ประวัติพนักงาน', 'อัปเดตข้อมูลส่วนตัว']],
-                'PROCUREMENT' => ['icon' => 'fas fa-shopping-cart', 'color' => 'indigo', 'title' => 'จัดซื้อ & การเงิน', 'items' => ['สร้างใบขอซื้อ (PR)', 'ติดตามสถานะอนุมัติ', 'ใบแจ้งหนี้', 'รายงานจัดซื้อ', 'เปรียบเทียบราคา', 'เช็คสถานะ PO']],
-                'IT' => ['icon' => 'fas fa-tools', 'color' => 'amber', 'title' => 'ไอที & แจ้งซ่อม', 'items' => ['แจ้งซ่อมคอมพิวเตอร์', 'แจ้งปัญหา Network', 'แจ้งซ่อมแอร์/อาคาร', 'เบิกวัสดุสำนักงาน', 'จองห้องประชุม', 'จองรถบริษัท']],
-                'DOCS' => ['icon' => 'fas fa-file-pdf', 'color' => 'rose', 'title' => 'คลังเอกสาร', 'items' => ['ฟอร์มใบลา', 'ระเบียบพนักงาน', 'แผนผังองค์กร', 'คู่มือปฏิบัติงาน', 'มาตรฐานงานตรวจรับ', 'นโยบายความปลอดภัย']]
+                'PURCHASING' => ['icon' => 'fas fa-shopping-cart', 'color' => 'indigo', 'title' => 'จัดซื้อ', 'items' => ['สร้างใบขอซื้อ (PR)', 'ติดตามสถานะอนุมัติ', 'รายงานจัดซื้อ', 'เปรียบเทียบราคา', 'เช็คสถานะ PO']],
+                'ACCOUNTING' => ['icon' => 'fas fa-file-invoice-dollar', 'color' => 'emerald', 'title' => 'บัญชีการเงิน', 'items' => ['ใบแจ้งหนี้', 'ตรวจสอบการชำระเงิน', 'รายงานบัญชี', 'เบิกค่าใช้จ่าย']],
+                'HR' => ['icon' => 'fas fa-users', 'color' => 'blue', 'title' => 'บุคคล', 'items' => ['ลงเวลาทำงาน', 'ยื่นใบลาออนไลน์', 'ตรวจสอบวันลา', 'เบิกสวัสดิการ', 'ประวัติพนักงาน', 'อัปเดตข้อมูลส่วนตัว']],
+                'CATERING' => ['icon' => 'fas fa-utensils', 'color' => 'orange', 'title' => 'จัดเลี้ยง', 'items' => ['จองอาหาร/เครื่องดื่ม', 'รายการเมนู', 'ตารางการจัดเลี้ยง']],
+                'MAINTENANCE' => ['icon' => 'fas fa-tools', 'color' => 'amber', 'title' => 'ช่าง', 'items' => ['แจ้งซ่อมคอมพิวเตอร์', 'แจ้งซ่อมแอร์/อาคาร', 'แจ้งปัญหา Network', 'เบิกวัสดุอุปกรณ์']],
+                'SALES' => ['icon' => 'fas fa-chart-line', 'color' => 'rose', 'title' => 'พนักงานขาย', 'items' => ['บันทึกยอดขาย', 'จัดการลูกค้า', 'ใบเสนอราคา']],
+                'MARKETING' => ['icon' => 'fas fa-bullhorn', 'color' => 'purple', 'title' => 'การตลาด', 'items' => ['โปรโมชั่น', 'แคมเปญ', 'สื่อโฆษณา']],
+                'RESTAURANT' => ['icon' => 'fas fa-store', 'color' => 'red', 'title' => 'ร้านอาหาร', 'items' => ['จัดการโต๊ะ', 'สั่งอาหาร', 'สต็อกสินค้า']]
             ];
 
             foreach ($services as $key => $s): ?>
@@ -22,9 +26,13 @@ include('header.php');
                         class="font-bold text-<?= $s['color'] ?>-600 mb-4 flex items-center gap-2 border-b border-<?= $s['color'] ?>-50 pb-2">
                         <i class="<?= $s['icon'] ?>"></i> <?= $s['title'] ?>
                     </h3>
-                    <div class="space-y-2">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         <?php foreach ($s['items'] as $item): ?>
-                            <a href="#"
+                            <?php
+                            $link = "#";
+                            if ($item === 'ยื่นใบลาออนไลน์') $link = "e-service/HR/leave_request_public.php";
+                            ?>
+                            <a href="<?= $link ?>"
                                 class="block p-3 bg-slate-50 hover:bg-<?= $s['color'] ?>-50 rounded-lg text-xs font-bold text-slate-600 hover:text-<?= $s['color'] ?>-700 transition">
                                 <i class="fas fa-chevron-right mr-2 opacity-50"></i> <?= $item ?>
                             </a>
