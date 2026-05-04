@@ -10,9 +10,9 @@ include('header.php');
         <div class="lg:col-span-3 space-y-6">
             <?php
             $services = [
+                'HR' => ['icon' => 'fas fa-users', 'color' => 'blue', 'title' => 'บุคคล', 'items' => ['ลง OT พนักงาน', 'ยื่นใบลาออนไลน์', 'ตารางการทำงาน', 'เบิกสวัสดิการ', 'ประวัติพนักงาน', 'อัปเดตข้อมูลส่วนตัว']],
                 'PURCHASING' => ['icon' => 'fas fa-shopping-cart', 'color' => 'indigo', 'title' => 'จัดซื้อ', 'items' => ['สร้างใบขอซื้อ (PR)', 'ติดตามสถานะอนุมัติ', 'รายงานจัดซื้อ', 'เปรียบเทียบราคา', 'เช็คสถานะ PO']],
                 'ACCOUNTING' => ['icon' => 'fas fa-file-invoice-dollar', 'color' => 'emerald', 'title' => 'บัญชีการเงิน', 'items' => ['ใบแจ้งหนี้', 'ตรวจสอบการชำระเงิน', 'รายงานบัญชี', 'เบิกค่าใช้จ่าย']],
-                'HR' => ['icon' => 'fas fa-users', 'color' => 'blue', 'title' => 'บุคคล', 'items' => ['ลงเวลาทำงาน', 'ยื่นใบลาออนไลน์', 'ตรวจสอบวันลา', 'เบิกสวัสดิการ', 'ประวัติพนักงาน', 'อัปเดตข้อมูลส่วนตัว']],
                 'CATERING' => ['icon' => 'fas fa-utensils', 'color' => 'orange', 'title' => 'จัดเลี้ยง', 'items' => ['จองอาหาร/เครื่องดื่ม', 'รายการเมนู', 'ตารางการจัดเลี้ยง']],
                 'MAINTENANCE' => ['icon' => 'fas fa-tools', 'color' => 'amber', 'title' => 'ช่าง', 'items' => ['แจ้งซ่อมคอมพิวเตอร์', 'แจ้งซ่อมแอร์/อาคาร', 'แจ้งปัญหา Network', 'เบิกวัสดุอุปกรณ์']],
                 'SALES' => ['icon' => 'fas fa-chart-line', 'color' => 'rose', 'title' => 'พนักงานขาย', 'items' => ['บันทึกยอดขาย', 'จัดการลูกค้า', 'ใบเสนอราคา']],
@@ -30,7 +30,8 @@ include('header.php');
                         <?php foreach ($s['items'] as $item): ?>
                             <?php
                             $link = "#";
-                            if ($item === 'ยื่นใบลาออนไลน์') $link = "e-service/HR/leave_request_public.php";
+                            if ($item === 'ยื่นใบลาออนไลน์')
+                                $link = "e-service/HR/leave_request_public.php";
                             ?>
                             <a href="<?= $link ?>"
                                 class="block p-3 bg-slate-50 hover:bg-<?= $s['color'] ?>-50 rounded-lg text-xs font-bold text-slate-600 hover:text-<?= $s['color'] ?>-700 transition">

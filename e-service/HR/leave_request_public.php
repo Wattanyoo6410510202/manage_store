@@ -175,7 +175,7 @@ require_once '../../config.php';
                         didOpen: () => { Swal.showLoading(); }
                     });
 
-                    fetch('../save_leave.php', {
+                    fetch('save_leave.php', {
                         method: 'POST',
                         body: formData
                     })
