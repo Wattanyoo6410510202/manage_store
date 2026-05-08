@@ -170,7 +170,7 @@ $data = $existing_inspection ?: [];
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-slate-700 mb-2">ผลการตรวจรับ *</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div id="status_container" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <?php
                         $statuses = [
                             'pass' => ['label' => 'ผ่านการตรวจรับ', 'color' => 'peer-checked:bg-emerald-500 peer-checked:text-white bg-emerald-50 text-emerald-600 border-emerald-100'],
@@ -181,7 +181,7 @@ $data = $existing_inspection ?: [];
                         foreach ($statuses as $val => $cfg):
                             $checked = $current_status === $val ? 'checked' : '';
                         ?>
-                        <label class="cursor-pointer">
+                        <label class="cursor-pointer status-option" data-status="<?= $val ?>">
                             <input type="radio" name="result_status" value="<?= $val ?>" <?= $checked ?> class="hidden peer">
                             <div class="p-4 rounded-2xl border text-center font-bold text-sm transition-all <?= $cfg['color'] ?> shadow-sm">
                                 <?= $cfg['label'] ?>
@@ -189,6 +189,9 @@ $data = $existing_inspection ?: [];
                         </label>
                         <?php endforeach; ?>
                     </div>
+                    <p id="status_locked_msg" class="text-xs text-rose-500 font-bold mt-2 hidden">
+                        <i class="fas fa-lock mr-1"></i> จะเลือก "ผ่าน" ได้เมื่อผ่านการตรวจครั้งที่ 2 แล้วเท่านั้น
+                    </p>
                 </div>
 
                 <div>
@@ -214,15 +217,27 @@ $data = $existing_inspection ?: [];
                 <i class="fas fa-users text-indigo-500"></i> คณะกรรมการตรวจรับ
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ 1</label>
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ (ครั้งที่ 1)</label>
                     <input type="text" name="inspector_name_1" value="<?= htmlspecialchars($data['inspector_name_1'] ?? '') ?>"
                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <label class="flex items-center gap-2 p-2 bg-emerald-50 rounded-xl cursor-pointer border border-emerald-100">
+                        <input type="checkbox" name="is_inspector_1_approved" id="is_inspector_1_approved" value="1" 
+                               <?= ($data['is_inspector_1_approved'] ?? 0) == 1 ? 'checked' : '' ?>
+                               class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500">
+                        <span class="text-xs font-bold text-emerald-700 text-center flex-1">ผ่านการตรวจครั้งที่ 1</span>
+                    </label>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ 2</label>
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">ผู้ตรวจรับ (ครั้งที่ 2)</label>
                     <input type="text" name="inspector_name_2" value="<?= htmlspecialchars($data['inspector_name_2'] ?? '') ?>"
                            class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <label id="inspector_2_label" class="flex items-center gap-2 p-2 rounded-xl cursor-pointer border transition-all">
+                        <input type="checkbox" name="is_inspector_2_approved" id="is_inspector_2_approved" value="1" 
+                               <?= ($data['is_inspector_2_approved'] ?? 0) == 1 ? 'checked' : '' ?>
+                               class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-xs font-bold text-center flex-1" id="inspector_2_text">ผ่านการตรวจครั้งที่ 2</span>
+                    </label>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">เจ้าหน้าที่จัดซื้อ</label>
@@ -253,6 +268,43 @@ $data = $existing_inspection ?: [];
 </div>
 
 <script>
+function updateInspectorStatus() {
+    const isApproved1 = $('#is_inspector_1_approved').is(':checked');
+    const isApproved2 = $('#is_inspector_2_approved').is(':checked');
+    
+    const $box2 = $('#is_inspector_2_approved');
+    const $label2 = $('#inspector_2_label');
+    const $text2 = $('#inspector_2_text');
+
+    // Logic สำหรับการตรวจครั้งที่ 2
+    if (!isApproved1) {
+        $box2.prop('disabled', true).prop('checked', false);
+        $label2.addClass('bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed').removeClass('bg-indigo-50 border-indigo-100 text-indigo-700');
+        $text2.text('รอตรวจครั้งที่ 1 ก่อน').addClass('text-slate-400');
+    } else {
+        $box2.prop('disabled', false);
+        $label2.removeClass('bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed').addClass('bg-indigo-50 border-indigo-100 text-indigo-700');
+        $text2.text('ผ่านการตรวจครั้งที่ 2').removeClass('text-slate-400');
+    }
+
+    // Logic สำหรับการเลือกสถานะ "ผ่าน"
+    const $passOption = $('.status-option[data-status="pass"]');
+    const $passInput = $passOption.find('input');
+    
+    if (!isApproved1 || !isApproved2) {
+        if ($passInput.is(':checked')) {
+            $('input[name="result_status"][value="fail"]').prop('checked', true);
+        }
+        $passOption.addClass('opacity-30 grayscale cursor-not-allowed pointer-events-none');
+        $('#status_locked_msg').removeClass('hidden');
+    } else {
+        $passOption.removeClass('opacity-30 grayscale cursor-not-allowed pointer-events-none');
+        $('#status_locked_msg').addClass('hidden');
+    }
+}
+
+$('#is_inspector_1_approved, #is_inspector_2_approved').on('change', updateInspectorStatus);
+updateInspectorStatus(); // Run on load
 $('#inspectionForm').on('submit', function(e) {
     e.preventDefault();
     

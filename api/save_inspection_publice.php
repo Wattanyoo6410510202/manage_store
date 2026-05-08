@@ -18,7 +18,8 @@ $fields = [
     'is_drainage_ok', 'is_hvac_ok', 'other_system_note', 'is_surface_ok', 
     'is_paint_ok', 'is_cleaned', 'is_defect_fixed', 'is_safety_ok', 
     'result_status', 'punch_list', 'fix_within_days', 'inspector_name_1', 
-    'inspector_name_2', 'procurement_officer', 'is_md_approved', 'inspection_attachment'
+    'is_inspector_1_approved', 'inspector_name_2', 'is_inspector_2_approved',
+    'procurement_officer', 'is_md_approved', 'inspection_attachment'
 ];
 
 $data = [];

@@ -174,6 +174,18 @@ $project_id = $data['project_id'];
         font-weight: bold;
         cursor: pointer;
     }
+
+    /* สไตล์สำหรับฟอร์มเปล่า */
+    .blank-mode .hide-on-blank {
+        visibility: hidden !important;
+    }
+    .blank-mode .show-on-blank {
+        display: inline-block !important;
+    }
+    .blank-mode .text-blank {
+        color: transparent !important;
+        border-bottom: 1px dotted #ccc !important;
+    }
 </style>
 
 <div class="toolbar-container no-print">
@@ -181,6 +193,8 @@ $project_id = $data['project_id'];
         ย้อนกลับ</button>
     <button onclick="window.print()" class="btn-tool" style="background:#4f46e5"><i class="fas fa-print mr-1"></i>
         พิมพ์</button>
+    <button onclick="printBlank()" class="btn-tool" style="background:#8b5cf6"><i class="fas fa-file mr-1"></i>
+        ฟอร์มเปล่า</button>
     <button onclick="exportPDF()" class="btn-tool" style="background:#ef4444"><i class="fas fa-file-pdf mr-1"></i>
         PDF</button>
     <a href="add_inspection.php?project_id=<?= $project_id ?>&milestone_id=<?= $data['milestone_id'] ?>"
@@ -198,10 +212,13 @@ $project_id = $data['project_id'];
         </div>
         <div style="text-align:right;">
             <p style="margin:0; font-size:11px; font-weight:bold;">วันที่:
-                <?= date('d/m/Y', strtotime($data['inspection_date'])) ?>
+                <span class="hide-on-blank"><?= date('d/m/Y', strtotime($data['inspection_date'])) ?></span>
+                <span class="show-on-blank" style="display:none;">......../......../........</span>
             </p>
             <p style="margin:0; font-size:9px; color:#64748b;">Ref:
-                INS-<?= str_pad($data['id'], 5, '0', STR_PAD_LEFT) ?></p>
+                <span class="hide-on-blank">INS-<?= str_pad($data['id'], 5, '0', STR_PAD_LEFT) ?></span>
+                <span class="show-on-blank" style="display:none;">INS-..........</span>
+            </p>
         </div>
     </div>
 
@@ -264,9 +281,10 @@ $project_id = $data['project_id'];
                             <tr>
                                 <td><?= $l ?></td>
                                 <td width="20%" align="center">
-                                    <span class="status-badge <?= $data[$k] ? 'pass' : 'fail' ?>">
+                                    <span class="status-badge <?= $data[$k] ? 'pass' : 'fail' ?> hide-on-blank">
                                         <?= $data[$k] ? '✓' : '✗' ?>
                                     </span>
+                                    <span class="show-on-blank" style="display:none; font-size: 14px; color: #cbd5e1;">[ &nbsp; ]</span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -278,31 +296,57 @@ $project_id = $data['project_id'];
 
     <div style="margin-top:15px; font-size:12px; border:1px solid #e2e8f0; padding:10px; border-radius:6px; ">
         <p style="font-weight:bold; margin-bottom:5px;">Punch List / รายการแก้ไข:</p>
-        <p style="margin:0;"><?= nl2br(htmlspecialchars($data['punch_list'] ?: '- ไม่มีรายการแก้ไข -')) ?></p>
+        <p style="margin:0;" class="hide-on-blank"><?= nl2br(htmlspecialchars($data['punch_list'] ?: '- ไม่มีรายการแก้ไข -')) ?></p>
+        <p style="margin:0; display:none; height: 60px;" class="show-on-blank">..........................................................................................................................................</p>
     </div>
     <div style="border:1px solid #e2e8f0; padding:10px; border-radius:6px; font-size:11px;">
         <p style="margin:0 0 5px 0; font-weight:bold; color:#64748b; font-size:8px; text-transform:uppercase;">3.
             สรุปผลการตรวจ</p>
-        <p style="margin:2px 0;"><b>สถานะ:</b> <span
-                class="status-badge <?= $data['result_status'] === 'pass' ? 'pass' : 'fail' ?>"><?= $data['result_status'] === 'pass' ? 'ผ่าน' : ($data['result_status'] === 'conditional_pass' ? 'มีเงื่อนไข' : 'ไม่ผ่าน') ?></span>
+        <p style="margin:2px 0;"><b>สถานะ:</b> 
+            <span class="status-badge <?= $data['result_status'] === 'pass' ? 'pass' : 'fail' ?> hide-on-blank">
+                <?= $data['result_status'] === 'pass' ? 'ผ่าน' : ($data['result_status'] === 'conditional_pass' ? 'มีเงื่อนไข' : 'ไม่ผ่าน') ?>
+            </span>
+            <span class="show-on-blank" style="display:none;">[ &nbsp; ] ผ่าน &nbsp; [ &nbsp; ] มีเงื่อนไข &nbsp; [ &nbsp; ] ไม่ผ่าน</span>
         </p>
-        <p style="margin:2px 0;"><b>MD อนุมัติ:</b> <?= $data['is_md_approved'] ? '✅' : '❌' ?></p>
-        <p style="margin:2px 0;"><b>แก้ไขใน:</b> <?= $data['fix_within_days'] ?: '-' ?> วัน</p>
+        <p style="margin:2px 0;"><b>MD อนุมัติ:</b> 
+            <span class="hide-on-blank"><?= $data['is_md_approved'] ? '✅' : '❌' ?></span>
+            <span class="show-on-blank" style="display:none;">[ &nbsp; ] อนุมัติ &nbsp; [ &nbsp; ] ไม่อนุมัติ</span>
+        </p>
+        <p style="margin:2px 0;"><b>แก้ไขใน:</b> 
+            <span class="hide-on-blank"><?= $data['fix_within_days'] ?: '-' ?></span>
+            <span class="show-on-blank" style="display:none;">..........</span> วัน
+        </p>
     </div>
 
     <div
         style="margin-top:40px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; text-align:center; font-size:11px; mt-2">
         <div>
-            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px;"></div>(
-            <?= htmlspecialchars($data['inspector_name_1'] ?: '................') ?> )<br>ผู้ตรวจรับ 1
+            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px; position:relative;">
+            </div>
+            ( <span class="hide-on-blank"><?= htmlspecialchars($data['inspector_name_1'] ?: '................') ?></span><span class="show-on-blank" style="display:none;">................................</span> )<br>
+            ผู้ตรวจรับ (ครั้งที่ 1) <span class="hide-on-blank"><?= $data['is_inspector_1_approved'] ? '<b style="color:green">(ตรวจแล้ว)</b>' : '' ?></span>
+            <div style="margin-top:4px; color:#64748b;">
+                วันที่ตรวจ: <span class="hide-on-blank"><?= $data['is_inspector_1_approved'] ? date('d/m/Y', strtotime($data['inspection_date'])) : '......../......../........' ?></span>
+                <span class="show-on-blank" style="display:none;">......../......../........</span>
+            </div>
         </div>
         <div>
-            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px;"></div>(
-            <?= htmlspecialchars($data['inspector_name_2'] ?: '................') ?> )<br>ผู้ตรวจรับ 2
+            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px; position:relative;">
+            </div>
+            ( <span class="hide-on-blank"><?= htmlspecialchars($data['inspector_name_2'] ?: '................') ?></span><span class="show-on-blank" style="display:none;">................................</span> )<br>
+            ผู้ตรวจรับ (ครั้งที่ 2) <span class="hide-on-blank"><?= $data['is_inspector_2_approved'] ? '<b style="color:green">(ตรวจแล้ว)</b>' : '' ?></span>
+            <div style="margin-top:4px; color:#64748b;">
+                วันที่ตรวจ: <span class="hide-on-blank"><?= $data['is_inspector_2_approved'] ? date('d/m/Y', strtotime($data['inspection_date'])) : '......../......../........' ?></span>
+                <span class="show-on-blank" style="display:none;">......../......../........</span>
+            </div>
         </div>
         <div>
-            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px;"></div>(
-            <?= htmlspecialchars($data['procurement_officer'] ?: '................') ?> )<br>เจ้าหน้าที่จัดซื้อ
+            <div style="height:40px; border-bottom:1px solid #cbd5e1; margin-bottom:5px;"></div>
+            ( <span class="hide-on-blank"><?= htmlspecialchars($data['procurement_officer'] ?: '................') ?></span><span class="show-on-blank" style="display:none;">................................</span> )<br>
+            เจ้าหน้าที่จัดซื้อ
+            <div style="margin-top:4px; color:#64748b;">
+                วันที่: ......../......../........
+            </div>
         </div>
     </div>
 </div>
@@ -313,6 +357,13 @@ $project_id = $data['project_id'];
         const element = document.getElementById('inspection-content');
         const opt = { filename: 'Inspection_<?= str_pad($data['id'], 5, '0', STR_PAD_LEFT) ?>.pdf', jsPDF: { format: 'a4', orientation: 'portrait' } };
         html2pdf().set(opt).from(element).save();
+    }
+    function printBlank() {
+        $('body').addClass('blank-mode');
+        window.print();
+        setTimeout(() => {
+            $('body').removeClass('blank-mode');
+        }, 500);
     }
     function deleteInspection(id) {
         Swal.fire({ title: 'ยืนยันการลบ?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e11d48', confirmButtonText: 'ใช่, ลบเลย', heightAuto: false }).then((result) => {
