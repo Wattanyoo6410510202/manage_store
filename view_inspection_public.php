@@ -5,7 +5,7 @@ require_once 'config.php';
 // กำหนด Username และ Password (ควรเปลี่ยนเป็นค่าที่ต้องการ)
 $auth_user = 'pao';
 $auth_pass = '1234';
-$auth_fullname = 'มณชัย (ช่างเป่า)';
+$auth_fullname = 'มณต์ชัย (ช่างเป่า)';
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 $milestone_id = isset($_GET['milestone_id']) ? intval($_GET['milestone_id']) : 0;
