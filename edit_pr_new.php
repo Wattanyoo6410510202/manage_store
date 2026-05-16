@@ -3,7 +3,7 @@ require_once 'config.php';
 include 'header.php';
 
 // 1. รับค่า ID ของ PR ที่ต้องการแก้ไข
-$pr_id = $_GET['id'] ?? 0;
+$pr_id = intval($_GET['id'] ?? 0);
 
 // 2. ดึงข้อมูลหลักจากตาราง pr
 $sql_pr = "SELECT * FROM pr WHERE id = '" . mysqli_real_escape_string($conn, $pr_id) . "'";

@@ -3,7 +3,7 @@ require_once 'config.php';
 include 'header.php';
 
 // 1. รับ ID ใบแจ้งหนี้ที่ต้องการแก้ไข
-$invoice_id = $_GET['id'] ?? 0;
+$invoice_id = intval($_GET['id'] ?? 0);
 
 // 2. ดึงข้อมูลหลักของ Invoice
 $inv_query = mysqli_query($conn, "SELECT i.*, c.customer_name, c.tax_id as cust_tax, c.address as cust_addr 

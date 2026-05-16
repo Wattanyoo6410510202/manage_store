@@ -35,6 +35,19 @@ $result = mysqli_query($conn, $sql);
 $supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
 $supplier_res = mysqli_query($conn, $supplier_sql);
 $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
+
+// Auto-filter สำหรับ GM roles: กรองตาม sup_id ของผู้ใช้
+$auto_filter_supplier = '';
+$target_gm_roles = ['gmhok', 'gmshotel', 'gmmanonta', 'gmhr', 'gmnijuni'];
+$user_role_sup = $_SESSION['role'] ?? '';
+$sup_id = $_SESSION['sup_id'] ?? 0;
+
+if (in_array($user_role_sup, $target_gm_roles) && !empty($sup_id) && $sup_id > 0) {
+    $sup_name_query = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id LIMIT 1");
+    if ($sup_row = mysqli_fetch_assoc($sup_name_query)) {
+        $auto_filter_supplier = $sup_row['company_name'];
+    }
+}
 ?>
 
 <div class="w-full p-0">
@@ -323,6 +336,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
 <script>
     let prTable;
+    const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
+
     $(document).ready(function () {
         prTable = $('#prTable').DataTable({
             "pageLength": 10,
@@ -338,6 +353,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
         // ตั้งค่าการกรองเริ่มต้นเป็น "รอ"
         prTable.column(6).search('รอ').draw();
+
+        // Auto-filter ตาม Supplier สำหรับ GM roles ที่มี sup_id
+        if (AUTO_FILTER_SUPPLIER) {
+            $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
+            prTable.column(2).search(AUTO_FILTER_SUPPLIER).draw();
+        }
 
         $('#filterSupplier').on('change', function () { prTable.column(2).search(this.value).draw(); });
         $('#filterStatus').on('change', function () { prTable.column(6).search(this.value).draw(); });

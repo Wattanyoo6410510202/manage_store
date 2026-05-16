@@ -3,7 +3,7 @@ require_once 'config.php';
 include 'header.php';
 
 // รับค่า ID ของ PO ที่ต้องการแก้ไข
-$po_id = $_GET['id'] ?? 0;
+$po_id = intval($_GET['id'] ?? 0);
 
 // 1. ดึงข้อมูลหลักจากตาราง po
 $sql_po = "SELECT * FROM po WHERE id = '" . mysqli_real_escape_string($conn, $po_id) . "'";
