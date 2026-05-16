@@ -20,7 +20,7 @@ $permissions = [
     'gm' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
 
     // 3. GMHOK: สิทธิ์ระดับบริหารเฉพาะส่วน (เน้นดูงานและเอกสาร)
-    'gmhok' => ['dashboard', 'docs', 'projects', 'compare'],
+    'gmhok' => ['dashboard', 'docs', 'projects', 'compare', 'procure'],
 
     // 4. HOK: สิทธิ์ระดับหัวหน้าส่วนงาน
     'hok' => ['dashboard', 'docs', 'projects', 'compare'],
@@ -117,7 +117,11 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
     echo "<script>window.location.href='e_service.php';</script>";
     exit;
 }
-if ($current_page == 'pending_approval.php' && !in_array($user_role, ['admin', 'procure', 'acc', 'mgr', 'mgr2', 'viewer'])) {
+// Check if user is Admin, Viewer, or any type of GM (e.g., gm, gmhok, gmhr, gmacc, etc.)
+$is_gm = (strpos($user_role, 'gm') === 0);
+$allowed_roles = ['admin', 'procure', 'acc', 'mgr', 'mgr2', 'viewer'];
+
+if ($current_page == 'pending_approval.php' && !$is_gm && !in_array($user_role, $allowed_roles)) {
     echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
     exit;
 }
@@ -134,20 +138,42 @@ if (in_array($current_page, $cat_main)) $active_cat = 'main';
 if (in_array($current_page, $cat_settings)) $active_cat = 'settings';
 if (in_array($current_page, $cat_construction)) $active_cat = 'construction';
 
-// ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role ตัวเอง
+// ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role และ User ตัวเอง
 $pending_count = 0;
 require_once 'config.php';
 $user_role_for_count = $_SESSION['role'] ?? '';
-$pending_sql = "SELECT COUNT(*) as total FROM pr WHERE deleted_at IS NULL AND status = 'pending'";
+$user_id_for_count = $_SESSION['user_id'] ?? 0;
 
+$pending_sql = "SELECT COUNT(p.id) as total FROM pr p 
+                LEFT JOIN users u ON p.created_by = u.id 
+                WHERE p.deleted_at IS NULL AND p.status = 'pending'";
+
+// ตรรกะ: นับเฉพาะรายการที่ User มีสิทธิ์อนุมัติในขั้นนั้นๆ และเขายังไม่ได้อนุมัติ
 if ($user_role_for_count === 'procure') {
-    $pending_sql .= " AND approved_by IS NULL";
-} elseif ($user_role_for_count === 'acc') {
-    $pending_sql .= " AND approved_by_1 IS NULL";
+    $pending_sql .= " AND p.approved_by IS NULL";
+} elseif ($user_role_for_count === 'gmacc' || $user_role_for_count === 'acc') {
+    $pending_sql .= " AND p.approved_by_1 IS NULL";
 } elseif ($user_role_for_count === 'mgr') {
-    $pending_sql .= " AND approved_by_2 IS NULL";
+    $pending_sql .= " AND p.approved_by_2 IS NULL";
 } elseif ($user_role_for_count === 'mgr2') {
-    $pending_sql .= " AND approved_by_3 IS NULL";
+    $pending_sql .= " AND p.approved_by_3 IS NULL";
+} elseif (strpos($user_role_for_count, 'gm') === 0) {
+    // GM ของแผนกต่างๆ นับ Level 0 ของแผนกตัวเอง
+    $dept_map = [
+        'gmhok' => 'hok', 'gmhr' => 'hr', 'gmshotel' => 'staff_shotel',
+        'gmmanonta' => 'staff_manonta', 'gmnijuni' => 'staff_nijuni'
+    ];
+    $target_dept = $dept_map[$user_role_for_count] ?? '';
+    if ($target_dept) {
+        $pending_sql .= " AND u.role = '$target_dept' AND p.approved_by_0 IS NULL";
+    } else {
+        $pending_sql .= " AND 1=0";
+    }
+} elseif (in_array($user_role_for_count, ['admin', 'gmhok'])) {
+    // Admin/GMHOK นับรวมทุกรายการที่ยังไม่จบ (รวมทุกสถานะ Null)
+    $pending_sql .= " AND (p.approved_by_0 IS NULL OR p.approved_by IS NULL OR p.approved_by_1 IS NULL OR p.approved_by_2 IS NULL OR p.approved_by_3 IS NULL)";
+} else {
+    $pending_sql .= " AND 1=0";
 }
 
 $pending_res = mysqli_query($conn, $pending_sql);

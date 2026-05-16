@@ -22,6 +22,7 @@ $sql = "SELECT p.*,
                u_app1.name as app1_name, sig_app1.path as app1_sig,
                u_app2.name as app2_name, sig_app2.path as app2_sig,
                u_app3.name as app3_name, sig_app3.path as app3_sig,
+               u_app4.name as app4_name, sig_app4.path as app4_sig,
 
                own.company_name as my_company, own.tax_id as my_tax, own.phone as my_phone, 
                own.email as my_email, own.address as my_address, own.logo_path,
@@ -35,17 +36,20 @@ $sql = "SELECT p.*,
         LEFT JOIN users u_creator ON p.created_by = u_creator.id
         LEFT JOIN signatures sig_creator ON u_creator.id = sig_creator.users_id
         
-        LEFT JOIN users u_app0 ON p.approved_by = u_app0.id
+        LEFT JOIN users u_app0 ON p.approved_by_0 = u_app0.id
         LEFT JOIN signatures sig_app0 ON u_app0.id = sig_app0.users_id
-        
-        LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
+
+        LEFT JOIN users u_app1 ON p.approved_by = u_app1.id
         LEFT JOIN signatures sig_app1 ON u_app1.id = sig_app1.users_id
         
-        LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
+        LEFT JOIN users u_app2 ON p.approved_by_1 = u_app2.id
         LEFT JOIN signatures sig_app2 ON u_app2.id = sig_app2.users_id
         
-        LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
+        LEFT JOIN users u_app3 ON p.approved_by_2 = u_app3.id
         LEFT JOIN signatures sig_app3 ON u_app3.id = sig_app3.users_id
+
+        LEFT JOIN users u_app4 ON p.approved_by_3 = u_app4.id
+        LEFT JOIN signatures sig_app4 ON u_app4.id = sig_app4.users_id
 
         LEFT JOIN expense_categories ec ON p.expense_cat_id = ec.id
         LEFT JOIN budget_types bt ON p.budget_type_id = bt.id
@@ -74,11 +78,13 @@ $display_list[] = ['label' => 'ผู้จัดทำ', 'name' => $data['creat
 
 $real_apps = [];
 $apps = [
-    ['id' => $data['approved_by'], 'name' => $data['app0_name'], 'sig' => $data['app0_sig'], 'date' => $data['approved_at'], 'role' => 'จัดซื้อ'],
-    ['id' => $data['approved_by_1'], 'name' => $data['app1_name'], 'sig' => $data['app1_sig'], 'date' => $data['approved_at_1'], 'role' => 'บัญชี'],
-    ['id' => $data['approved_by_2'], 'name' => $data['app2_name'], 'sig' => $data['app2_sig'], 'date' => $data['approved_at_2'], 'role' => 'SUP'],
-    ['id' => $data['approved_by_3'], 'name' => $data['app3_name'], 'sig' => $data['app3_sig'], 'date' => null, 'role' => 'CEO']
+    ['id' => $data['approved_by_0'], 'name' => $data['app0_name'], 'sig' => $data['app0_sig'], 'date' => $data['approved_at_0'], 'role' => 'หัวหน้างาน'],
+    ['id' => $data['approved_by'], 'name' => $data['app1_name'], 'sig' => $data['app1_sig'], 'date' => $data['approved_at'], 'role' => 'จัดซื้อ'],
+    ['id' => $data['approved_by_1'], 'name' => $data['app2_name'], 'sig' => $data['app2_sig'], 'date' => $data['approved_at_1'], 'role' => 'บัญชี'],
+    ['id' => $data['approved_by_2'], 'name' => $data['app3_name'], 'sig' => $data['app3_sig'], 'date' => $data['approved_at_2'], 'role' => 'SUP'],
+    ['id' => $data['approved_by_3'], 'name' => $data['app4_name'], 'sig' => $data['app4_sig'], 'date' => null, 'role' => 'CEO']
 ];
+
 
 foreach($apps as $app) {
     if(!empty($app['id'])) {

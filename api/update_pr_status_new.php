@@ -37,8 +37,13 @@ if ($action !== 'approved') {
     send_json('error', 'Invalid action');
 }
 
-// Fetch PR data
-$stmt = $conn->prepare("SELECT * FROM pr WHERE id = ?");
+// Fetch PR data with requester role
+$stmt = $conn->prepare("
+    SELECT pr.*, u.role as requester_role 
+    FROM pr 
+    LEFT JOIN users u ON pr.created_by = u.id 
+    WHERE pr.id = ?
+");
 $stmt->bind_param("i", $pr_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -56,8 +61,9 @@ if ($pr['status'] === 'approved') {
     send_json('error', 'ใบขอซื้อนี้ได้รับอนุมัติครบถ้วนแล้ว');
 }
 
-// Check if user already approved
+// Check if user already approved in any level
 if (
+    $pr['approved_by_0'] == $user_id ||
     $pr['approved_by'] == $user_id || 
     $pr['approved_by_1'] == $user_id || 
     $pr['approved_by_2'] == $user_id || 
@@ -69,20 +75,45 @@ if (
 $update_col = "";
 $time_col = "";
 
-// Role-based approval mapping
-if ($user_role === 'procure') {
-    if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
-} elseif ($user_role === 'acc') {
-    if (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
-} elseif ($user_role === 'mgr') {
-    if (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
-} elseif ($user_role === 'mgr2') {
-    if (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; } // No timestamp for mgr2
-} elseif (in_array($user_role, ['admin', 'gmhok'])) {
-    if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
-    elseif (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
-    elseif (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
-    elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
+// --- Dynamic Level 0 (Supervisor) Mapping ---
+$requester_role = $pr['requester_role'] ?? '';
+$is_gm = (strpos($user_role, 'gm') === 0);
+
+// ถ้าเป็น GM ของแผนกไหน ให้สิทธิ์อนุมัติหัวหน้าของแผนกนั้น
+// เช่น ถ้า requester เป็น 'staff_shotel' และ user เป็น 'gmshotel' ให้ผ่าน
+$target_head_role = 'gm' . str_replace('staff_', '', $requester_role);
+
+// กรณีพิเศษ: ถ้า requester เป็น 'hok' หรือ 'acc'
+if ($requester_role == 'hok') $target_head_role = 'gmhok';
+if ($requester_role == 'acc') $target_head_role = 'gmacc';
+
+// Check for Level 0 Approval
+if (empty($pr['approved_by_0'])) {
+    // อนุมัติได้ถ้าเป็น GM ที่ถูกต้อง หรือ Admin/GMHOK
+    if (($is_gm && $user_role === $target_head_role) || in_array($user_role, ['admin', 'gmhok'])) {
+        $update_col = "approved_by_0";
+        $time_col = "approved_at_0";
+    }
+}
+
+// Role-based approval mapping for other levels
+if (!$update_col) {
+    if ($user_role === 'procure') {
+        if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
+    } elseif ($user_role === 'gmacc') { // Changed from 'acc' to 'gmacc' per step.md
+        if (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
+    } elseif ($user_role === 'mgr') {
+        if (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
+    } elseif ($user_role === 'mgr2') {
+        if (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
+    } elseif (in_array($user_role, ['admin', 'gmhok'])) {
+        // Admin/GMHOK can act as backup for other levels
+        if (empty($pr['approved_by_0']) && $target_head_role === 'gmhok') { $update_col = "approved_by_0"; $time_col = "approved_at_0"; }
+        elseif (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
+        elseif (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
+        elseif (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
+        elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
+    }
 }
 
 if (!$update_col) {
@@ -105,6 +136,7 @@ if ($update_stmt->execute()) {
     $pr = $stmt->get_result()->fetch_assoc();
     
     $approver_count = 0;
+    if (!empty($pr['approved_by_0'])) $approver_count++;
     if (!empty($pr['approved_by'])) $approver_count++;
     if (!empty($pr['approved_by_1'])) $approver_count++;
     if (!empty($pr['approved_by_2'])) $approver_count++;
@@ -113,15 +145,20 @@ if ($update_stmt->execute()) {
     $limit_type = strtolower(trim($pr['budget_limit_type'] ?? 'low'));
     $is_fully = false;
     
-    if ($limit_type === 'low' && $approver_count >= 2) $is_fully = true;
-    elseif ($limit_type === 'mid' && $approver_count >= 3) $is_fully = true;
-    elseif ($limit_type === 'high') {
-        // High: ต้องครบทั้ง 3 ท่าน (Procure, Acc, Mgr2)
-        if (!empty($pr['approved_by']) && !empty($pr['approved_by_1']) && !empty($pr['approved_by_3'])) {
-            $is_fully = true;
+    // Updated is_fully logic to require level 0 (approved_by_0)
+    $has_level0 = !empty($pr['approved_by_0']);
+    
+    if ($has_level0) {
+        if ($limit_type === 'low' && $approver_count >= 3) $is_fully = true; // Level 0 + 2 more
+        elseif ($limit_type === 'mid' && $approver_count >= 4) $is_fully = true; // Level 0 + 3 more
+        elseif ($limit_type === 'high') {
+            // High: ต้องครบ (Level 0 + Procure + GMACC + Mgr2)
+            if (!empty($pr['approved_by']) && !empty($pr['approved_by_1']) && !empty($pr['approved_by_3'])) {
+                $is_fully = true;
+            }
         }
+        elseif ($approver_count >= 5) $is_fully = true;
     }
-    elseif ($approver_count >= 4) $is_fully = true;
 
     if ($is_fully) {
         $finish_stmt = $conn->prepare("UPDATE pr SET status = 'approved' WHERE id = ?");

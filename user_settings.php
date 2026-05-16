@@ -43,11 +43,20 @@ include('assets/alert.php');
                             <option value="mgr">Manager (ผู้จัดการ)</option>
                             <option value="mgr2">Manager 2 (ผู้จัดการ 2)</option>
                             <option value="acc">Account (บัญชี)</option>
-                            <option value="gmhok">GM HOK (ผู้จัดการ HOK)</option>
-                            <option value="hok">HOK (ผู้ปฏิบัติงานพิเศษ)</option>
                             <option value="procure">Procurement (ผู้จัดซื้อ)</option>
                             <option value="fin">Finance (ผู้จัดการการเงิน)</option>
                             <option value="viewer">Viewer (ผู้ชม)</option>
+                            <option value="gmhok">GM HOK</option>
+                            <option value="gmhr">GM HR</option>
+                            <option value="staff_hr">Staff HR</option>
+                            <option value="gmacc">GM ACC</option>
+                            <option value="gmshotel">GM SHotel</option>
+                            <option value="gmmanonta">GM Manonta</option>
+                            <option value="gmnijuni">GM Nijuni</option>
+                            <option value="hok">HOK</option>
+                            <option value="staff_shotel">Staff SHotel</option>
+                            <option value="staff_manonta">Staff Manonta</option>
+                            <option value="staff_nijuni">Staff Nijuni</option>
                         </select>
                     </div>
 

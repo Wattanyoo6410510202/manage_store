@@ -8,6 +8,8 @@ $sql = "SELECT
             s.company_name as supplier_name,
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
             u_creator.name AS creator_real_name, 
+            u_creator.role AS creator_role,
+            u_app0.name as approver_0_name,
             u2.name as approver_name,
             u_app1.name as approver_1_name,
             u_app2.name as approver_2_name,
@@ -20,6 +22,7 @@ $sql = "SELECT
         LEFT JOIN customers c ON p.customer_id = c.id AND p.is_internal = 0
         LEFT JOIN users u1 ON p.created_by = u1.id AND p.is_internal = 1
         LEFT JOIN users u_creator ON p.created_by = u_creator.id
+        LEFT JOIN users u_app0 ON p.approved_by_0 = u_app0.id
         LEFT JOIN users u2 ON p.approved_by = u2.id
         LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
@@ -104,6 +107,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th>สถานะ</th>
                             <th>วันที่</th>
                             <th>ผู้สร้าง</th>
+                            <th>หัวหน้า</th>
                             <th>จัดซื้อ</th>
                             <th>บัญชี</th>
                             <th>SUP</th>
@@ -201,6 +205,16 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     <?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
                                 </td>
 
+                                <td class="text-center approver-cell-head">
+                                    <?php if (!empty($row['approver_0_name'])): ?>
+                                        <i class="fas fa-check text-emerald-500"></i>
+                                        <div class="text-[8px] text-slate-400 font-mono">
+                                            <?= date('d/m/y', strtotime($row['approved_at_0'])) ?>
+                                        </div>
+                                    <?php else:
+                                        echo '-';
+                                    endif; ?>
+                                </td>
                                 <td class="text-center approver-cell-0">
                                     <?php if (!empty($row['approver_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
@@ -247,14 +261,39 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                                         // Check if already approved by this user
                                         $already_approved = (
+                                            $row['approved_by_0'] == $user_id ||
                                             $row['approved_by'] == $user_id ||
                                             $row['approved_by_1'] == $user_id ||
                                             $row['approved_by_2'] == $user_id ||
                                             $row['approved_by_3'] == $user_id
                                         );
 
-                                        if ($row['status'] === 'pending' && in_array($role, ['admin', 'gmhok', 'procure', 'acc', 'mgr', 'mgr2']) && !$already_approved && !is_viewer())
-                                            $can_approve = true;
+                                        if ($row['status'] === 'pending' && !$already_approved && !is_viewer()) {
+                                            $dept_map = [
+                                                'hok' => 'gmhok',
+                                                'hr' => 'gmhr',
+                                                'staff_shotel' => 'gmshotel',
+                                                'staff_manonta' => 'gmmanonta',
+                                                'staff_nijuni' => 'gmnijuni',
+                                                'acc' => 'gmacc'
+                                            ];
+                                            $target_head_role = $dept_map[$row['creator_role']] ?? '';
+
+                                            if (empty($row['approved_by_0'])) {
+                                                if ($role === $target_head_role || ($user_id == $row['created_by'] && in_array($role, array_values($dept_map)))) $can_approve = true;
+                                            } elseif ($role === 'procure' && empty($row['approved_by'])) {
+                                                $can_approve = true;
+                                            } elseif ($role === 'gmacc' && empty($row['approved_by_1'])) {
+                                                $can_approve = true;
+                                            } elseif ($role === 'mgr' && empty($row['approved_by_2'])) {
+                                                $can_approve = true;
+                                            } elseif ($role === 'mgr2' && empty($row['approved_by_3'])) {
+                                                $can_approve = true;
+                                            } elseif (in_array($role, ['admin', 'gmhok'])) {
+                                                $can_approve = true;
+                                            }
+                                        }
+
                                         if ($can_approve): ?>
                                             <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
                                                 title="อนุมัติ PR"
@@ -291,8 +330,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[7, "desc"]],
             "columnDefs": [
-                { "orderable": false, "targets": [0, 4, 9, 10, 11, 12, 13] },
-                { "type": "html", "targets": [6, 9, 10, 11, 12] }
+                { "orderable": false, "targets": [0, 4, 9, 10, 11, 12, 13, 14] },
+                { "type": "html", "targets": [6, 9, 10, 11, 12, 13] }
             ],
             "drawCallback": function () { updateBulkUI(); }
         });
@@ -363,7 +402,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         if (typeof updatePendingBadge === 'function') updatePendingBadge(); // อัปเดตตัวเลขในเมนูข้าง
 
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = { 'approved_by': 9, 'approved_by_1': 10, 'approved_by_2': 11, 'approved_by_3': 12 };
+                        const colMap = { 
+                            'approved_by_0': 9,
+                            'approved_by': 10, 
+                            'approved_by_1': 11, 
+                            'approved_by_2': 12, 
+                            'approved_by_3': 13 
+                        };
                         if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
                             if (data.column !== 'approved_by_3') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
