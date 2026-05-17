@@ -32,22 +32,23 @@ $sql = "SELECT
 
 $result = mysqli_query($conn, $sql);
 
-$supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
-$supplier_res = mysqli_query($conn, $supplier_sql);
-$suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
-
-// Auto-filter สำหรับ GM roles: กรองตาม sup_id ของผู้ใช้
-$auto_filter_supplier = '';
-$target_gm_roles = ['gmhok', 'gmshotel', 'gmmanonta', 'gmhr', 'gmnijuni'];
 $user_role_sup = $_SESSION['role'] ?? '';
 $sup_id = $_SESSION['sup_id'] ?? 0;
+$auto_filter_supplier = '';
 
-if (in_array($user_role_sup, $target_gm_roles) && !empty($sup_id) && $sup_id > 0) {
+$is_head_locked = ((strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc') || $user_role_sup === 'hok');
+
+if ($is_head_locked && !empty($sup_id) && $sup_id > 0) {
+    $supplier_sql = "SELECT id, company_name FROM suppliers WHERE id = $sup_id ORDER BY company_name ASC";
     $sup_name_query = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id LIMIT 1");
     if ($sup_row = mysqli_fetch_assoc($sup_name_query)) {
         $auto_filter_supplier = $sup_row['company_name'];
     }
+} else {
+    $supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
 }
+$supplier_res = mysqli_query($conn, $supplier_sql);
+$suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 ?>
 
 <div class="w-full p-0">
@@ -60,9 +61,11 @@ if (in_array($user_role_sup, $target_gm_roles) && !empty($sup_id) && $sup_id > 0
                             class="text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">กรองตามหน่วยงาน/บริษัท</label>
                         <select id="filterSupplier"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
-                            <option value="">ทั้งหมด (Show All)</option>
+                            <?php if (!$is_head_locked || empty($auto_filter_supplier)): ?>
+                                <option value="">ทั้งหมด (Show All)</option>
+                            <?php endif; ?>
                             <?php foreach ($suppliers as $s): ?>
-                                <option value="<?= htmlspecialchars($s['company_name']) ?>">
+                                <option value="<?= htmlspecialchars($s['company_name']) ?>" <?= ($auto_filter_supplier === $s['company_name']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($s['company_name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -450,8 +453,14 @@ if (in_array($user_role_sup, $target_gm_roles) && !empty($sup_id) && $sup_id > 0
         prTable.draw();
     }
     function resetFilter() {
-        $('#filterSupplier').val(''); $('#filterStatus').val(''); $('#minDate').val(''); $('#maxDate').val('');
-        prTable.column(2).search(''); prTable.column(6).search(''); prTable.draw();
+        if (AUTO_FILTER_SUPPLIER) {
+            $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
+            $('#filterStatus').val(''); $('#minDate').val(''); $('#maxDate').val('');
+            prTable.column(2).search(AUTO_FILTER_SUPPLIER); prTable.column(6).search(''); prTable.draw();
+        } else {
+            $('#filterSupplier').val(''); $('#filterStatus').val(''); $('#minDate').val(''); $('#maxDate').val('');
+            prTable.column(2).search(''); prTable.column(6).search(''); prTable.draw();
+        }
     }
     function viewAttachment(url) { window.open(url, '_blank'); }
 </script>

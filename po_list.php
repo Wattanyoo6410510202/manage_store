@@ -85,8 +85,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
                     <div class="flex items-center gap-2 self-end mb-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg">
                         <input type="checkbox" id="filterMyWork" 
-                            class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                            <?= ($_SESSION['role'] !== 'admin' && !is_viewer()) ? 'checked' : '' ?>>
+                            class="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
                         <label for="filterMyWork" class="text-[11px] font-bold text-slate-600 cursor-pointer">งานของฉัน</label>
                     </div>
 
@@ -259,7 +258,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php if (!is_viewer()): ?>
                                             <?php
                                             // ตรวจสอบทั้งสถานะ pending และสิทธิ์การใช้งาน (สมมติว่าตัวแปร session ชื่อ $_SESSION['role'])
-                                            if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok')):
+                                            if ($row['status'] === 'pending' && ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'gmhok' || $_SESSION['role'] === 'procure')):
                                                 ?>
                                                 <button onclick="approvePo(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')"
                                                     title="อนุมัติ PR"

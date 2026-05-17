@@ -119,11 +119,13 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 }
 // Check if user is Admin, Viewer, or any type of GM (e.g., gm, gmhok, gmhr, gmacc, etc.)
 $is_gm = (strpos($user_role, 'gm') === 0);
-$allowed_roles = ['admin', 'procure', 'acc', 'mgr', 'mgr2', 'viewer'];
+$allowed_roles = ['admin', 'procure', 'mgr', 'mgr2', 'viewer'];
 
-if ($current_page == 'pending_approval.php' && !$is_gm && !in_array($user_role, $allowed_roles)) {
-    echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
-    exit;
+if ($current_page == 'pending_approval.php') {
+    if (strpos($user_role, 'staff') === 0 || $user_role === 'acc' || (!$is_gm && !in_array($user_role, $allowed_roles))) {
+        echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
+        exit;
+    }
 }
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
@@ -298,11 +300,13 @@ if ($pending_res) {
                     </div>
                 </div>
 
+                <?php if (strpos($user_role, 'staff') !== 0 && $user_role !== 'acc'): ?>
                 <a href="pending_approval.php"
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>
                     <span class="font-medium">รายการรออนุมัติ <?php echo ($pending_count > 0) ? "($pending_count)" : ""; ?></span>
                 </a>
+                <?php endif; ?>
 
                 <?php if (in_array($user_role, ['acc', 'mgr', 'mgr2', 'procure', 'admin'])): ?>
                 <div class="my-4 border-t border-slate-800/50"></div>
