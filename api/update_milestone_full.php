@@ -1,6 +1,8 @@
 <?php
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าพื้นฐานและจัดการความปลอดภัย
