@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once 'config.php';
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;

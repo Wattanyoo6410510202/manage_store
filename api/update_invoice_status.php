@@ -6,7 +6,9 @@ header('Content-Type: application/json');
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // 1. เช็ค Login
 $user_id = $_SESSION['user_id'] ?? 0;

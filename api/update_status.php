@@ -5,7 +5,9 @@ error_reporting(0);
 
 header('Content-Type: application/json');
 require_once '../config.php'; // <--- เช็คดูว่าไฟล์นี้อยู่ถอยหลังไป 1 Step จริงไหม
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $id = $_GET['id'] ?? '';
 $action = $_GET['action'] ?? '';

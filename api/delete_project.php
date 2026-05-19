@@ -1,6 +1,8 @@
 <?php
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']);

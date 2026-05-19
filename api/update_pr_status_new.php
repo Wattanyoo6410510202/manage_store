@@ -2,7 +2,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 header('Content-Type: application/json');
 

@@ -2,7 +2,9 @@
 // ห้ามมีบรรทัดว่างข้างบนนี้เด็ดขาด!
 ob_start(); // ป้องกันพวก warning/notice แอบแสดงผล
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ล้าง output buffer ที่อาจมีช่องว่างหรือ error หลุดมา
 if (ob_get_length())

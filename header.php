@@ -1,7 +1,9 @@
 <?php
 // เริ่ม Session หากยังไม่ได้เริ่ม
 if (session_status() === PHP_SESSION_NONE) {
+    if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
 }
 
 // 1. เช็ค Login (ใช้ JS แทน header เพื่อกัน Error "Headers already sent")

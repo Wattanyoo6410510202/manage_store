@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $product_name = $_POST['product_name'] ?? 'yaris 2018';
 $selected_json = $_POST['selected_data'] ?? '[]';

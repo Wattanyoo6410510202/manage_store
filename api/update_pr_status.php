@@ -5,7 +5,9 @@ error_reporting(0);
 
 header('Content-Type: application/json');
 require_once '../config.php'; 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // รับค่าจาก Fetch/URL
 $id = $_GET['id'] ?? '';

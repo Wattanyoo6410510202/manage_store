@@ -1,7 +1,9 @@
 <?php
 ob_start();
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ล้าง output buffer กันขยะหลุด
 if (ob_get_length())

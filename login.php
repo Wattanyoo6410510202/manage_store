@@ -3,7 +3,9 @@ include "config.php";
 
 // เริ่ม session หากยังไม่ได้เริ่ม
 if (session_status() === PHP_SESSION_NONE) {
+    if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

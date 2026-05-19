@@ -4,7 +4,9 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 require_once '../config.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ล้าง Output Buffer เผื่อมี Space หรือ Bom หลุดมาจากไฟล์ config
 if (ob_get_length())
