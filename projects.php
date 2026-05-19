@@ -205,13 +205,13 @@ $result = mysqli_query($conn, $sql);
                                     <div class="flex justify-between items-center">
                                         <p class="text-[9px] text-slate-800 uppercase font-medium">สัญญา</p>
                                         <p class="text-[11px] font-bold text-slate-700">
-                                            <?= number_format($row['contract_value'], 2) ?>
+                                            <?= number_format($row['contract_value'] ?? 0, 2) ?>
                                         </p>
                                     </div>
                                     <div class="flex justify-between items-center border-t border-slate-100 pt-1">
                                         <p class="text-[9px] text-slate-800 uppercase font-medium">รับแล้ว</p>
                                         <p class="text-[11px] font-bold text-emerald-600">
-                                            <?= number_format($row['collected_money'], 2) ?>
+                                            <?= number_format($row['collected_money'] ?? 0, 2) ?>
                                         </p>
                                     </div>
                                     
@@ -326,17 +326,17 @@ $result = mysqli_query($conn, $sql);
                             </span>
                         </td>
                         <td class="p-4 text-right">
-                            <div class="text-sm font-bold text-slate-700"><?= number_format($row['contract_value'], 2) ?></div>
+                            <div class="text-sm font-bold text-slate-700"><?= number_format($row['contract_value'] ?? 0, 2) ?></div>
                         </td>
                         <td class="p-4 text-right">
-                            <div class="text-sm font-bold text-emerald-600"><?= number_format($row['collected_money'], 2) ?></div>
+                            <div class="text-sm font-bold text-emerald-600"><?= number_format($row['collected_money'] ?? 0, 2) ?></div>
                         </td>
                         <td class="p-4 min-w-[150px]">
                             <div class="flex items-center gap-3">
                                 <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                     <div class="h-full bg-indigo-500 rounded-full" style="width: <?= $progress ?>%"></div>
                                 </div>
-                                <span class="text-[11px] font-bold text-indigo-600 whitespace-nowrap"><?= number_format($progress, 1) ?>%</span>
+                                <span class="text-[11px] font-bold text-indigo-600 whitespace-nowrap"><?= number_format($progress ?? 0, 1) ?>%</span>
                             </div>
                         </td>
                         <td class="p-4">

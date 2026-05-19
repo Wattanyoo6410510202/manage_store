@@ -240,11 +240,17 @@ if ($num_rows <= 5) {
             </h3>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                <div style="font-size: 10.5px; color: #64748b; line-height: 1;">
-                    <strong>ผู้รับจ้าง:</strong> <span
-                        style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
-                    <span style="color: #cbd5e1; margin: 0 6px;">|</span>
-                    <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= $first['bank_name'] ?: '-' ?></span>
+                <div style="font-size: 11px; color: #64748b; line-height: 1.8; margin-top: 6px;">
+                    <div>
+                        <strong>ผู้รับจ้าง:</strong> <span style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= $first['bank_name'] ?: '-' ?></span>
+                    </div>
+                    <div>
+                        <strong>ชื่อบัญชี:</strong> <span style="color: #334155;"><?= $first['bank_account_name'] ?: '-' ?></span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <strong>เลขที่บัญชี:</strong> <span style="color: #334155;"><?= $first['bank_account_no'] ?: '-' ?></span>
+                    </div>
                 </div>
 
                 <div
