@@ -51,3 +51,18 @@ ADD COLUMN approved_at_0 DATETIME NULL DEFAULT NULL AFTER approved_by_0;
 
   Step 4: ตรวจสอบและสร้าง PO อัตโนมัติ
    * ตรวจสอบว่าเมื่ออนุมัติครบทุกระดับ (รวมถึงระดับ 0 และระดับบริหารตามวงเงิน) ระบบยังสามารถสร้างใบ PO อัตโนมัติได้ถูกต้องเหมือนเดิม
+ * ALTER TABLE budget_types ADD COLUMN budget_amount DECIMAL(15, 2) DEFAULT 0.00;
+ * 
+* CREATE TABLE budget_adjustments (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+budget_type_id INT NOT NULL,
+amount DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+adjustment_type ENUM('addition', 'reduction', 'transfer') NOT NULL,
+reason TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+created_by INT,
+  FOREIGN KEY (budget_type_id) REFERENCES budget_types(id) ON DELETE CASCADE
+);
+
+
+CREATE INDEX idx_adj_budget_type ON budget_adjustments(budget_type_id);

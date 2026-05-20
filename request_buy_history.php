@@ -9,6 +9,7 @@ $sql = "SELECT
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
             u_creator.name AS creator_real_name, 
             u2.name as approver_name,
+            u_app0.name as approver_0_name,
             u_app1.name as approver_1_name,
             u_app2.name as approver_2_name,
             u_app3.name as approver_3_name,
@@ -21,6 +22,7 @@ $sql = "SELECT
         LEFT JOIN users u1 ON p.created_by = u1.id AND p.is_internal = 1
         LEFT JOIN users u_creator ON p.created_by = u_creator.id
         LEFT JOIN users u2 ON p.approved_by = u2.id
+        LEFT JOIN users u_app0 ON p.approved_by_0 = u_app0.id
         LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
@@ -120,8 +122,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th>สถานะ</th>
                             <th>วันที่</th>
                             <th>ผู้สร้าง</th>
+                            <th>หัวหน้างาน</th>
                             <th>จัดซื้อ</th>
-                            <th>บัญชี</th>
                             <th>SUP</th>
                             <th>CEO</th>
                             <th class="text-center w-24">ดำเนินการ</th>
@@ -218,20 +220,20 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
 
                                 <td class="text-center approver-cell-0">
-                                    <?php if (!empty($row['approver_name'])): ?>
+                                    <?php if (!empty($row['approver_0_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                         <div class="text-[8px] text-slate-400 font-mono">
-                                            <?= date('d/m/y', strtotime($row['approved_at'])) ?>
+                                            <?= date('d/m/y', strtotime($row['approved_at_0'])) ?>
                                         </div>
                                     <?php else:
                                         echo '-';
                                     endif; ?>
                                 </td>
                                 <td class="text-center approver-cell-1">
-                                    <?php if (!empty($row['approver_1_name'])): ?>
+                                    <?php if (!empty($row['approver_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                         <div class="text-[8px] text-slate-400 font-mono">
-                                            <?= date('d/m/y', strtotime($row['approved_at_1'])) ?>
+                                            <?= date('d/m/y', strtotime($row['approved_at'])) ?>
                                         </div>
                                     <?php else:
                                         echo '-';
@@ -374,7 +376,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     if (data.status === 'success') {
                         renderAlert('success', 'อนุมัติเรียบร้อย');
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = { 'approved_by': 9, 'approved_by_1': 10, 'approved_by_2': 11, 'approved_by_3': 12 };
+                        const colMap = { 'approved_by_0': 9, 'approved_by': 10, 'approved_by_1': 11, 'approved_by_2': 12, 'approved_by_3': 13 };
                         if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
                             if (data.column !== 'approved_by_3') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;

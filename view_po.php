@@ -273,7 +273,7 @@ function ReadNumber($number)
             <?php endif; ?>
 
             <div style="margin: 5px 0 0; font-size: 11px; color: #64748b; line-height: 1.5;">
-                <?= nl2br($data['cust_address']) ?><br>
+                <?= nl2br($data['cust_address'] ?? '') ?><br>
 
                 <?php if (!empty($data['cust_tax'])): ?>
                     <b>เลขประจำตัวผู้เสียภาษี:</b> <?= $data['cust_tax'] ?><br>
@@ -462,7 +462,7 @@ function ReadNumber($number)
 
             <div style="width: 30%;">
                 <div class="sig-box" style="border-bottom: 1px solid #cbd5e1; height: 60px; margin-bottom: 10px;"></div>
-                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้รับสั่งซื้อ / ร้านค้า</p>
+                <p style="margin: 0; font-weight: bold; font-size: 12px;">ผู้รับสั่งซื้อ / ร้านค้า / ผู้สั่ง</p>
                 <p style="margin: 2px 0 0; font-size: 10px; color: #64748b;">( 
                     <?= !empty($data['pr_creator_name']) ? $data['pr_creator_name'] : $data['customer_name'] ?> 
                 )</p>

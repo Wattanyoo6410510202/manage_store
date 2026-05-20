@@ -17,7 +17,10 @@ $data = [];
 if ($action == 'get_expense_cats') {
     $sql = "SELECT id, name FROM expense_categories WHERE sup_id = $sup_id";
 } elseif ($action == 'get_budget_types') {
-    $sql = "SELECT id, name FROM budget_types WHERE sup_id = $sup_id";
+    $sql = "SELECT b.id, b.name, 
+                   (b.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = b.id), 0)) as current_total_budget,
+                   (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = b.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent
+            FROM budget_types b WHERE b.sup_id = $sup_id";
 } elseif ($action == 'get_objectives') {
     $sql = "SELECT id, name FROM pr_objectives WHERE sup_id = $sup_id";
 }

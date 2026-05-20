@@ -180,8 +180,8 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <div>
                                     <label
                                         class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ
-                                        (Budget Type)</label>
-                                    <select name="budget_type_id" id="budget_type_id"
+                                        (Budget Type) <span id="budget_amount_display" class="text-indigo-600 font-bold ml-2"></span></label>
+                                    <select name="budget_type_id" id="budget_type_id" onchange="showBudgetAmount()"
                                         class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
                                         <option value="">-- รอเลือกผู้ขาย --</option>
                                     </select>
@@ -640,15 +640,40 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 .then(data => {
                     let html = '<option value="">-- เลือกรายการ --</option>';
                     data.forEach(item => {
-                        html += `<option value="${item.id}">${item.name}</option>`;
+                        // ใช้ current_total_budget จาก Query ใหม่มาเก็บใน data-amount
+                        const amountAttr = item.current_total_budget ? `data-amount="${item.current_total_budget}"` : 'data-amount="0"';
+                        const spentAttr = item.total_spent ? `data-spent="${item.total_spent}"` : 'data-spent="0"';
+                        html += `<option value="${item.id}" ${amountAttr} ${spentAttr}>${item.name}</option>`;
                     });
                     el.innerHTML = html;
+                    
+                    // ถ้าเป็น budget_type_id ให้เคลียร์ตัวแสดงผลยอดเงินด้วย
+                    if (target.id === 'budget_type_id') {
+                        document.getElementById('budget_amount_display').innerText = '';
+                    }
                 })
                 .catch(err => {
                     console.error(`Error fetching ${target.action}:`, err);
                     el.innerHTML = '<option value="">โหลดข้อมูลไม่สำเร็จ</option>';
                 });
         });
+    }
+
+    // ฟังก์ชันแสดงยอดเงินงบประมาณ
+    function showBudgetAmount() {
+        const select = document.getElementById('budget_type_id');
+        const display = document.getElementById('budget_amount_display');
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (selectedOption && selectedOption.dataset.amount) {
+            const budget = parseFloat(selectedOption.dataset.amount);
+            const spent = parseFloat(selectedOption.dataset.spent || 0);
+            const remaining = budget - spent;
+            
+            display.innerText = '(คงเหลือ: ' + remaining.toLocaleString(undefined, {minimumFractionDigits: 2}) + ')';
+        } else {
+            display.innerText = '';
+        }
     }
 
     // ฟังก์ชันรีเซ็ต Dropdown เมื่อไม่ได้เลือกบริษัท

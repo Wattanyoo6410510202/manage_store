@@ -49,6 +49,7 @@ if ($is_head_locked && !empty($sup_id) && $sup_id > 0) {
 }
 $supplier_res = mysqli_query($conn, $supplier_sql);
 $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
+$isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 'procure') === 0);
 ?>
 
 <div class="w-full p-0">
@@ -120,12 +121,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th>รายละเอียด</th>
                             <th class="text-center">ไฟล์แนบ</th>
                             <th class="text-right">ยอดรวม</th>
-                            <th>สถานะ</th>
+                            <th>สถานะจัดซื้อ</th>
                             <th>วันที่</th>
                             <th>ผู้สร้าง</th>
+                            <th>สถานะหัวหน้างาน</th>
                             <th>หัวหน้า</th>
                             <th>จัดซื้อ</th>
-                            <th>บัญชี</th>
                             <th>SUP</th>
                             <th>CEO</th>
                             <th class="text-center w-24">ดำเนินการ</th>
@@ -220,7 +221,13 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 <td class="truncate max-w-[100px] text-[11px] font-medium text-slate-600">
                                     <?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
                                 </td>
-
+                                <td class="text-center">
+                                    <?php if (!empty($row['approved_by_0'])): ?>
+                                        <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
+                                    <?php else: ?>
+                                        <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รออนุมัติ</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="text-center approver-cell-head">
                                     <?php if (!empty($row['approver_0_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
@@ -258,12 +265,6 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                             <?= date('d/m/y', strtotime($row['approved_at_2'])) ?>
                                         </div>
                                     <?php else:
-                                        echo '-';
-                                    endif; ?>
-                                </td>
-                                <td class="text-center approver-cell-3">
-                                    <?php if (!empty($row['approver_3_name'])): ?><i
-                                            class="fas fa-check text-emerald-500"></i><?php else:
                                         echo '-';
                                     endif; ?>
                                 </td>
@@ -342,15 +343,19 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
     const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
 
     $(document).ready(function () {
+        // Table columns indices:
+        // 0: Checkbox, 1: เลขที่, 2: หน่วยงาน, 3: รายละเอียด, 4: ไฟล์แนบ, 5: ยอดรวม, 6: สถานะ, 7: วันที่, 8: ผู้สร้าง, 9: สถานะหัวหน้า, 10: หัวหน้า, 11: จัดซื้อ, 12: SUP, 13: CEO, 14: ดำเนินการ
+        const columns = [
+            { "orderable": false, "targets": [0, 4, 9, 10, 11, 12, 13, 14] },
+            { "type": "html", "targets": [6, 9, 10, 11, 12, 13] }
+        ];
+
         prTable = $('#prTable').DataTable({
             "pageLength": 10,
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[7, "desc"]],
-            "columnDefs": [
-                { "orderable": false, "targets": [0, 4, 9, 10, 11, 12, 13, 14] },
-                { "type": "html", "targets": [6, 9, 10, 11, 12, 13] }
-            ],
+            "columnDefs": columns,
             "drawCallback": function () { updateBulkUI(); }
         });
 
@@ -369,7 +374,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             let min = $('#minDate').val();
             let max = $('#maxDate').val();
-            let dateStr = data[7] || "";
+            let dateIdx = 7;
+            let dateStr = data[dateIdx] || "";
             if (dateStr === "") return true;
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
             if (!match) return true;
@@ -423,21 +429,17 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 fetch(`api/update_pr_status_new.php?id=${id}&action=approved`).then(res => res.json()).then(data => {
                     if (data.status === 'success') {
                         renderAlert('success', 'อนุมัติเรียบร้อย');
-                        if (typeof updatePendingBadge === 'function') updatePendingBadge(); // อัปเดตตัวเลขในเมนูข้าง
+                        if (typeof updatePendingBadge === 'function') updatePendingBadge();
 
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = { 
-                            'approved_by_0': 9,
-                            'approved_by': 10, 
-                            'approved_by_1': 11, 
-                            'approved_by_2': 12, 
-                            'approved_by_3': 13 
-                        };
+                        const colMap = { 'approved_by_0': 10, 'approved_by': 11, 'approved_by_1': 12, 'approved_by_2': 13 };
+
                         if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
-                            if (data.column !== 'approved_by_3') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
+                            if (data.column !== 'approved_by_2') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
                             prTable.cell(row, colMap[data.column]).data(content).draw(false);
                         }
+                        // Update status column (index 6)
                         if (data.full_approved) {
                             prTable.cell(row, 6).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
                         }
@@ -455,11 +457,18 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
     function resetFilter() {
         if (AUTO_FILTER_SUPPLIER) {
             $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
-            $('#filterStatus').val(''); $('#minDate').val(''); $('#maxDate').val('');
-            prTable.column(2).search(AUTO_FILTER_SUPPLIER); prTable.column(6).search(''); prTable.draw();
+            $('#filterStatus').val('');
+            $('#minDate').val(''); $('#maxDate').val('');
+            prTable.column(2).search(AUTO_FILTER_SUPPLIER);
+            prTable.column(6).search('');
+            prTable.draw();
         } else {
-            $('#filterSupplier').val(''); $('#filterStatus').val(''); $('#minDate').val(''); $('#maxDate').val('');
-            prTable.column(2).search(''); prTable.column(6).search(''); prTable.draw();
+            $('#filterSupplier').val('');
+            $('#filterStatus').val('');
+            $('#minDate').val(''); $('#maxDate').val('');
+            prTable.column(2).search('');
+            prTable.column(6).search('');
+            prTable.draw();
         }
     }
     function viewAttachment(url) { window.open(url, '_blank'); }

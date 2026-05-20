@@ -85,9 +85,8 @@ $is_gm = (strpos($user_role, 'gm') === 0);
 // เช่น ถ้า requester เป็น 'staff_shotel' และ user เป็น 'gmshotel' ให้ผ่าน
 $target_head_role = 'gm' . str_replace('staff_', '', $requester_role);
 
-// กรณีพิเศษ: ถ้า requester เป็น 'hok' หรือ 'acc'
+// กรณีพิเศษ: ถ้า requester เป็น 'hok'
 if ($requester_role == 'hok') $target_head_role = 'gmhok';
-if ($requester_role == 'acc') $target_head_role = 'gmacc';
 
 // Check for Level 0 Approval
 if (empty($pr['approved_by_0'])) {
@@ -102,8 +101,6 @@ if (empty($pr['approved_by_0'])) {
 if (!$update_col) {
     if ($user_role === 'procure') {
         if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
-    } elseif ($user_role === 'gmacc') { // Changed from 'acc' to 'gmacc' per step.md
-        if (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
     } elseif ($user_role === 'mgr') {
         if (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
     } elseif ($user_role === 'mgr2') {
@@ -112,7 +109,6 @@ if (!$update_col) {
         // Admin/GMHOK can act as backup for other levels
         if (empty($pr['approved_by_0']) && $target_head_role === 'gmhok') { $update_col = "approved_by_0"; $time_col = "approved_at_0"; }
         elseif (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
-        elseif (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
         elseif (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
         elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
     }
@@ -140,7 +136,6 @@ if ($update_stmt->execute()) {
     $approver_count = 0;
     if (!empty($pr['approved_by_0'])) $approver_count++;
     if (!empty($pr['approved_by'])) $approver_count++;
-    if (!empty($pr['approved_by_1'])) $approver_count++;
     if (!empty($pr['approved_by_2'])) $approver_count++;
     if (!empty($pr['approved_by_3'])) $approver_count++;
     
@@ -151,15 +146,15 @@ if ($update_stmt->execute()) {
     $has_level0 = !empty($pr['approved_by_0']);
     
     if ($has_level0) {
-        if ($limit_type === 'low' && $approver_count >= 3) $is_fully = true; // Level 0 + 2 more
-        elseif ($limit_type === 'mid' && $approver_count >= 4) $is_fully = true; // Level 0 + 3 more
+        if ($limit_type === 'low' && $approver_count >= 2) $is_fully = true; // Level 0 + 1 more
+        elseif ($limit_type === 'mid' && $approver_count >= 3) $is_fully = true; // Level 0 + 2 more
         elseif ($limit_type === 'high') {
-            // High: ต้องครบ (Level 0 + Procure + GMACC + Mgr2)
-            if (!empty($pr['approved_by']) && !empty($pr['approved_by_1']) && !empty($pr['approved_by_3'])) {
+            // High: ต้องครบ (Level 0 + Procure + Mgr2)
+            if (!empty($pr['approved_by']) && !empty($pr['approved_by_3'])) {
                 $is_fully = true;
             }
         }
-        elseif ($approver_count >= 5) $is_fully = true;
+        elseif ($approver_count >= 4) $is_fully = true;
     }
 
     if ($is_fully) {
