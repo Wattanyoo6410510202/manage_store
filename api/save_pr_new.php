@@ -9,6 +9,7 @@ $customer_id = (int) ($_POST['customer_id'] ?? 0);
 $supplier_id = (int)($_POST['supplier_id'] ?? 0);
 $doc_date    = $_POST['doc_date'] ?? date('Y-m-d');
 $due_date    = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+$priority    = $_POST['priority'] ?? 'ปานกลาง';
 $reference_no = $_POST['reference_no'] ?? '';
 $payment_term = $_POST['payment_term'] ?? '';
 $requested_by = $_POST['requested_by'] ?? '';
@@ -65,7 +66,7 @@ try {
 
     // SQL สำหรับ Insert (ใส่ค่าว่างสำหรับ budget_limit_type ไปก่อนเพื่อกัน error)
     $sql = "INSERT INTO pr SET 
-        doc_no = ?, doc_date = ?, due_date = ?, supplier_id = ?, customer_id = ?, 
+        doc_no = ?, doc_date = ?, due_date = ?, priority = ?, supplier_id = ?, customer_id = ?, 
         expense_cat_id = ?, budget_type_id = ?, objective_id = ?, budget_amount = ?, 
         expectation = ?, practice_method = ?, budget_details = ?, is_internal = ?, reference_no = ?, 
         payment_term = ?, requested_by = ?, contact_tel = ?, notes = ?, subtotal = ?, 
@@ -73,9 +74,9 @@ try {
         total_after_wht = ?, created_by = ?, attachment_1 = ?, attachment_2 = ?, status = ?";
         
     $stmt = $conn->prepare($sql);
-    // Bind 29 ตัว (ตัด budget_limit_type ออกไปก่อนเพื่อกัน error)
-    $stmt->bind_param("sssiiiiidsssissssddddddisssss", 
-        $temp_no, $doc_date, $due_date, $supplier_id, $customer_id, 
+    // Bind 30 ตัว (ตัด budget_limit_type ออกไปก่อนเพื่อกัน error)
+    $stmt->bind_param("ssssiiiiidsssissssddddddisssss", 
+        $temp_no, $doc_date, $due_date, $priority, $supplier_id, $customer_id, 
         $expense_cat_id, $budget_type_id, $objective_id, $budget_amount, 
         $expectation, $practice_method, $budget_details, $is_internal, $reference_no, 
         $payment_term, $requested_by, $contact_tel, $notes_to_save, $total_subtotal, 

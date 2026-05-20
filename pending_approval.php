@@ -117,6 +117,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                             <th class="w-8 text-center !pr-2"><input type="checkbox" id="selectAll"
                                     class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"></th>
                             <th>เลขที่เอกสาร</th>
+                            <th>ความสำคัญ</th>
                             <th>หน่วยงาน</th>
                             <th>รายละเอียด</th>
                             <th class="text-center">ไฟล์แนบ</th>
@@ -142,6 +143,21 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         value="<?= $row['id'] ?>">
                                 </td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
+                                <td>
+                                    <?php
+                                    $prio = $row['priority'] ?? 'ปานกลาง';
+                                    $p_config = [
+                                        'น้อย' => ['bg' => 'bg-slate-50', 'text' => 'text-slate-600', 'border' => 'border-slate-100'],
+                                        'ปานกลาง' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-600', 'border' => 'border-blue-100'],
+                                        'เร่งด่วน' => ['bg' => 'bg-orange-50', 'text' => 'text-orange-600', 'border' => 'border-orange-100'],
+                                        'วิกฤต' => ['bg' => 'bg-red-50', 'text' => 'text-red-600', 'border' => 'border-red-100'],
+                                    ];
+                                    $p_style = $p_config[$prio] ?? $p_config['ปานกลาง'];
+                                    ?>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border <?= $p_style['bg'] ?> <?= $p_style['border'] ?> <?= $p_style['text'] ?>">
+                                        <?= $prio ?>
+                                    </span>
+                                </td>
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
@@ -344,37 +360,37 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
 
     $(document).ready(function () {
         // Table columns indices:
-        // 0: Checkbox, 1: เลขที่, 2: หน่วยงาน, 3: รายละเอียด, 4: ไฟล์แนบ, 5: ยอดรวม, 6: สถานะ, 7: วันที่, 8: ผู้สร้าง, 9: สถานะหัวหน้า, 10: หัวหน้า, 11: จัดซื้อ, 12: SUP, 13: CEO, 14: ดำเนินการ
+        // 0: Checkbox, 1: เลขที่, 2: ความสำคัญ, 3: หน่วยงาน, 4: รายละเอียด, 5: ไฟล์แนบ, 6: ยอดรวม, 7: สถานะ, 8: วันที่, 9: ผู้สร้าง, 10: สถานะหัวหน้า, 11: หัวหน้า, 12: จัดซื้อ, 13: SUP, 14: CEO, 15: ดำเนินการ
         const columns = [
-            { "orderable": false, "targets": [0, 4, 9, 10, 11, 12, 13, 14] },
-            { "type": "html", "targets": [6, 9, 10, 11, 12, 13] }
+            { "orderable": false, "targets": [0, 5, 10, 11, 12, 13, 14, 15] },
+            { "type": "html", "targets": [7, 10, 11, 12, 13, 14] }
         ];
 
         prTable = $('#prTable').DataTable({
             "pageLength": 10,
             "dom": '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
-            "order": [[7, "desc"]],
+            "order": [[8, "desc"]],
             "columnDefs": columns,
             "drawCallback": function () { updateBulkUI(); }
         });
 
         // ตั้งค่าการกรองเริ่มต้นเป็น "รอ"
-        prTable.column(6).search('รอ').draw();
+        prTable.column(7).search('รอ').draw();
 
         // Auto-filter ตาม Supplier สำหรับ GM roles ที่มี sup_id
         if (AUTO_FILTER_SUPPLIER) {
             $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
-            prTable.column(2).search(AUTO_FILTER_SUPPLIER).draw();
+            prTable.column(3).search(AUTO_FILTER_SUPPLIER).draw();
         }
 
-        $('#filterSupplier').on('change', function () { prTable.column(2).search(this.value).draw(); });
-        $('#filterStatus').on('change', function () { prTable.column(6).search(this.value).draw(); });
+        $('#filterSupplier').on('change', function () { prTable.column(3).search(this.value).draw(); });
+        $('#filterStatus').on('change', function () { prTable.column(7).search(this.value).draw(); });
 
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             let min = $('#minDate').val();
             let max = $('#maxDate').val();
-            let dateIdx = 7;
+            let dateIdx = 8;
             let dateStr = data[dateIdx] || "";
             if (dateStr === "") return true;
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
@@ -432,16 +448,16 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                         if (typeof updatePendingBadge === 'function') updatePendingBadge();
 
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = { 'approved_by_0': 10, 'approved_by': 11, 'approved_by_1': 12, 'approved_by_2': 13 };
+                        const colMap = { 'approved_by_0': 11, 'approved_by': 12, 'approved_by_1': 13, 'approved_by_2': 14 };
 
                         if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
                             if (data.column !== 'approved_by_2') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
                             prTable.cell(row, colMap[data.column]).data(content).draw(false);
                         }
-                        // Update status column (index 6)
+                        // Update status column (index 7)
                         if (data.full_approved) {
-                            prTable.cell(row, 6).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
+                            prTable.cell(row, 7).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
                         }
                     } else Swal.fire({ title: 'แจ้งเตือน', text: data.message, icon: 'warning', heightAuto: false });
                 });
@@ -459,15 +475,15 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
             $('#filterStatus').val('');
             $('#minDate').val(''); $('#maxDate').val('');
-            prTable.column(2).search(AUTO_FILTER_SUPPLIER);
-            prTable.column(6).search('');
+            prTable.column(3).search(AUTO_FILTER_SUPPLIER);
+            prTable.column(7).search('');
             prTable.draw();
         } else {
             $('#filterSupplier').val('');
             $('#filterStatus').val('');
             $('#minDate').val(''); $('#maxDate').val('');
-            prTable.column(2).search('');
-            prTable.column(6).search('');
+            prTable.column(3).search('');
+            prTable.column(7).search('');
             prTable.draw();
         }
     }

@@ -240,6 +240,9 @@ function ReadNumber($number) {
                 <span style="color: #64748b;">วันที่ / Date</span> <span style="color: #0f172a; font-weight: bold;"><?= date('d/m/Y', strtotime($data['doc_date'])) ?></span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #64748b;">ความสำคัญ</span> <span style="color: #0f172a; font-weight: bold;"><?= htmlspecialchars($data['priority'] ?? 'ปานกลาง') ?></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;">
                 <span style="color: #64748b;">วันที่ต้องการสินค้า</span> <span style="color: #0f172a; font-weight: bold;"><?= (!empty($data['due_date']) && $data['due_date'] !== '0000-00-00') ? date('d/m/Y', strtotime($data['due_date'])) : '-' ?></span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;">

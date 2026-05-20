@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $supplier_id       = (int)$_POST['supplier_id'];
     $customer_id       = (int)($_POST['customer_id'] ?? 0);
     $due_date          = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+    $priority          = $_POST['priority'] ?? 'ปานกลาง';
     $reference_no      = $_POST['reference_no'] ?? '';
     $payment_term      = $_POST['payment_term'] ?? '';
     $requested_by      = $_POST['requested_by'] ?? '';
@@ -89,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sql_main = "UPDATE pr SET 
                         supplier_id = ?, customer_id = ?, is_internal = ?, due_date = ?, 
-                        reference_no = ?, payment_term = ?, requested_by = ?, contact_tel = ?, 
+                        priority = ?, reference_no = ?, payment_term = ?, requested_by = ?, contact_tel = ?, 
                         notes = ?, expense_cat_id = ?, budget_type_id = ?, objective_id = ?, 
                         budget_limit_type = ?, budget_amount = ?, budget_details = ?, 
                         expectation = ?, practice_method = ?, subtotal = ?, vat = ?, 
@@ -99,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $conn->prepare($sql_main);
         $stmt->bind_param(
-            "iiissssssiiisdssssddddsssi",
-            $supplier_id, $customer_id, $is_internal, $due_date, $reference_no, $payment_term,
+            "iiisssssssiiisdssssddddsssi",
+            $supplier_id, $customer_id, $is_internal, $due_date, $priority, $reference_no, $payment_term,
             $requested_by, $contact_tel, $notes, $expense_cat_id, $budget_type_id, $objective_id,
             $budget_limit_type, $budget_amount, $budget_details, $expectation, $practice_method,
             $new_subtotal, $new_vat, $vat_percent, $wht_percent, $new_wht_amount, $net_grand_total,

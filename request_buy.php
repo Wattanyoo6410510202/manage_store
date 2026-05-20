@@ -107,6 +107,17 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <label
+                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความสำคัญ</label>
+                        <select name="priority"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <option value="น้อย">น้อย (Low)</option>
+                            <option value="ปานกลาง" selected>ปานกลาง (Medium)</option>
+                            <option value="เร่งด่วน">เร่งด่วน (Urgent)</option>
+                            <option value="วิกฤต">วิกฤต (Critical)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">วันที่ต้องการสินค้า</label>
                         <input type="date" name="due_date" value="<?= date('Y-m-d'); ?>"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">

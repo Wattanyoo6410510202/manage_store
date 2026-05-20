@@ -66,3 +66,5 @@ created_by INT,
 
 
 CREATE INDEX idx_adj_budget_type ON budget_adjustments(budget_type_id);
+
+ALTER TABLE pr ADD COLUMN priority VARCHAR(50) DEFAULT 'ปกติ' AFTER status
