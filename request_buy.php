@@ -44,7 +44,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 // ไม่ต้องมี if (!$customer) exit; แล้ว เพราะเราจำลองค่าไว้ให้แล้วด้านบนครับจาร
 ?>
 
-<form action="api/save_pr_new.php" method="POST" enctype="multipart/form-data">
+<form action="api/save_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
     <div class="bg-slate-50 ">
@@ -229,7 +229,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                                 <div>
                                     <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ยอดงบ
                                     </label>
-                                    <input type="number" name="budget_amount" step="0.01" placeholder="0.00"
+                                    <input type="number" name="budget_amount" step="0.01" placeholder="0.00" oninput="calculateTotal()"
                                         class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-right ">
                                 </div>
                             </div>
@@ -570,6 +570,52 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         }
 
         document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        // --- เพิ่มส่วนตรวจสอบงบประมาณ ---
+        const budgetSelect = document.getElementById('budget_type_id');
+        const budgetInput = document.querySelector('input[name="budget_amount"]');
+        const submitBtn = document.querySelector('button[type="submit"]');
+        
+        // ลำดับความสำคัญ: 1. ค่าที่กรอกในช่องงบ 2. ค่าจาก dropdown
+        let budget = parseFloat(budgetInput.value) || 0;
+        
+        if (budget === 0 && budgetSelect.options[budgetSelect.selectedIndex] && budgetSelect.options[budgetSelect.selectedIndex].dataset.amount) {
+            budget = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.amount);
+            const spent = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.spent || 0);
+            budget = budget - spent;
+        }
+
+        if (budget > 0) {
+            if (grandtotal > budget) {
+                document.getElementById('grandtotal_display').classList.add('text-red-600');
+                document.getElementById('grandtotal_display').classList.remove('text-indigo-600');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    submitBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    submitBtn.innerText = 'งบประมาณไม่เพียงพอ';
+                }
+            } else {
+                document.getElementById('grandtotal_display').classList.remove('text-red-600');
+                document.getElementById('grandtotal_display').classList.add('text-indigo-600');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                    submitBtn.innerText = 'บันทึกและออกเอกสาร';
+                }
+            }
+        } else {
+            // กรณีไม่ได้กำหนดงบเลย ให้แสดงปกติ
+            document.getElementById('grandtotal_display').classList.remove('text-red-600');
+            document.getElementById('grandtotal_display').classList.add('text-indigo-600');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                submitBtn.innerText = 'บันทึกและออกเอกสาร';
+            }
+        }
     }
     function updateSupplierInfo() {
         const select = document.getElementById('supplier_select');
@@ -722,6 +768,25 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     function clearFile(id) {
         const fileInput = document.getElementById(id);
         fileInput.value = ''; // ล้างค่าใน Input
+    }
+
+    function validateBudget() {
+        const budgetSelect = document.getElementById('budget_type_id');
+        const budgetInput = document.querySelector('input[name="budget_amount"]');
+        const grandtotal = parseFloat(document.getElementById('grandtotal_display').innerText.replace(/,/g, '')) || 0;
+        
+        let budget = parseFloat(budgetInput.value) || 0;
+        if (budget === 0 && budgetSelect.options[budgetSelect.selectedIndex] && budgetSelect.options[budgetSelect.selectedIndex].dataset.amount) {
+            budget = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.amount);
+            const spent = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.spent || 0);
+            budget = budget - spent;
+        }
+
+        if (budget > 0 && grandtotal > budget) {
+            alert('ยอดรวมสุทธิเกินงบประมาณที่กำหนด! ไม่สามารถบันทึกได้');
+            return false;
+        }
+        return true;
     }
 </script>
 <script src="assets/js/demo-data.js"></script>
