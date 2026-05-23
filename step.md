@@ -68,3 +68,8 @@ created_by INT,
 CREATE INDEX idx_adj_budget_type ON budget_adjustments(budget_type_id);
 
 ALTER TABLE pr ADD COLUMN priority VARCHAR(50) DEFAULT 'ปกติ' AFTER status
+
+
+ALTER TABLE expense_categories ADD COLUMN roles TEXT;
+ ALTER TABLE budget_types ADD COLUMN roles TEXT;
+ALTER TABLE pr_objectives ADD COLUMN roles TEXT;

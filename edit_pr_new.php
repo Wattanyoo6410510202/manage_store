@@ -424,7 +424,9 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     let html = '<option value="">-- เลือกรายการ --</option>';
                     data.forEach(item => { 
                         const selected = (item.id == target.selected) ? 'selected' : '';
-                        html += `<option value="${item.id}" ${selected}>${item.name}</option>`; 
+                        const amountAttr = item.current_total_budget ? `data-amount="${item.current_total_budget}"` : 'data-amount="0"';
+                        const spentAttr = item.total_spent ? `data-spent="${item.total_spent}"` : 'data-spent="0"';
+                        html += `<option value="${item.id}" ${selected} ${amountAttr} ${spentAttr}>${item.name}</option>`; 
                     });
                     el.innerHTML = html;
                 })
