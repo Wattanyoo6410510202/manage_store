@@ -73,3 +73,22 @@ ALTER TABLE pr ADD COLUMN priority VARCHAR(50) DEFAULT 'ปกติ' AFTER stat
 ALTER TABLE expense_categories ADD COLUMN roles TEXT;
  ALTER TABLE budget_types ADD COLUMN roles TEXT;
 ALTER TABLE pr_objectives ADD COLUMN roles TEXT;
+
+  INSERT INTO expense_categories (sup_id, name, roles, is_active)
+    SELECT s.id, t.name, t.roles, 1
+    FROM suppliers s
+    CROSS JOIN (
+      SELECT 'ค่าวัสดุสำนักงาน' AS name, 'admin,acc,staff' AS roles UNION ALL
+        SELECT 'ค่าบำรุงรักษาอุปกรณ์' AS name, 'admin,mgr' AS roles UNION ALL
+     SELECT 'ค่าล่วงเวลา' AS name, 'hr,acc' AS roles UNION ALL
+   SELECT 'ค่าเดินทางและที่พัก' AS name, 'staff,mgr' AS roles UNION ALL
+    SELECT 'ค่าสาธารณูปโภค (น้ำ-ไฟ)' AS name, 'acc' AS roles UNION ALL
+   SELECT 'ค่าซ่อมบำรุงยานพาหนะ' AS name, 'admin,staff' AS roles
+ ) AS t
+ WHERE NOT EXISTS (
+     -- ป้องกันการเพิ่มซ้ำ ถ้ามีชื่อรายการนี้อยู่แล้วในบริษัทนั้นๆ
+    SELECT 1 FROM expense_categories ec 
+   WHERE ec.sup_id = s.id AND ec.name = t.name
+  );
+
+  

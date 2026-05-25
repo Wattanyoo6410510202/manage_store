@@ -176,127 +176,136 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 </div>
 
                 <div class="lg:col-span-3 space-y-6">
-                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div class="space-y-4">
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทค่าใช้จ่าย
-                                        (Expense Cat.)</label>
-                                    <select name="expense_cat_id" id="expense_cat_id"
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
-                                        <option value="">-- รอเลือกผู้ขาย --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ
-                                        (Budget Type) <span id="budget_amount_display" class="text-indigo-600 font-bold ml-2"></span></label>
-                                    <select name="budget_type_id" id="budget_type_id" onchange="showBudgetAmount()"
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
-                                        <option value="">-- รอเลือกผู้ขาย --</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">วัตถุประสงค์
-                                        (Objective)</label>
-                                    <select name="objective_id" id="objective_id"
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
-                                        <option value="">-- รอเลือกผู้ขาย --</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        <!-- Card Header with Toggle -->
+                        <div onclick="toggleExpenseCard()" class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all">
+                            <span class="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fas fa-file-invoice-dollar text-indigo-500"></i> รายละเอียดงบประมาณ (Expense & Budget)
+                            </span>
+                            <i id="expense_toggle_icon" class="fas fa-chevron-up text-slate-400 transition-transform duration-300"></i>
+                        </div>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-2">ประเภทวงเงิน</label>
-                                    <div class="grid grid-cols-1 gap-2">
-                                        <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
-                                            <input type="radio" name="budget_limit_type" value="low" checked class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                                            <span class="ml-2 text-[11px] font-bold text-slate-700">น้อยกว่า 10,000</span>
-                                        </label>
-                                        <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
-                                            <input type="radio" name="budget_limit_type" value="mid" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                                            <span class="ml-2 text-[11px] font-bold text-slate-700">10,001 - 99,999</span>
-                                        </label>
-                                        <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
-                                            <input type="radio" name="budget_limit_type" value="high" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
-                                            <span class="ml-2 text-[11px] font-bold text-slate-700">มากกว่า 100,000</span>
-                                        </label>
+                        <div id="expense_card_content" class="p-6 transition-all duration-300 overflow-hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทค่าใช้จ่าย
+                                            (Expense Cat.)</label>
+                                        <select name="expense_cat_id" id="expense_cat_id"
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                                            <option value="">-- รอเลือกผู้ขาย --</option>
+                                        </select>
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ยอดงบ
-                                    </label>
-                                    <input type="number" name="budget_amount" step="0.01" placeholder="0.00" oninput="calculateTotal()"
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-right ">
-                                </div>
-                            </div>
-
-                            <div class="space-y-4">
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">รายละเอียดงบประมาณ</label>
-                                    <textarea name="budget_details" rows="3" placeholder="ระบุรายละเอียดที่มาของงบ..."
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความคาดหวัง
-                                    </label>
-                                    <textarea name="expectation" rows="2" placeholder="ผลที่คาดว่าจะได้รับ..."
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
-                                </div>
-                                <div>
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1">วิธีปฏิบัติ
-                                    </label>
-                                    <textarea name="practice_method" rows="2" placeholder="ขั้นตอนการทำงาน..."
-                                        class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
-                                </div>
-                            </div>
-                            <div
-                                class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-4 border-t border-slate-100">
-                                <div class="relative">
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
-                                        1</label>
-                                    <div class="flex items-center gap-2">
-                                        <input type="file" name="attachment_1" id="file1"
-                                            class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
-                file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                        <button type="button" onclick="clearFile('file1')"
-                                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ
+                                            (Budget Type) <span id="budget_amount_display" class="text-indigo-600 font-bold ml-2"></span></label>
+                                        <select name="budget_type_id" id="budget_type_id" onchange="showBudgetAmount()"
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                                            <option value="">-- รอเลือกผู้ขาย --</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">วัตถุประสงค์
+                                            (Objective)</label>
+                                        <select name="objective_id" id="objective_id"
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                                            <option value="">-- รอเลือกผู้ขาย --</option>
+                                        </select>
                                     </div>
                                 </div>
 
-                                <div class="relative">
-                                    <label
-                                        class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
-                                        2</label>
-                                    <div class="flex items-center gap-2">
-                                        <input type="file" name="attachment_2" id="file2"
-                                            class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
-                file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                        <button type="button" onclick="clearFile('file2')"
-                                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-2">ประเภทวงเงิน</label>
+                                        <div class="grid grid-cols-1 gap-2">
+                                            <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
+                                                <input type="radio" name="budget_limit_type" value="low" checked class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                                <span class="ml-2 text-[11px] font-bold text-slate-700">น้อยกว่า 10,000</span>
+                                            </label>
+                                            <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
+                                                <input type="radio" name="budget_limit_type" value="mid" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                                <span class="ml-2 text-[11px] font-bold text-slate-700">10,001 - 99,999</span>
+                                            </label>
+                                            <label class="flex items-center p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer hover:bg-white hover:border-indigo-200 transition-all">
+                                                <input type="radio" name="budget_limit_type" value="high" class="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                                <span class="ml-2 text-[11px] font-bold text-slate-700">มากกว่า 100,000</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ยอดงบ
+                                        </label>
+                                        <input type="number" name="budget_amount" step="0.01" placeholder="0.00" oninput="calculateTotal()"
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none text-right ">
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">รายละเอียดงบประมาณ</label>
+                                        <textarea name="budget_details" rows="3" placeholder="ระบุรายละเอียดที่มาของงบ..."
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความคาดหวัง
+                                        </label>
+                                        <textarea name="expectation" rows="2" placeholder="ผลที่คาดว่าจะได้รับ..."
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">วิธีปฏิบัติ
+                                        </label>
+                                        <textarea name="practice_method" rows="2" placeholder="ขั้นตอนการทำงาน..."
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
+                                    </div>
+                                </div>
+                                <div
+                                    class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-4 border-t border-slate-100">
+                                    <div class="relative">
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
+                                            1</label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="file" name="attachment_1" id="file1"
+                                                class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
+                    file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                                            <button type="button" onclick="clearFile('file1')"
+                                                class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="relative">
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
+                                            2</label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="file" name="attachment_2" id="file2"
+                                                class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
+                    file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                                            <button type="button" onclick="clearFile('file2')"
+                                                class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -787,6 +796,19 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
             return false;
         }
         return true;
+    }
+
+    function toggleExpenseCard() {
+        const content = document.getElementById('expense_card_content');
+        const icon = document.getElementById('expense_toggle_icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.classList.remove('rotate-180');
+        } else {
+            content.classList.add('hidden');
+            icon.classList.add('rotate-180');
+        }
     }
 </script>
 <script src="assets/js/demo-data.js"></script>
