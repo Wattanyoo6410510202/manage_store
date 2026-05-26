@@ -185,6 +185,16 @@ if ($pending_res) {
     $pending_row = mysqli_fetch_assoc($pending_res);
     $pending_count = $pending_row['total'] ?? 0;
 }
+
+// --- ดึงชื่อบริษัท (Supplier Name) ถ้ามี sup_id ---
+$company_name = '';
+if (!empty($_SESSION['sup_id'])) {
+    $sup_id = intval($_SESSION['sup_id']);
+    $sup_res = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id");
+    if ($sup_res && $sup_row = mysqli_fetch_assoc($sup_res)) {
+        $company_name = $sup_row['company_name'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -494,18 +504,22 @@ if ($pending_res) {
                 <?= $_SESSION['role'] ?? 'Guest'; ?>
             </span>
             <p class="text-sm font-black text-slate-700">
-                <?= $_SESSION['user_name'] ?? 'Guest User'; ?>
+                <?= !empty($company_name) ? $company_name : ($_SESSION['user_name'] ?? 'Guest User'); ?>
             </p>
         </div>
 
         <div class="flex items-center justify-end gap-2 text-[10px] text-slate-400 font-medium">
+            <?php if (!empty($company_name)): ?>
+                <span class="font-bold text-slate-600"><?= $_SESSION['user_name'] ?? ''; ?></span>
+                <span class="text-slate-300">|</span>
+            <?php endif; ?>
             <span>@<?= $_SESSION['user'] ?? '-'; ?></span>
             <span class="text-slate-300">|</span>
             <span>UID: <span class="text-slate-500 font-bold"><?= $_SESSION['user_id'] ?? '-'; ?></span></span>
             
             <?php if (!empty($_SESSION['sup_id'])): ?>
                 <span class="text-slate-300">|</span>
-                <span class="text-emerald-500 font-bold">SUP: <?= $_SESSION['sup_id']; ?></span>
+                <span class="text-emerald-500 font-bold">COMP ID: <?= $_SESSION['sup_id']; ?></span>
             <?php endif; ?>
         </div>
     </div>

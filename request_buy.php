@@ -705,17 +705,23 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                 .then(response => response.json())
                 .then(data => {
                     let html = '<option value="">-- เลือกรายการ --</option>';
-                    data.forEach(item => {
+                    data.forEach((item, index) => {
                         // ใช้ current_total_budget จาก Query ใหม่มาเก็บใน data-amount
                         const amountAttr = item.current_total_budget ? `data-amount="${item.current_total_budget}"` : 'data-amount="0"';
                         const spentAttr = item.total_spent ? `data-spent="${item.total_spent}"` : 'data-spent="0"';
-                        html += `<option value="${item.id}" ${amountAttr} ${spentAttr}>${item.name}</option>`;
+                        // เลือกตัวแรกให้อัตโนมัติ
+                        const selected = (index === 0) ? 'selected' : '';
+                        html += `<option value="${item.id}" ${amountAttr} ${spentAttr} ${selected}>${item.name}</option>`;
                     });
                     el.innerHTML = html;
                     
-                    // ถ้าเป็น budget_type_id ให้เคลียร์ตัวแสดงผลยอดเงินด้วย
+                    // ถ้ามีข้อมูลและเป็น budget_type_id ให้เรียก showBudgetAmount เพื่อแสดงยอดเงินทันที
                     if (target.id === 'budget_type_id') {
-                        document.getElementById('budget_amount_display').innerText = '';
+                        if (data.length > 0) {
+                            showBudgetAmount();
+                        } else {
+                            document.getElementById('budget_amount_display').innerText = '';
+                        }
                     }
                 })
                 .catch(err => {
