@@ -90,8 +90,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
-                            <option value="รอ">รออนุมัติ (Pending)</option>
-                            <option value="อนุมัติ">อนุมัติแล้ว (Approved)</option>
+                            <option value="รอ">รอเบิก (Pending)</option>
+                            <option value="อนุมัติ">เบิกแล้ว (Approved)</option>
                         </select>
                     </div>
                     <button onclick="resetFilter()"
@@ -209,8 +209,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     <?php
                                     $status = $row['status'] ?: 'pending';
                                     $config = [
-                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
                                     ];
                                     $style = $config[$status] ?? $config['pending'];
                                     ?>
@@ -399,7 +399,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             prTable.cell(row, colMap[data.column]).data(content).draw(false);
                         }
                         if (data.full_approved) {
-                            prTable.cell(row, 7).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
+                            prTable.cell(row, 7).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">เบิกแล้ว</span></div>').draw(false);
                         }
                     } else Swal.fire({ title: 'แจ้งเตือน', text: data.message, icon: 'warning', heightAuto: false });
                 });

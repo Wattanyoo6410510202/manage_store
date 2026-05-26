@@ -81,8 +81,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                             <option value="">ทั้งหมด</option>
-                            <option value="รอ">รออนุมัติ</option>
-                            <option value="อนุมัติ">อนุมัติแล้ว</option>
+                            <option value="รอ">รอเบิก</option>
+                            <option value="อนุมัติ">เบิกแล้ว</option>
                         </select>
                     </div>
 
@@ -194,8 +194,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     $status = $row['status'] ?: 'pending';
 
                                     $config = [
-                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
                                     ];
 
                                     $style = $config[$status] ?? $config['pending'];
@@ -515,7 +515,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             const approvedBadge = `
                             <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                <span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span>
+                                <span class="text-[12px] font-bold uppercase tracking-wide">เบิกแล้ว</span>
                             </div>`;
 
                             // 2. หาแถว (Row) ที่เราเพิ่งกด

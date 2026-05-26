@@ -98,8 +98,8 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                             <option value="">ทั้งหมด</option>
-                            <option value="รอ" selected>รออนุมัติ</option>
-                            <option value="อนุมัติ">อนุมัติแล้ว</option>
+                            <option value="รอ" selected>รอเบิก</option>
+                            <option value="อนุมัติ">เบิกแล้ว</option>
                         </select>
                     </div>
                     <div class="flex-shrink-0 self-end mb-2.5">
@@ -166,8 +166,8 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
 
                                     $status = $row['status'] ?: 'pending';
                                     $status_config = [
-                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
                                     ];
                                     $s_style = $status_config[$status] ?? $status_config['pending'];
 
@@ -345,8 +345,8 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                     <?php
                                     $status = $row['status'] ?: 'pending';
                                     $config = [
-                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
                                     ];
                                     $style = $config[$status] ?? $config['pending'];
                                     ?>
@@ -374,7 +374,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                     <?php if (!empty($row['approved_by_0'])): ?>
                                         <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
                                     <?php else: ?>
-                                        <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รออนุมัติ</span>
+                                        <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รอ</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center approver-cell-head hidden md:table-cell">
@@ -606,7 +606,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                         }
                         // Update status column (index 8)
                         if (data.full_approved) {
-                            prTable.cell(row, 8).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span></div>').draw(false);
+                            prTable.cell(row, 8).data('<div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-[12px] font-bold uppercase tracking-wide">เบิกแล้ว</span></div>').draw(false);
                         }
                         
                         // Optional: Refresh page or row to update mobile card icons too
