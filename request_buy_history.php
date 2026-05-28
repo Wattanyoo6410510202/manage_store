@@ -122,7 +122,6 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th class="text-right">ยอดรวม</th>
                             <th>สถานะ</th>
                             <th>วันที่</th>
-                            <th>ผู้สร้าง</th>
                             <th>หัวหน้างาน</th>
                             <th>จัดซื้อ</th>
                             <th>SUP</th>
@@ -231,9 +230,6 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="truncate max-w-[100px] text-[11px] font-medium text-slate-600">
-                                    <?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
-                                </td>
 
                                 <td class="text-center approver-cell-0">
                                     <?php if (!empty($row['approver_0_name'])): ?>
@@ -309,8 +305,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[8, "desc"]],
             "columnDefs": [
-                { "orderable": false, "targets": [0, 5, 10, 11, 12, 13, 14] },
-                { "type": "html", "targets": [7, 10, 11, 12, 13] }
+                { "orderable": false, "targets": [0, 5, 9, 10, 11, 12, 13] },
+                { "type": "html", "targets": [7, 9, 10, 11, 12] }
             ],
             "drawCallback": function () { updateBulkUI(); }
         });
@@ -392,7 +388,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     if (data.status === 'success') {
                         renderAlert('success', 'อนุมัติเรียบร้อย');
                         const row = $(`.pr-checkbox[value="${id}"]`).closest('tr');
-                        const colMap = { 'approved_by_0': 10, 'approved_by': 11, 'approved_by_1': 12, 'approved_by_2': 13, 'approved_by_3': 14 };
+                        const colMap = { 'approved_by_0': 9, 'approved_by': 10, 'approved_by_1': 11, 'approved_by_2': 12, 'approved_by_3': 13 };
                         if (data.column && colMap[data.column] !== undefined) {
                             let content = '<i class="fas fa-check text-emerald-500"></i>';
                             if (data.column !== 'approved_by_3') content += `<div class="text-[8px] text-slate-400 font-mono">${data.approved_date}</div>`;
