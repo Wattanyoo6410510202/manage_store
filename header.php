@@ -1,9 +1,7 @@
 <?php
 // เริ่ม Session หากยังไม่ได้เริ่ม
 if (session_status() === PHP_SESSION_NONE) {
-    if (session_status() === PHP_SESSION_NONE) {
     session_start();
-}
 }
 
 // 1. เช็ค Login (ใช้ JS แทน header เพื่อกัน Error "Headers already sent")
@@ -216,6 +214,10 @@ if (!empty($_SESSION['sup_id'])) {
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
+
+    <!-- Driver.js for Tutorial -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 
     <style>
         body {
@@ -474,56 +476,61 @@ if (!empty($_SESSION['sup_id'])) {
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 <div class="flex h-16 items-center bg-white border-b border-slate-200">
-                    <a href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-home" href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
                     
                     <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
-                    <a href="index.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-docs" href="index.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-th-large mr-2"></i>จัดการเอกสาร
                     </a>
                     <?php endif; ?>
 
                     <?php if (can('projects')): ?>
-                    <a href="projects.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'construction' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-construction" href="projects.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'construction' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-hammer mr-2"></i>หมวดก่อสร้าง
                     </a>
                     <?php endif; ?>
                     
                     <?php if ($user_role !== 'staff' && can('setup')): ?>
-                    <a href="settings.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-settings" href="settings.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-cog mr-2"></i>ตั้งค่า
                     </a>
                     <?php endif; ?>
-                </div>            </div>
+                </div>
+            </div>
 
             <div class="flex items-center gap-3">
-    <div class="hidden md:block text-right">
-        <div class="flex items-center justify-end gap-2 mb-0.5">
-            <span class="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-black uppercase">
-                <?= $_SESSION['role'] ?? 'Guest'; ?>
-            </span>
-            <p class="text-sm font-black text-slate-700">
-                <?= !empty($company_name) ? $company_name : ($_SESSION['user_name'] ?? 'Guest User'); ?>
-            </p>
-        </div>
+                <button id="btn-tutorial" onclick="startTutorial()" class="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all border border-indigo-100">
+                    <i class="fas fa-magic"></i>
+                    <span class="text-xs font-bold">สอนหน่อย</span>
+                </button>
+                <div class="hidden md:block text-right">
+                    <div class="flex items-center justify-end gap-2 mb-0.5">
+                        <span class="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-black uppercase">
+                            <?= $_SESSION['role'] ?? 'Guest'; ?>
+                        </span>
+                        <p class="text-sm font-black text-slate-700">
+                            <?= !empty($company_name) ? $company_name : ($_SESSION['user_name'] ?? 'Guest User'); ?>
+                        </p>
+                    </div>
 
-        <div class="flex items-center justify-end gap-2 text-[10px] text-slate-400 font-medium">
-            <?php if (!empty($company_name)): ?>
-                <span class="font-bold text-slate-600"><?= $_SESSION['user_name'] ?? ''; ?></span>
-                <span class="text-slate-300">|</span>
-            <?php endif; ?>
-            <span>@<?= $_SESSION['user'] ?? '-'; ?></span>
-            <span class="text-slate-300">|</span>
-            <span>UID: <span class="text-slate-500 font-bold"><?= $_SESSION['user_id'] ?? '-'; ?></span></span>
-            
-            <?php if (!empty($_SESSION['sup_id'])): ?>
-                <span class="text-slate-300">|</span>
-                <span class="text-emerald-500 font-bold">COMP ID: <?= $_SESSION['sup_id']; ?></span>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
+                    <div class="flex items-center justify-end gap-2 text-[10px] text-slate-400 font-medium">
+                        <?php if (!empty($company_name)): ?>
+                            <span class="font-bold text-slate-600"><?= $_SESSION['user_name'] ?? ''; ?></span>
+                            <span class="text-slate-300">|</span>
+                        <?php endif; ?>
+                        <span>@<?= $_SESSION['user'] ?? '-'; ?></span>
+                        <span class="text-slate-300">|</span>
+                        <span>UID: <span class="text-slate-500 font-bold"><?= $_SESSION['user_id'] ?? '-'; ?></span></span>
+                        
+                        <?php if (!empty($_SESSION['sup_id'])): ?>
+                            <span class="text-slate-300">|</span>
+                            <span class="text-emerald-500 font-bold">COMP ID: <?= $_SESSION['sup_id']; ?></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50">

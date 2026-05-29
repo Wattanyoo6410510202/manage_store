@@ -30,6 +30,7 @@
         }
     }
 </script>
+<script src="assets/js/tutorial.js"></script>
 </body>
 
 </html>
