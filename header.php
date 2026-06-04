@@ -470,12 +470,33 @@ if (!empty($_SESSION['sup_id'])) {
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 shrink-0">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
                 <button onclick="toggleSidebar()"
-                    class="md:hidden w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg">
+                    class="md:hidden w-10 h-10 shrink-0 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                <div class="flex h-16 items-center bg-white border-b border-slate-200">
+                
+                <!-- Mobile Category Dropdown -->
+                <div class="md:hidden flex-1 min-w-0 max-w-[200px]">
+                    <select onchange="window.location.href=this.value" class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs rounded-lg block p-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold outline-none">
+                        <option value="e_service.php" <?php echo $active_cat == 'main' ? 'selected' : ''; ?>>🏠 หน้าหลัก</option>
+                        
+                        <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
+                        <option value="index.php" <?php echo $active_cat == 'system' ? 'selected' : ''; ?>>📄 จัดการเอกสาร</option>
+                        <?php endif; ?>
+
+                        <?php if (can('projects')): ?>
+                        <option value="projects.php" <?php echo $active_cat == 'construction' ? 'selected' : ''; ?>>🔨 หมวดก่อสร้าง</option>
+                        <?php endif; ?>
+                        
+                        <?php if ($user_role !== 'staff' && can('setup')): ?>
+                        <option value="settings.php" <?php echo $active_cat == 'settings' ? 'selected' : ''; ?>>⚙️ ตั้งค่า</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- Desktop Category Tabs -->
+                <div class="hidden md:flex h-16 items-center shrink-0">
                     <a id="nav-home" href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
