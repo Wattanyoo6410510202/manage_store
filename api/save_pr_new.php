@@ -91,7 +91,8 @@ try {
     $safe_limit = $conn->real_escape_string($budget_limit_type);
     $conn->query("UPDATE pr SET budget_limit_type = '$safe_limit' WHERE id = $pr_id");
     
-    $conn->query("UPDATE pr SET doc_no = 'PR-" . ((date('y') + 43) . date('m')) . str_pad($pr_id, 4, '0', STR_PAD_LEFT) . "' WHERE id = $pr_id");
+    $new_doc_no = 'PR-' . ((date('y') + 43) . date('m')) . str_pad($pr_id, 4, '0', STR_PAD_LEFT);
+    $conn->query("UPDATE pr SET doc_no = '$new_doc_no' WHERE id = $pr_id");
 
     $stmt_item = $conn->prepare("INSERT INTO pr_items (pr_id, item_desc, item_qty, item_unit, item_price, item_discount, item_total) VALUES (?, ?, ?, ?, ?, ?, ?)");
     foreach ($items_desc as $key => $desc) {
@@ -105,6 +106,26 @@ try {
         $stmt_item->execute();
     }
     mysqli_commit($conn);
+    
+    // --- LINE NOTIFICATION ---
+    try {
+        require_once 'line_notify.php';
+        $sup_res = mysqli_query($conn, "SELECT company_name, line_token FROM suppliers WHERE id = $supplier_id");
+        $sup_data = mysqli_fetch_assoc($sup_res);
+        
+        if (!empty($sup_data['line_token'])) {
+            $msg = "\n🔔 มีใบขอซื้อใหม่ (PR)\n";
+            $msg .= "เลขที่: " . $new_doc_no . "\n";
+            $msg .= "บริษัท: " . $sup_data['company_name'] . "\n";
+            $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
+            $msg .= "ผู้ขอซื้อ: " . ($_SESSION['user_name'] ?? 'ไม่ระบุ') . "\n";
+            $msg .= "วันที่ต้องการ: " . ($due_date ? date('d/m/Y', strtotime($due_date)) : '-') . "\n";
+            $msg .= "ลิ้งค์: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . str_replace('api/save_pr_new.php', 'view_pr_new.php?id='.$pr_id, $_SERVER['PHP_SELF']);
+            
+            sendLineNotify($msg, $sup_data['line_token']);
+        }
+    } catch (Exception $e) { /* Ignore line error */ }
+
     $_SESSION['flash_msg'] = 'add_success';
     header("Location: ../request_buy_history.php");
 } catch (Exception $e) {

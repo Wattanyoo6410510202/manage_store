@@ -75,8 +75,20 @@ include('assets/alert.php');
                         </div>
                     </div>
 
-                    <textarea name="address" id="form-address" rows="2" placeholder="ที่อยู่บริษัท"
-                        class="w-full border-slate-200 rounded-xl p-2.5 text-sm border"></textarea>
+                    <div class="pt-2 border-t border-slate-100">
+                        <p class="text-[11px] font-bold text-slate-800 uppercase mb-2">การแจ้งเตือน (Notifications)</p>
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                                <i class="fab fa-line text-xl"></i>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Line Notify Token</label>
+                                <input type="text" name="line_token" id="form-line-token" placeholder="ใส่ Token สำหรับแจ้งเตือน"
+                                    class="w-full border-slate-200 rounded-xl p-2 text-sm border focus:ring-2 focus:ring-green-500 outline-none">
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-slate-400 italic leading-tight">* ใช้สำหรับการแจ้งเตือนเมื่อมีการขอซื้อ (PR) หรืออนุมัติงบประมาณ</p>
+                    </div>
 
                     <button type="submit" name="save_supplier" id="form-submit-btn"
                         class="w-full bg-slate-900 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition shadow-lg">
@@ -99,7 +111,7 @@ include('assets/alert.php');
                             <th class="w-16">Logo</th>
                             <th>บริษัท / Tax ID</th>
                             <th>ข้อมูลติดต่อ</th>
-                            <th>ธนาคาร / QR</th>
+                            <th>ธนาคาร / Line</th>
                             <th class="text-center">จัดการ</th>
                         </tr>
                     </thead>
@@ -126,15 +138,20 @@ include('assets/alert.php');
                                             class="fas fa-user mr-1"></i><?php echo $row['contact_name'] ?: '-'; ?></div>
                                 </td>
                                 <td>
-                                    <div class="flex items-center gap-2">
-                                        <div>
-                                            <div class="text-slate-700 font-bold text-[12px]">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <div class="text-slate-700 font-bold text-[11px]">
                                                 <?php echo $row['bank_name'] ?: '-'; ?></div>
-                                            <div class="text-[12px] text-slate-700">
-                                                <?php echo $row['bank_account_number'] ?: '-'; ?></div>
+                                            <?php if (!empty($row['qr_code_path'])): ?>
+                                                <i class="fas fa-qrcode text-indigo-400 text-[10px]" title="มี QR Code"></i>
+                                            <?php endif; ?>
                                         </div>
-                                        <?php if (!empty($row['qr_code_path'])): ?>
-                                            <i class="fas fa-qrcode text-indigo-500" title="มี QR Code แล้ว"></i>
+                                        <div class="text-[10px] text-slate-500">
+                                            <?php echo $row['bank_account_number'] ?: '-'; ?></div>
+                                        <?php if (!empty($row['line_token'])): ?>
+                                            <div class="flex items-center gap-1 text-green-600 text-[10px] font-bold">
+                                                <i class="fab fa-line"></i> Line Enabled
+                                            </div>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -206,6 +223,7 @@ include('assets/alert.php');
         $('#form-bank-name').val(data.bank_name);
         $('#form-acc-name').val(data.bank_account_name);
         $('#form-acc-no').val(data.bank_account_number);
+        $('#form-line-token').val(data.line_token || '');
 
         // จัดการ Preview Logo
         if (data.logo_path && data.logo_path !== 'default-logo.png') {

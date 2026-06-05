@@ -63,6 +63,10 @@ if ($pr['status'] === 'approved') {
     send_json('error', 'ใบขอซื้อนี้ได้รับอนุมัติครบถ้วนแล้ว');
 }
 
+if ($pr['status'] === 'rejected') {
+    send_json('error', 'ใบขอซื้อนี้ถูกปฏิเสธไปแล้ว');
+}
+
 // Check if user already approved in any level
 if (
     $pr['approved_by_0'] == $user_id ||
@@ -101,16 +105,19 @@ if (empty($pr['approved_by_0'])) {
 if (!$update_col) {
     if ($user_role === 'procure') {
         if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
+    } elseif ($user_role === 'gmacc') {
+        if (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
     } elseif ($user_role === 'mgr') {
         if (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
     } elseif ($user_role === 'mgr2') {
-        if (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
+        if (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = "approved_at_3"; }
     } elseif (in_array($user_role, ['admin', 'gmhok'])) {
         // Admin/GMHOK can act as backup for other levels
         if (empty($pr['approved_by_0']) && $target_head_role === 'gmhok') { $update_col = "approved_by_0"; $time_col = "approved_at_0"; }
         elseif (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
+        elseif (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
         elseif (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
-        elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = ""; }
+        elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = "approved_at_3"; }
     }
 }
 
@@ -136,25 +143,33 @@ if ($update_stmt->execute()) {
     $approver_count = 0;
     if (!empty($pr['approved_by_0'])) $approver_count++;
     if (!empty($pr['approved_by'])) $approver_count++;
+    if (!empty($pr['approved_by_1'])) $approver_count++;
     if (!empty($pr['approved_by_2'])) $approver_count++;
     if (!empty($pr['approved_by_3'])) $approver_count++;
     
     $limit_type = strtolower(trim($pr['budget_limit_type'] ?? 'low'));
     $is_fully = false;
     
-    // Updated is_fully logic to require level 0 (approved_by_0)
+    // Updated is_fully logic to require Mgr (level 2) and GMACC (level 1)
     $has_level0 = !empty($pr['approved_by_0']);
+    $has_gmacc = !empty($pr['approved_by_1']);
+    $has_mgr = !empty($pr['approved_by_2']);
     
-    if ($has_level0) {
-        if ($limit_type === 'low' && $approver_count >= 2) $is_fully = true; // Level 0 + 1 more
-        elseif ($limit_type === 'mid' && $approver_count >= 3) $is_fully = true; // Level 0 + 2 more
-        elseif ($limit_type === 'high') {
-            // High: ต้องครบ (Level 0 + Procure + Mgr2)
+    if ($has_level0 && $has_gmacc && $has_mgr) {
+        if ($limit_type === 'low') {
+            $is_fully = true; 
+        } elseif ($limit_type === 'mid') {
+            // Mid: Level 0 + GMACC + MGR + Procure
+            if (!empty($pr['approved_by'])) $is_fully = true;
+        } elseif ($limit_type === 'high') {
+            // High: Level 0 + GMACC + MGR + Procure + Mgr2
             if (!empty($pr['approved_by']) && !empty($pr['approved_by_3'])) {
                 $is_fully = true;
             }
+        } else {
+            // Default fully approved if all levels are done
+            if ($approver_count >= 4) $is_fully = true;
         }
-        elseif ($approver_count >= 4) $is_fully = true;
     }
 
     if ($is_fully) {
@@ -232,6 +247,21 @@ if ($update_stmt->execute()) {
                     );
                     $stmt_po_item->execute();
                 }
+
+                // --- LINE NOTIFICATION (Fully Approved) ---
+                try {
+                    require_once 'line_notify.php';
+                    $sup_res = mysqli_query($conn, "SELECT company_name, line_token FROM suppliers WHERE id = " . $pr_full['supplier_id']);
+                    $sup_data = mysqli_fetch_assoc($sup_res);
+                    if (!empty($sup_data['line_token'])) {
+                        $msg = "\n✅ ใบขอซื้ออนุมัติสมบูรณ์\n";
+                        $msg .= "เลขที่ PR: " . $pr_full['doc_no'] . "\n";
+                        $msg .= "สร้างเลขที่ PO: " . $new_doc_no . "\n";
+                        $msg .= "บริษัท: " . $sup_data['company_name'] . "\n";
+                        $msg .= "ยอดสุทธิ: " . number_format($pr_full['grand_total'], 2) . " บาท\n";
+                        sendLineNotify($msg, $sup_data['line_token']);
+                    }
+                } catch (Exception $e) {}
             }
         } catch (Exception $e) {
             // กรณีสร้าง PO พลาด อาจจะ log ไว้ แต่ PR ยังถือว่าอนุมัติสำเร็จ

@@ -51,8 +51,33 @@ $milestones_sql = "
 $milestones = mysqli_query($conn, $milestones_sql);
 ?>
 
+<?php
+// คำนวณยอด PR ที่อนุมัติแล้วที่ผูกกับโครงการนี้
+$pr_total_sql = "
+    SELECT SUM(p.grand_total) as total 
+    FROM project_documents pd
+    JOIN pr p ON pd.doc_no = p.doc_no
+    WHERE pd.project_id = $id AND pd.doc_type = 'pr' AND p.status = 'approved' AND p.deleted_at IS NULL
+";
+$pr_total_res = mysqli_query($conn, $pr_total_sql);
+$pr_total_data = mysqli_fetch_assoc($pr_total_res);
+$total_pr_approved = $pr_total_data['total'] ?? 0;
+
+// คำนวณยอด PO ที่อนุมัติแล้วที่ผูกกับโครงการนี้
+$po_total_sql = "
+    SELECT SUM(p.grand_total) as total 
+    FROM project_documents pd
+    JOIN po p ON pd.doc_no = p.doc_no
+    WHERE pd.project_id = $id AND pd.doc_type = 'po' AND p.status = 'approved' AND p.deleted_at IS NULL
+";
+$po_total_res = mysqli_query($conn, $po_total_sql);
+$po_total_data = mysqli_fetch_assoc($po_total_res);
+$total_po_approved = $po_total_data['total'] ?? 0;
+?>
+
 <div>
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+
         <div>
             <p class="text-slate-500 font-medium">
                 จัดการงวดงานและเอกสารของ:
@@ -127,6 +152,42 @@ $milestones = mysqli_query($conn, $milestones_sql);
                 </div>
             </div>
 
+            <!-- เพิ่มสรุปงบประมาณและค่าใช้จ่าย -->
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-wallet text-indigo-500"></i> งบประมาณและค่าใช้จ่าย
+                </h4>
+                <div class="space-y-3">
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ยอดขอซื้อ (PR Approved)</span>
+                            <i class="fas fa-file-invoice-dollar text-indigo-400 text-xs"></i>
+                        </div>
+                        <p class="text-xl font-black text-slate-800"><?= number_format($total_pr_approved, 2) ?> <span class="text-[10px] italic">฿</span></p>
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ยอดสั่งซื้อ (PO Approved)</span>
+                            <i class="fas fa-shopping-cart text-emerald-400 text-xs"></i>
+                        </div>
+                        <p class="text-xl font-black text-slate-800"><?= number_format($total_po_approved, 2) ?> <span class="text-[10px] italic">฿</span></p>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="flex justify-between text-[11px] font-bold mb-1">
+                        <span class="text-slate-400">กำไรเบื้องต้น (Estimated Profit)</span>
+                        <span class="text-indigo-600"><?= number_format($pj['net_contract_value'] - $total_pr_approved, 2) ?> ฿</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <?php 
+                        $profit_percent = $pj['net_contract_value'] > 0 ? (($pj['net_contract_value'] - $total_pr_approved) / $pj['net_contract_value']) * 100 : 0;
+                        $profit_percent = max(0, min(100, $profit_percent));
+                        ?>
+                        <div class="bg-indigo-500 h-1.5 rounded-full" style="width: <?= $profit_percent ?>%"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white p-6 rounded-3xl -sm border border-slate-100">
                 <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fas fa-link text-indigo-500"></i> เอกสารเชื่อมโยง
@@ -154,177 +215,245 @@ $milestones = mysqli_query($conn, $milestones_sql);
         </div>
 
         <div class="lg:col-span-8">
-            <div class="bg-white p-6 rounded-3xl -sm border border-slate-100 min-h-[500px]">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[500px]">
+                
+                <!-- Tab Headers -->
+                <div class="flex items-center gap-4 mb-6 border-b border-slate-100 pb-1">
+                    <button onclick="switchTab('milestones')" id="tab-milestones" class="tab-btn active px-4 py-2 font-bold text-sm text-indigo-600 border-b-2 border-indigo-600 transition-all">
+                        <i class="fas fa-list-ul mr-2"></i> งวดงาน (Milestones)
+                    </button>
+                    <button onclick="switchTab('timeline')" id="tab-timeline" class="tab-btn px-4 py-2 font-bold text-sm text-slate-400 border-b-2 border-transparent hover:text-indigo-50 transition-all">
+                        <i class="fas fa-history mr-2"></i> ไทม์ไลน์ (Timeline)
+                    </button>
+                </div>
 
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <h4 class="font-bold text-slate-800 flex items-center gap-2">
-                        ประวัติการเบิกงวดงาน
-                    </h4>
-                    <div class="flex gap-2 w-full sm:w-auto">
-                        <div id="bulkActions" class="hidden flex gap-2">
-                            <button onclick="bulkPrint()"
-                                class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">
-                                <i class="fas fa-print mr-1"></i> พิมพ์ที่เลือก
-                            </button>
+                <!-- Tab: Milestones -->
+                <div id="content-milestones" class="tab-content">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                            ประวัติการเบิกงวดงาน
+                        </h4>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <div id="bulkActions" class="hidden flex gap-2">
+                                <button onclick="bulkPrint()"
+                                    class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">
+                                    <i class="fas fa-print mr-1"></i> พิมพ์ที่เลือก
+                                </button>
+                                <?php if (!is_viewer()): ?>
+                                <button onclick="bulkDelete()"
+                                    class="text-xs font-bold text-white bg-rose-500 px-4 py-2 rounded-xl hover:bg-rose-600 transition-all">
+                                    <i class="fas fa-trash-alt mr-1"></i> ลบที่เลือก
+                                </button>
+                                <?php endif; ?>
+                            </div>
                             <?php if (!is_viewer()): ?>
-                            <button onclick="bulkDelete()"
-                                class="text-xs font-bold text-white bg-rose-500 px-4 py-2 rounded-xl hover:bg-rose-600 transition-all">
-                                <i class="fas fa-trash-alt mr-1"></i> ลบที่เลือก
+                            <button onclick="location.href='add_milestone.php?project_id=<?= $id ?>'"
+                                class="flex-1 sm:flex-none text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all">
+                                <i class="fas fa-plus mr-1"></i> เพิ่มงวดเบิก
                             </button>
                             <?php endif; ?>
                         </div>
-                        <?php if (!is_viewer()): ?>
-                        <button onclick="location.href='add_milestone.php?project_id=<?= $id ?>'"
-                            class="flex-1 sm:flex-none text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 -md transition-all">
-                            <i class="fas fa-plus mr-1"></i> เพิ่มงวดเบิก
-                        </button>
-                        <?php endif; ?>
                     </div>
-                </div>
-                <table id="milestoneTable" class="w-full">
-                    <thead>
-                        <tr class="text-[12px] text-slate-800 uppercase tracking-widest border-b border-slate-50">
-                            <th class="px-4 py-3 text-left">
-                                <input type="checkbox" id="selectAll"
-                                    class="rounded text-slate-800 focus:ring-indigo-500">
-                            </th>
-                            <th class="px-4 py-3 text-left">หลักฐาน</th>
-                            <th class="px-4 py-3 text-left">งวดงาน</th>
-                            <th class="px-4 py-3 text-left">วันที่เบิก</th>
-                            <th class="px-4 py-3 text-center">สถานะ</th>
-                            <th class="px-4 py-3 text-right">ยอดสุทธิ</th>
-                            <th class="px-4 py-3 text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        <?php if (mysqli_num_rows($milestones) > 0): ?>
-                            <?php mysqli_data_seek($milestones, 0); ?>
-                            <?php while ($m = mysqli_fetch_assoc($milestones)): ?>
-                                <tr class="group hover:bg-slate-50 transition-colors">
-                                    <td class="px-4 py-4">
-                                        <input type="checkbox" name="milestone_ids[]" value="<?= $m['id'] ?>"
-                                            class="ms-check rounded text-indigo-600 focus:ring-indigo-500"
-                                            data-status="<?= $m['status'] ?>">
-                                    </td>
-                                    <td class="px-4 py-4">
-                                        <?php if (!empty($m['claim_attachment'])): ?>
-                                            <?php
-                                            $file_path = 'uploads/claims/' . $m['claim_attachment'];
-                                            $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
-                                            $is_image = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']);
-                                            ?>
-                                            <button
-                                                onclick="<?= $is_image ? "viewProofImage('$file_path')" : "window.open('$file_path', '_blank')" ?>"
-                                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                                                <i class="fas <?= $is_image ? 'fa-image' : 'fa-file-pdf' ?>"></i>
-                                            </button>
-                                        <?php else: ?>
-                                            <div
-                                                class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-300 border border-dashed border-slate-200">
-                                                <i class="fas fa-eye-slash text-[12px]"></i>
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="px-4 py-4">
-                                        <p class="font-black text-slate-700 uppercase text-sm truncate max-w-[250px]">
-                                            <?= $m['milestone_name'] ?>
-                                        </p>
-                                    </td>
-                                    <td class="px-4 py-4 text-sm text-slate-800 font-bold">
-                                        <?= date('d/m/Y', strtotime($m['claim_date'])) ?>
-                                    </td>
-                                    <td class="px-4 py-4 text-center">
-                                        <span
-                                            class="text-[12px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
-                                            <?= $m['status'] == 'paid' ? 'ชำระเงินแล้ว' : 'ค้างชำระ' ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-4 text-right">
-                                        <p
-                                            class="text-base font-black text-slate-800 group-hover:text-emerald-600 transition-colors">
-                                            <?= number_format($m['net_amount'], 2) ?> <span class="text-[12px] italic">฿</span>
-                                        </p>
-                                    </td>
-                                    <td class="px-4 py-4 text-center">
-                                        <div class="flex items-center justify-center gap-2">
-                                            <?php if (!is_viewer()): ?>
-                                            <button onclick="editMilestone(<?= $m['id'] ?>)"
-                                                class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
-                                                title="แก้ไขข้อมูล">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <?php if ($m['status'] == 'pending'): ?>
-
-                                                <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
-                                                    class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
-                                                    title="ยืนยันชำระเงิน">
-                                                    <i class="fas fa-check-circle"></i>
+                    <table id="milestoneTable" class="w-full">
+                        <thead>
+                            <tr class="text-[12px] text-slate-800 uppercase tracking-widest border-b border-slate-50">
+                                <th class="px-4 py-3 text-left">
+                                    <input type="checkbox" id="selectAll"
+                                        class="rounded text-slate-800 focus:ring-indigo-500">
+                                </th>
+                                <th class="px-4 py-3 text-left">หลักฐาน</th>
+                                <th class="px-4 py-3 text-left">งวดงาน</th>
+                                <th class="px-4 py-3 text-left">วันที่เบิก</th>
+                                <th class="px-4 py-3 text-center">สถานะ</th>
+                                <th class="px-4 py-3 text-right">ยอดสุทธิ</th>
+                                <th class="px-4 py-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <?php if (mysqli_num_rows($milestones) > 0): ?>
+                                <?php mysqli_data_seek($milestones, 0); ?>
+                                <?php while ($m = mysqli_fetch_assoc($milestones)): ?>
+                                    <tr class="group hover:bg-slate-50 transition-colors">
+                                        <td class="px-4 py-4">
+                                            <input type="checkbox" name="milestone_ids[]" value="<?= $m['id'] ?>"
+                                                class="ms-check rounded text-indigo-600 focus:ring-indigo-500"
+                                                data-status="<?= $m['status'] ?>">
+                                        </td>
+                                        <td class="px-4 py-4">
+                                            <?php if (!empty($m['claim_attachment'])): ?>
+                                                <?php
+                                                $file_path = 'uploads/claims/' . $m['claim_attachment'];
+                                                $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+                                                $is_image = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']);
+                                                ?>
+                                                <button
+                                                    onclick="<?= $is_image ? "viewProofImage('$file_path')" : "window.open('$file_path', '_blank')" ?>"
+                                                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                                    <i class="fas <?= $is_image ? 'fa-image' : 'fa-file-pdf' ?>"></i>
                                                 </button>
-
-
-
-                                                <button onclick="deleteMilestone(<?= $m['id'] ?>)"
-                                                    class="text-[12px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
-                                                    title="ลบรายการ">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-
                                             <?php else: ?>
-                                                <div class="flex items-center gap-2 py-1.5">
-                                                    <span
-                                                        class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[12px] font-black border border-emerald-100 uppercase tracking-tighter">
-                                                        <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
-                                                    </span>
-                                                    <button
-                                                        onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
-                                                        class="text-[12px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
-                                                        title="คืนเงินประกัน">
-                                                        <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
+                                                <div
+                                                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-300 border border-dashed border-slate-200">
+                                                    <i class="fas fa-eye-slash text-[12px]"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-4 py-4">
+                                            <p class="font-black text-slate-700 uppercase text-sm truncate max-w-[250px]">
+                                                <?= $m['milestone_name'] ?>
+                                            </p>
+                                        </td>
+                                        <td class="px-4 py-4 text-sm text-slate-800 font-bold">
+                                            <?= date('d/m/Y', strtotime($m['claim_date'])) ?>
+                                        </td>
+                                        <td class="px-4 py-4 text-center">
+                                            <span
+                                                class="text-[12px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
+                                                <?= $m['status'] == 'paid' ? 'ชำระเงินแล้ว' : 'ค้างชำระ' ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-4 text-right">
+                                            <p
+                                                class="text-base font-black text-slate-800 group-hover:text-emerald-600 transition-colors">
+                                                <?= number_format($m['net_amount'], 2) ?> <span class="text-[12px] italic">฿</span>
+                                            </p>
+                                        </td>
+                                        <td class="px-4 py-4 text-center">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <?php if (!is_viewer()): ?>
+                                                <button onclick="editMilestone(<?= $m['id'] ?>)"
+                                                    class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
+                                                    title="แก้ไขข้อมูล">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <?php if ($m['status'] == 'pending'): ?>
+
+                                                    <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
+                                                        class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
+                                                        title="ยืนยันชำระเงิน">
+                                                        <i class="fas fa-check-circle"></i>
                                                     </button>
 
+                                                    <button onclick="deleteMilestone(<?= $m['id'] ?>)"
+                                                        class="text-[12px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
+                                                        title="ลบรายการ">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
 
-                                                </div>
+                                                <?php else: ?>
+                                                    <div class="flex items-center gap-2 py-1.5">
+                                                        <span
+                                                            class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[12px] font-black border border-emerald-100 uppercase tracking-tighter">
+                                                            <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
+                                                        </span>
+                                                        <button
+                                                            onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
+                                                            class="text-[12px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
+                                                            title="คืนเงินประกัน">
+                                                            <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
+                                                        </button>
+                                                    </div>
 
-                                            <?php endif; ?>
-                                            <?php if ($m['inspection_id']): ?>
-                                                <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
-                                                    class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
-                                                    title="ดูผลการตรวจรับงาน">
-                                                    <i class="fas fa-eye"></i> ดู
-                                                    <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
-                                                        <?= $m['result_status'] === 'pass' ? 'ผ่าน' : ($m['result_status'] === 'conditional_pass' ? 'เงื่อนไข' : 'ไม่ผ่าน') ?>
-                                                    </span>
-                                                </a>
-                                            <?php else: ?>
-                                                <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
-                                                    class="text-[12px] font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black shadow-sm transition-all"
-                                                    title="ตรวจงาน">
-                                                    <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php else: ?>
-                                                <span class="text-slate-400 text-xs italic">View Only</span>
+                                                <?php endif; ?>
                                                 <?php if ($m['inspection_id']): ?>
                                                     <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
                                                         class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
                                                         title="ดูผลการตรวจรับงาน">
-                                                        <i class="fas fa-eye"></i>
+                                                        <i class="fas fa-eye"></i> ดู
+                                                        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
+                                                            <?= $m['result_status'] === 'pass' ? 'ผ่าน' : ($m['result_status'] === 'conditional_pass' ? 'เงื่อนไข' : 'ไม่ผ่าน') ?>
+                                                        </span>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
+                                                        class="text-[12px] font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black shadow-sm transition-all"
+                                                        title="ตรวจงาน">
+                                                        <i class="fas fa-clipboard-check mr-1"></i> ตรวจงาน
                                                     </a>
                                                 <?php endif; ?>
-                                            <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="text-slate-400 text-xs italic">View Only</span>
+                                                    <?php if ($m['inspection_id']): ?>
+                                                        <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
+                                                            class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                            title="ดูผลการตรวจรับงาน">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tab: Timeline -->
+                <div id="content-timeline" class="tab-content hidden">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        Project Timeline
+                    </h4>
+                    <div class="relative pl-8 border-l-2 border-slate-100 space-y-8 ml-4">
+                        <?php
+                        // Fetch events for timeline
+                        $timeline_sql = "
+                            (SELECT 'project_created' as event_type, created_at as event_date, project_name as title, 'เริ่มสร้างโครงการ' as detail, '' as extra FROM projects WHERE id = $id)
+                            UNION ALL
+                            (SELECT 'milestone_requested' as event_type, created_at as event_date, milestone_name as title, CONCAT('เรียกเก็บงวดงาน: ', FORMAT(total_request_amount, 2), ' ฿') as detail, status as extra FROM project_milestones WHERE project_id = $id)
+                            UNION ALL
+                            (SELECT 'milestone_inspected' as event_type, inspection_date as event_date, 'ตรวจรับงวดงาน' as title, CONCAT('ผลการตรวจ: ', result_status) as detail, punch_list as extra FROM milestone_inspections i JOIN project_milestones m ON i.milestone_id = m.id WHERE m.project_id = $id)
+                            UNION ALL
+                            (SELECT 'doc_linked' as event_type, created_at as event_date, doc_no as title, CONCAT('เชื่อมโยงเอกสาร: ', UPPER(doc_type)) as detail, '' as extra FROM project_documents WHERE project_id = $id)
+                            ORDER BY event_date DESC";
+                        $timeline_res = mysqli_query($conn, $timeline_sql);
+                        
+                        if (mysqli_num_rows($timeline_res) > 0):
+                            while ($ev = mysqli_fetch_assoc($timeline_res)):
+                                $icon = 'fa-circle';
+                                $color = 'bg-slate-300';
+                                switch($ev['event_type']) {
+                                    case 'project_created': $icon = 'fa-flag-checkered'; $color = 'bg-indigo-500'; break;
+                                    case 'milestone_requested': $icon = 'fa-file-invoice-dollar'; $color = 'bg-amber-500'; break;
+                                    case 'milestone_inspected': $icon = 'fa-clipboard-check'; $color = ($ev['detail'] == 'ผลการตรวจ: pass' ? 'bg-emerald-500' : 'bg-rose-500'); break;
+                                    case 'doc_linked': $icon = 'fa-link'; $color = 'bg-blue-500'; break;
+                                }
+                        ?>
+                            <div class="relative">
+                                <div class="absolute -left-[45px] top-0 w-8 h-8 rounded-full <?= $color ?> text-white flex items-center justify-center border-4 border-white shadow-sm">
+                                    <i class="fas <?= $icon ?> text-[10px]"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><?= date('d M Y | H:i', strtotime($ev['event_date'])) ?></span>
+                                    <h5 class="text-sm font-black text-slate-800 mt-1"><?= htmlspecialchars($ev['title']) ?></h5>
+                                    <p class="text-xs text-slate-500 mt-1"><?= htmlspecialchars($ev['detail']) ?></p>
+                                    <?php if ($ev['extra']): ?>
+                                        <div class="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] text-slate-500 italic">
+                                            <?= htmlspecialchars($ev['extra']) ?>
                                         </div>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endwhile; else: ?>
+                            <p class="text-slate-400 text-sm italic">ไม่มีข้อมูลไทม์ไลน์</p>
                         <?php endif; ?>
-                    </tbody>
-                </table>
+                    </div>
+                </div>
 
             </div>
         </div>
     </div>
 </div>
 <script>
+    function switchTab(tab) {
+        $('.tab-content').addClass('hidden');
+        $(`#content-${tab}`).removeClass('hidden');
+        
+        $('.tab-btn').removeClass('active text-indigo-600 border-indigo-600').addClass('text-slate-400 border-transparent');
+        $(`#tab-${tab}`).addClass('active text-indigo-600 border-indigo-600').removeClass('text-slate-400 border-transparent');
+    }
+
     function refundRetention(id, currentNote) {
         Swal.fire({
             title: 'ยืนยันการคืนเงินประกัน?',

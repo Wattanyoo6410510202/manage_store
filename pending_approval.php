@@ -199,11 +199,12 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                     $config = [
                                         'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
                                         'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
+                                        'rejected' => ['bg' => 'bg-red-50', 'text' => 'text-red-600', 'border' => 'border-red-100', 'dot' => 'bg-red-400', 'label' => 'ปฏิเสธ'],
                                     ];
                                     $style = $config[$status] ?? $config['pending'];
                                     ?>
                                     <div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
+                                        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> <?= ($status === 'pending') ? 'animate-pulse' : '' ?>"></span>
                                         <span class="text-[12px] font-bold uppercase tracking-wide"><?= $style['label'] ?></span>
                                     </div>
                                 </td>
@@ -218,6 +219,8 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                 <td class="text-center">
                                     <?php if (!empty($row['approved_by_0'])): ?>
                                         <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
+                                    <?php elseif ($row['status'] === 'rejected'): ?>
+                                        <span class="text-red-500 text-[10px] font-bold"><i class="fas fa-times-circle"></i> ปฏิเสธ</span>
                                     <?php else: ?>
                                         <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รอ</span>
                                     <?php endif; ?>
@@ -245,6 +248,26 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
                                         <a href="view_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-eye text-xs"></i></a>
+                                        <?php
+                                        $canApproveDesktop = false;
+                                        if ($row['status'] === 'pending') {
+                                            $deptMap = [ 'hok' => 'gmhok', 'hr' => 'gmhr', 'staff_shotel' => 'gmshotel', 'staff_manonta' => 'gmmanonta', 'staff_nijuni' => 'gmnijuni', 'acc' => 'gmacc' ];
+                                            $targetRole = $deptMap[$row['creator_role'] ?? ''] ?? '';
+                                            if (!empty($row['approved_by_0'])) {
+                                                if ($user_role_sup === 'procure' && empty($row['approved_by'])) $canApproveDesktop = true;
+                                                elseif ($user_role_sup === 'gmacc' && empty($row['approved_by_1'])) $canApproveDesktop = true;
+                                                elseif ($user_role_sup === 'mgr' && empty($row['approved_by_2'])) $canApproveDesktop = true;
+                                                elseif ($user_role_sup === 'mgr2' && empty($row['approved_by_3'])) $canApproveDesktop = true;
+                                                elseif (in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
+                                            } else {
+                                                if ($user_role_sup === $targetRole || in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
+                                            }
+                                        }
+                                        ?>
+                                        <?php if ($canApproveDesktop): ?>
+                                            <button onclick="approvePR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')" class="w-8 h-8 flex items-center justify-center bg-emerald-500 text-white rounded-lg shadow-sm" title="อนุมัติ"><i class="fas fa-check text-xs"></i></button>
+                                            <button onclick="rejectPR(<?= $row['id'] ?>, '<?= $row['doc_no'] ?>')" class="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-lg shadow-sm" title="ปฏิเสธ"><i class="fas fa-times text-xs"></i></button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -498,6 +521,47 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                         renderAlert('success', 'อนุมัติเรียบร้อย');
                         location.reload(); 
                     } else Swal.fire({ title: 'แจ้งเตือน', text: data.message, icon: 'warning', heightAuto: false });
+                });
+            }
+        });
+    }
+
+    function rejectPR(id, prNo) {
+        Swal.fire({
+            title: 'ปฏิเสธใบขอซื้อ?',
+            text: `ใบขอซื้อเลขที่ ${prNo}`,
+            input: 'textarea',
+            inputPlaceholder: 'ระบุเหตุผลในการปฏิเสธ...',
+            inputAttributes: {
+                'aria-label': 'ระบุเหตุผลในการปฏิเสธ'
+            },
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'ยืนยันปฏิเสธ',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true,
+            heightAuto: false,
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'กรุณาระบุเหตุผลในการปฏิเสธ!'
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const fd = new FormData();
+                fd.append('id', id);
+                fd.append('reason', result.value);
+                
+                fetch('api/reject_pr.php', {
+                    method: 'POST',
+                    body: fd
+                }).then(res => res.json()).then(data => {
+                    if (data.status === 'success') {
+                        renderAlert('success', 'ปฏิเสธใบขอซื้อเรียบร้อย');
+                        location.reload();
+                    } else {
+                        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: data.message, icon: 'error', heightAuto: false });
+                    }
                 });
             }
         });

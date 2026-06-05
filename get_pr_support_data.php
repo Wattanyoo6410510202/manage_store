@@ -27,7 +27,7 @@ if ($action == 'get_expense_cats') {
     $sql = "SELECT b.id, b.name, 
                    (b.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = b.id), 0)) as current_total_budget,
                    (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = b.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent
-            FROM budget_types b WHERE b.sup_id = $sup_id $role_filter";
+            FROM budget_types b WHERE b.sup_id = $sup_id AND b.status = 'approved' $role_filter";
 } elseif ($action == 'get_objectives') {
     $sql = "SELECT id, name FROM pr_objectives WHERE sup_id = $sup_id $role_filter";
 }

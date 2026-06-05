@@ -9,13 +9,73 @@ if (isset($_GET['action'])) {
     if ($_GET['action'] == 'fetch') {
         $sql = "SELECT bt.*, s.company_name,
                 (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id), 0)) as total_budget,
-                (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent
+                (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent,
+                u_gmacc.name as gmacc_name, u_mgr.name as mgr_name
                 FROM budget_types bt 
                 JOIN suppliers s ON bt.sup_id = s.id 
+                LEFT JOIN users u_gmacc ON bt.approved_by_gmacc = u_gmacc.id
+                LEFT JOIN users u_mgr ON bt.approved_by_mgr = u_mgr.id
                 ORDER BY s.company_name ASC, bt.name ASC";
         $result = mysqli_query($conn, $sql);
         $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
         echo json_encode($data);
+        exit;
+    }
+
+    // API: อนุมัติงบประมาณ
+    if ($_GET['action'] == 'approve') {
+        $id = intval($_POST['id'] ?? 0);
+        $role = $_SESSION['role'] ?? '';
+        $user_id = $_SESSION['user_id'] ?? 0;
+
+        if ($id <= 0) {
+            echo json_encode(['status' => 'error', 'msg' => 'Invalid ID']);
+            exit;
+        }
+
+        $update_sql = "";
+        if ($role === 'gmacc') {
+            $update_sql = "approved_by_gmacc = $user_id, approved_at_gmacc = NOW()";
+        } elseif ($role === 'mgr') {
+            $update_sql = "approved_by_mgr = $user_id, approved_at_mgr = NOW()";
+        } elseif ($role === 'admin') {
+             // Admin สามารถกดแทนได้
+            $update_sql = "approved_by_gmacc = COALESCE(approved_by_gmacc, $user_id), 
+                           approved_at_gmacc = COALESCE(approved_at_gmacc, NOW()),
+                           approved_by_mgr = COALESCE(approved_by_mgr, $user_id),
+                           approved_at_mgr = COALESCE(approved_at_mgr, NOW())";
+        }
+
+        if (empty($update_sql)) {
+            echo json_encode(['status' => 'error', 'msg' => 'คุณไม่มีสิทธิ์อนุมัติ']);
+            exit;
+        }
+
+        $sql = "UPDATE budget_types SET $update_sql WHERE id = $id";
+        if (mysqli_query($conn, $sql)) {
+            // เช็คว่ากดครบหรือยังเพื่อเปลี่ยน status เป็น approved
+            $check = mysqli_query($conn, "SELECT bt.*, s.company_name, s.line_token FROM budget_types bt JOIN suppliers s ON bt.sup_id = s.id WHERE bt.id = $id");
+            $bt = mysqli_fetch_assoc($check);
+            if ($bt['approved_by_gmacc'] && $bt['approved_by_mgr']) {
+                mysqli_query($conn, "UPDATE budget_types SET status = 'approved' WHERE id = $id");
+                
+                // --- LINE NOTIFICATION (Budget Approved) ---
+                try {
+                    require_once 'api/line_notify.php';
+                    if (!empty($bt['line_token'])) {
+                        $msg = "\n💰 อนุมัติงบประมาณใหม่\n";
+                        $msg .= "ประเภทงบ: " . $bt['name'] . "\n";
+                        $msg .= "บริษัท: " . $bt['company_name'] . "\n";
+                        $msg .= "จำนวนเงิน: " . number_format($bt['budget_amount'], 2) . " บาท\n";
+                        $msg .= "สถานะ: พร้อมใช้งานแล้ว";
+                        sendLineNotify($msg, $bt['line_token']);
+                    }
+                } catch (Exception $e) {}
+            }
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'msg' => mysqli_error($conn)]);
+        }
         exit;
     }
 
@@ -33,8 +93,9 @@ if (isset($_GET['action'])) {
         }
 
         if (empty($id)) {
-            // โหมดเพิ่มใหม่
-            $sql = "INSERT INTO budget_types (sup_id, name, budget_amount, roles, is_active) VALUES ($sup_id, '$name', $budget_amount, '$roles', 1)";
+            // โหมดเพิ่มใหม่ - บังคับสถานะเป็น pending
+            $sql = "INSERT INTO budget_types (sup_id, name, budget_amount, status, roles, is_active) 
+                    VALUES ($sup_id, '$name', $budget_amount, 'pending', '$roles', 1)";
         } else {
             // โหมดแก้ไข
             $sql = "UPDATE budget_types SET sup_id = $sup_id, name = '$name', budget_amount = $budget_amount, roles = '$roles' WHERE id = " . intval($id);
@@ -249,11 +310,13 @@ $(document).ready(function() {
     });
 });
 
+const USER_ROLE = '<?= $_SESSION['role'] ?? '' ?>';
+
 function fetchBudget() {
     $.get('?action=fetch', function(data) {
         let html = '';
         if(!data || data.length === 0) {
-            html = '<tr><td colspan="6" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลประเภทงบประมาณ</td></tr>';
+            html = '<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลประเภทงบประมาณ</td></tr>';
         } else {
             data.forEach(item => {
                 const initial = parseFloat(item.budget_amount || 0);
@@ -262,26 +325,65 @@ function fetchBudget() {
                 const balance = total - spent;
                 let rolesDisplay = item.roles ? item.roles.split(',').map(r => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] mr-1">${r}</span>`).join('') : '<span class="text-slate-400 italic text-[10px]">ทั้งหมด</span>';
 
+                // จัดการสถานะการอนุมัติ
+                let statusBadge = '';
+                let approveBtns = '';
+
+                if (item.status === 'approved') {
+                    statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        <i class="fas fa-check-circle mr-1"></i> อนุมัติแล้ว
+                    </span>`;
+                } else if (item.status === 'rejected') {
+                    statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                        <i class="fas fa-times-circle mr-1"></i> ปฏิเสธ
+                    </span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                        <i class="fas fa-clock mr-1"></i> รออนุมัติ
+                    </span>`;
+                    
+                    // ปุ่มอนุมัติสำหรับ GMACC และ MGR
+                    if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
+                        approveBtns += `<button onclick="approveBudget(${item.id}, 'GMACC')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">บัญชีอนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
+                        approveBtns += `<button onclick="approveBudget(${item.id}, 'MGR')" class="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 transition">MGR อนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'admin') {
+                        approveBtns += `<button onclick="approveBudget(${item.id}, 'Admin')" class="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-black transition">Admin อนุมัติ</button>`;
+                    }
+                }
+
                 html += `
             <tr class="hover:bg-slate-50 transition text-sm">
             <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
-            <td class="p-4 text-slate-600">${item.name}</td>
+            <td class="p-4">
+                <div class="flex flex-col gap-1">
+                    <span class="text-slate-600 font-bold">${item.name}</span>
+                    <div class="flex gap-2 items-center">
+                        ${statusBadge}
+                        <div class="flex gap-1">${approveBtns}</div>
+                    </div>
+                    ${item.gmacc_name ? `<span class="text-[9px] text-slate-400">บัญชี: ${item.gmacc_name}</span>` : ''}
+                    ${item.mgr_name ? `<span class="text-[9px] text-slate-400">ผู้จัดการ: ${item.mgr_name}</span>` : ''}
+                </div>
+            </td>
             <td class="p-4 text-slate-600 text-right font-mono">${initial.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
             <td class="p-4 text-right font-mono font-bold ${balance < 0 ? 'text-red-600' : 'text-indigo-600'}">
                 ${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}
             </td>
             <td class="p-4">${rolesDisplay}</td>
-            <td class="p-4 text-center space-x-2">
-                <button onclick='showHistory(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white transition shadow-sm">
+            <td class="p-4 text-center space-x-1 flex items-center justify-center">
+                <button onclick='showHistory(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white transition shadow-sm" title="ประวัติ">
                     <i class="fas fa-history text-xs"></i>
                 </button>
-                <button onclick='openAdjustModal(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-sm">
+                <button onclick='openAdjustModal(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="ปรับปรุงยอด">
                     <i class="fas fa-plus-circle text-xs"></i>
                 </button>
-                <button onclick='editBudget(${JSON.stringify(item)})' class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition shadow-sm">
+                <button onclick='editBudget(${JSON.stringify(item)})' class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition shadow-sm" title="แก้ไข">
                     <i class="fas fa-edit text-xs"></i>
                 </button>
-                <button onclick="deleteBudget(${item.id})" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition shadow-sm">
+                <button onclick="deleteBudget(${item.id})" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition shadow-sm" title="ลบ">
                     <i class="fas fa-trash-alt text-xs"></i>
                 </button>
             </td>
@@ -289,6 +391,18 @@ function fetchBudget() {
             });        }
         $('#budgetTableBody').html(html);
     });
+}
+
+function approveBudget(id, type) {
+    if (confirm(`ยืนยันการอนุมัติงบประมาณในส่วนของ ${type}?`)) {
+        $.post('?action=approve', { id: id }, function(res) {
+            if (res.status === 'success') {
+                fetchBudget();
+            } else {
+                alert(res.msg);
+            }
+        });
+    }
 }
 
 

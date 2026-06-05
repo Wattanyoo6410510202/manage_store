@@ -72,6 +72,18 @@ $total_discount = $row_discount['total_discount'] ?? 0;
 $dynamic_padding = ($num_rows <= 5) ? '5px 8px' : (($num_rows <= 10) ? '3px 10px' : '2px 12px');
 $dynamic_font_size = ($num_rows <= 5) ? '14px' : (($num_rows <= 10) ? '13px' : '12px');
 
+$budget_info = null;
+if ($data['budget_type_id']) {
+    $bt_id = $data['budget_type_id'];
+    $bt_sql = "SELECT bt.*, 
+                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id), 0)) as total_budget,
+                (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL AND p.id != '$id') as spent_before
+                FROM budget_types bt 
+                WHERE bt.id = $bt_id";
+    $bt_res = mysqli_query($conn, $bt_sql);
+    $budget_info = mysqli_fetch_assoc($bt_res);
+}
+
 // จัดการรายการที่จะนำมาแสดงในส่วนท้ายเอกสาร
 $display_list = [];
 $display_list[] = ['label' => 'ผู้จัดทำ', 'name' => $data['creator_name'], 'sig' => $data['creator_signature'], 'date' => $data['created_at'], 'is_empty' => false];
@@ -81,8 +93,8 @@ $apps = [
     ['id' => $data['approved_by_0'], 'name' => $data['app0_name'], 'sig' => $data['app0_sig'], 'date' => $data['approved_at_0'], 'role' => 'หัวหน้างาน'],
     ['id' => $data['approved_by'], 'name' => $data['app1_name'], 'sig' => $data['app1_sig'], 'date' => $data['approved_at'], 'role' => 'จัดซื้อ'],
     ['id' => $data['approved_by_1'], 'name' => $data['app2_name'], 'sig' => $data['app2_sig'], 'date' => $data['approved_at_1'], 'role' => 'บัญชี'],
-    ['id' => $data['approved_by_2'], 'name' => $data['app3_name'], 'sig' => $data['app3_sig'], 'date' => $data['approved_at_2'], 'role' => 'SUP'],
-    ['id' => $data['approved_by_3'], 'name' => $data['app4_name'], 'sig' => $data['app4_sig'], 'date' => null, 'role' => 'CEO']
+    ['id' => $data['approved_by_2'], 'name' => $data['app3_name'], 'sig' => $data['app3_sig'], 'date' => $data['approved_at_2'], 'role' => 'Mgr'],
+    ['id' => $data['approved_by_3'], 'name' => $data['app4_name'], 'sig' => $data['app4_sig'], 'date' => $data['approved_at_3'], 'role' => 'Mgr2']
 ];
 
 
@@ -232,6 +244,33 @@ function ReadNumber($number) {
                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ความคาดหวัง:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expectation'] ?? '-') ?></span></div>
             </div>
         </div>
+        
+        <!-- Budget Status Box -->
+        <?php if ($budget_info): ?>
+            <?php 
+            $remaining = $budget_info['total_budget'] - $budget_info['spent_before'];
+            $is_over = ($data['grand_total'] > $remaining);
+            ?>
+            <div style="width: 180px; border: 1px solid <?= $is_over ? '#fee2e2' : '#dcfce7' ?>; border-radius: 6px; padding: 8px; background: <?= $is_over ? '#fef2f2' : '#f0fdf4' ?>;">
+                <h4 style="margin: 0 0 5px; font-size: 11px; color: <?= $is_over ? '#991b1b' : '#166534' ?>; border-bottom: 1px solid <?= $is_over ? '#fecaca' : '#bbf7d0' ?>; padding-bottom: 3px;">สถานะงบประมาณ</h4>
+                <div style="font-size: 10px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #64748b;">งบทั้งหมด:</span>
+                        <span style="font-weight: bold;"><?= number_format($budget_info['total_budget'], 2) ?></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 2px;">
+                        <span style="color: #64748b;">คงเหลือ:</span>
+                        <span style="font-weight: bold; color: <?= $is_over ? '#ef4444' : '#10b981' ?>;"><?= number_format($remaining, 2) ?></span>
+                    </div>
+                    <?php if ($is_over): ?>
+                        <div style="margin-top: 5px; color: #ef4444; font-weight: bold; font-size: 9px; text-align: center; background: white; border-radius: 4px; padding: 2px; border: 1px solid #fecaca;">
+                            <i class="fas fa-exclamation-triangle"></i> ยอดเกินงบประมาณ!
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div style="width: 220px; font-size: 11px;">
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;">
                 <span style="color: #64748b;">เลขที่ / No.</span> <span style="font-weight: bold; color: #0f172a;"><?= htmlspecialchars($data['doc_no']) ?></span>

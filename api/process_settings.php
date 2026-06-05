@@ -38,16 +38,17 @@ if (isset($_POST['save_supplier']) || isset($_POST['update_supplier'])) {
     $bank_name    = mysqli_real_escape_string($conn, $_POST['bank_name']);
     $bank_acc_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
     $bank_acc_no   = mysqli_real_escape_string($conn, $_POST['bank_account_number']);
-    
+    $line_token    = mysqli_real_escape_string($conn, $_POST['line_token'] ?? '');
+
     $id = isset($_POST['supplier_id']) ? intval($_POST['supplier_id']) : 0;
 
     // --- ส่วนที่ 1: จัดการไฟล์ Logo ---
-    $logo_sql = ""; 
+    $logo_sql = "";
     $new_logo_name = "";
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] == 0) {
         $ext = pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION);
         $new_logo_name = "logo_" . time() . "_" . rand(100, 999) . "." . $ext;
-        
+
         if (move_uploaded_file($_FILES['logo']['tmp_name'], "../uploads/" . $new_logo_name)) {
             $logo_sql = ", logo_path = '$new_logo_name'";
             if ($id > 0) { // ลบรูปเก่าถ้าเป็นการ Update
@@ -63,7 +64,7 @@ if (isset($_POST['save_supplier']) || isset($_POST['update_supplier'])) {
     if (isset($_FILES['qr_code']) && $_FILES['qr_code']['error'] == 0) {
         $ext = pathinfo($_FILES['qr_code']['name'], PATHINFO_EXTENSION);
         $new_qr_name = "qr_" . time() . "_" . rand(100, 999) . "." . $ext;
-        
+
         if (move_uploaded_file($_FILES['qr_code']['tmp_name'], "../uploads/" . $new_qr_name)) {
             $qr_sql = ", qr_code_path = '$new_qr_name'";
             if ($id > 0) { // ลบ QR เก่าถ้าเป็นการ Update
@@ -75,30 +76,31 @@ if (isset($_POST['save_supplier']) || isset($_POST['update_supplier'])) {
 
     if (isset($_POST['update_supplier'])) {
         // --- Mode: Update ---
-        $sql = "UPDATE suppliers SET 
-                company_name='$company_name', 
-                tax_id='$tax_id', 
-                contact_name='$contact_name', 
-                phone='$phone', 
-                address='$address', 
+        $sql = "UPDATE suppliers SET
+                company_name='$company_name',
+                tax_id='$tax_id',
+                contact_name='$contact_name',
+                phone='$phone',
+                address='$address',
                 email='$email',
                 bank_name='$bank_name',
                 bank_account_name='$bank_acc_name',
-                bank_account_number='$bank_acc_no'
-                $logo_sql 
-                $qr_sql 
+                bank_account_number='$bank_acc_no',
+                line_token='$line_token'
+                $logo_sql
+                $qr_sql
                 WHERE id = $id";
     } else {
         // --- Mode: Insert ---
         $final_logo = !empty($new_logo_name) ? $new_logo_name : "default-logo.png";
         $final_qr   = !empty($new_qr_name) ? $new_qr_name : "";
-        
+
         $sql = "INSERT INTO suppliers (
-                    company_name, tax_id, contact_name, phone, address, 
-                    logo_path, qr_code_path, email, bank_name, bank_account_name, bank_account_number
+                    company_name, tax_id, contact_name, phone, address,
+                    logo_path, qr_code_path, email, bank_name, bank_account_name, bank_account_number, line_token
                 ) VALUES (
-                    '$company_name', '$tax_id', '$contact_name', '$phone', '$address', 
-                    '$final_logo', '$final_qr', '$email', '$bank_name', '$bank_acc_name', '$bank_acc_no'
+                    '$company_name', '$tax_id', '$contact_name', '$phone', '$address',
+                    '$final_logo', '$final_qr', '$email', '$bank_name', '$bank_acc_name', '$bank_acc_no', '$line_token'
                 )";
     }
 

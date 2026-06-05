@@ -5,7 +5,7 @@ include('header.php');
 // กรองตามบริษัท
 $sup_id = isset($_GET['sup_id']) ? intval($_GET['sup_id']) : 0;
 $sup_filter_pr = $sup_id > 0 ? " AND p.supplier_id = $sup_id " : "";
-$sup_filter_base = $sup_id > 0 ? " AND sup_id = $sup_id " : "";
+$sup_filter_base = $sup_id > 0 ? " AND b.sup_id = $sup_id " : "";
 
 // 1. Stats
 $total_po_sql = "SELECT SUM(grand_total) as total FROM po WHERE status = 'approved' AND deleted_at IS NULL " . ($sup_id > 0 ? " AND supplier_id = $sup_id" : "");
@@ -35,7 +35,7 @@ while($r = mysqli_fetch_assoc($expense_res)) { $exp_labels[] = $r['name']; $exp_
 $budget_query = "SELECT b.name, SUM(p.grand_total) as total 
                  FROM budget_types b 
                  LEFT JOIN pr p ON p.budget_type_id = b.id AND p.status = 'approved' AND p.deleted_at IS NULL $sup_filter_pr
-                 WHERE 1 $sup_filter_base
+                 WHERE b.status = 'approved' $sup_filter_base
                  GROUP BY b.id 
                  ORDER BY total DESC";
 $budget_res = mysqli_query($conn, $budget_query);
