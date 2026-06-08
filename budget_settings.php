@@ -8,8 +8,10 @@ if (isset($_GET['action'])) {
     // API: ดึงข้อมูลทั้งหมด
     if ($_GET['action'] == 'fetch') {
         $sql = "SELECT bt.*, s.company_name,
-                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id), 0)) as total_budget,
+                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id AND a.status = 'approved'), 0)) as total_budget,
                 (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent,
+                (SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id AND a.status = 'approved') as total_adjustment,
+                (SELECT COUNT(*) FROM budget_adjustments a WHERE a.budget_type_id = bt.id AND a.status = 'pending') as pending_adjust_count,
                 u_gmacc.name as gmacc_name, u_mgr.name as mgr_name
                 FROM budget_types bt 
                 JOIN suppliers s ON bt.sup_id = s.id 
@@ -112,7 +114,7 @@ if (isset($_GET['action'])) {
     // API: ส่งออก Excel (CSV)
     if ($_GET['action'] == 'export_excel') {
         $sql = "SELECT s.company_name, bt.name, bt.budget_amount as initial_budget,
-                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id), 0)) as total_budget,
+                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id AND a.status = 'approved'), 0)) as total_budget,
                 (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent
                 FROM budget_types bt 
                 JOIN suppliers s ON bt.sup_id = s.id 
@@ -142,10 +144,26 @@ if (isset($_GET['action'])) {
     // API: ดึงประวัติการปรับงบ
     if ($_GET['action'] == 'fetch_history') {
         $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
-        $sql = "SELECT * FROM budget_adjustments WHERE budget_type_id = $budget_type_id ORDER BY created_at DESC";
+        $sql = "SELECT a.*, u.name as requester_name
+                FROM budget_adjustments a
+                LEFT JOIN users u ON a.created_by = u.id
+                WHERE a.budget_type_id = $budget_type_id
+                ORDER BY a.created_at DESC";
         $result = mysqli_query($conn, $sql);
         $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
         echo json_encode($data);
+        exit;
+    }
+
+    // API: ยกเลิก/ลบ pending adjustment
+    if ($_GET['action'] == 'cancel_adjust') {
+        $id = intval($_POST['id'] ?? 0);
+        $sql = "DELETE FROM budget_adjustments WHERE id = $id AND status = 'pending'";
+        if (mysqli_query($conn, $sql) && mysqli_affected_rows($conn) > 0) {
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'msg' => 'ไม่สามารถยกเลิกได้ หรือรายการนี้ไม่อยู่ในสถานะรออนุมัติ']);
+        }
         exit;
     }
 
@@ -155,11 +173,12 @@ if (isset($_GET['action'])) {
         $amount = floatval($_POST['amount'] ?? 0);
         $reason = mysqli_real_escape_string($conn, $_POST['reason'] ?? '');
 
+        $user_id = intval($_SESSION['user_id'] ?? 0);
         if ($budget_type_id > 0 && $amount != 0) {
-            $sql = "INSERT INTO budget_adjustments (budget_type_id, amount, adjustment_type, reason) 
-                    VALUES ($budget_type_id, $amount, '" . ($amount >= 0 ? 'addition' : 'reduction') . "', '$reason')";
+            $sql = "INSERT INTO budget_adjustments (budget_type_id, amount, adjustment_type, reason, status, created_by) 
+                    VALUES ($budget_type_id, $amount, '" . ($amount >= 0 ? 'addition' : 'reduction') . "', '$reason', 'pending', $user_id)";
             if (mysqli_query($conn, $sql)) {
-                echo json_encode(['status' => 'success']);
+                echo json_encode(['status' => 'success', 'msg' => 'บันทึกคำขอปรับงบประมาณเรียบร้อย รอการอนุมัติ']);
             } else {
                 echo json_encode(['status' => 'error', 'msg' => mysqli_error($conn)]);
             }
@@ -344,22 +363,26 @@ function fetchBudget() {
                     
                     // ปุ่มอนุมัติสำหรับ GMACC และ MGR
                     if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
-                        approveBtns += `<button onclick="approveBudget(${item.id}, 'GMACC')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">บัญชีอนุมัติ</button>`;
+                        approveBtns += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'GMACC')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">บัญชีอนุมัติ</button>`;
                     }
                     if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
-                        approveBtns += `<button onclick="approveBudget(${item.id}, 'MGR')" class="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 transition">MGR อนุมัติ</button>`;
+                        approveBtns += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'MGR')" class="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 transition">MGR อนุมัติ</button>`;
                     }
                     if (USER_ROLE === 'admin') {
-                        approveBtns += `<button onclick="approveBudget(${item.id}, 'Admin')" class="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-black transition">Admin อนุมัติ</button>`;
+                        approveBtns += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'Admin')" class="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-black transition">Admin อนุมัติ</button>`;
                     }
                 }
 
+                const pendingCount = parseInt(item.pending_adjust_count || 0);
+                const pendingBadge = pendingCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 ml-1"><i class="fas fa-clock mr-0.5"></i>${pendingCount}</span>` : '';
+
+                const clickableId = `budget-${item.id}`;
                 html += `
-            <tr class="hover:bg-slate-50 transition text-sm">
+            <tr class="hover:bg-slate-50 transition text-sm cursor-pointer" onclick="toggleSubRows(${item.id}, this)">
             <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
             <td class="p-4">
                 <div class="flex flex-col gap-1">
-                    <span class="text-slate-600 font-bold">${item.name}</span>
+                    <span class="text-slate-600 font-bold"><i class="fas fa-chevron-right text-[8px] mr-1.5 text-slate-300 transition-transform" id="icon-${item.id}"></i>${item.name}${pendingBadge}</span>
                     <div class="flex gap-2 items-center">
                         ${statusBadge}
                         <div class="flex gap-1">${approveBtns}</div>
@@ -374,22 +397,86 @@ function fetchBudget() {
             </td>
             <td class="p-4">${rolesDisplay}</td>
             <td class="p-4 text-center space-x-1 flex items-center justify-center">
-                <button onclick='showHistory(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white transition shadow-sm" title="ประวัติ">
+                <button onclick="event.stopPropagation(); showHistory(${item.id}, &quot;${item.name.replace(/"/g, '&quot;')}&quot;)" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white transition shadow-sm" title="ประวัติ">
                     <i class="fas fa-history text-xs"></i>
                 </button>
-                <button onclick='openAdjustModal(${item.id}, "${item.name}")' class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="ปรับปรุงยอด">
+                <button onclick="event.stopPropagation(); openAdjustModal(${item.id}, &quot;${item.name.replace(/"/g, '&quot;')}&quot;)" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-sm" title="ปรับปรุงยอด">
                     <i class="fas fa-plus-circle text-xs"></i>
                 </button>
-                <button onclick='editBudget(${JSON.stringify(item)})' class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition shadow-sm" title="แก้ไข">
+                <button onclick='event.stopPropagation(); editBudget(${JSON.stringify(item)})' class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition shadow-sm" title="แก้ไข">
                     <i class="fas fa-edit text-xs"></i>
                 </button>
-                <button onclick="deleteBudget(${item.id})" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition shadow-sm" title="ลบ">
+                <button onclick="event.stopPropagation(); deleteBudget(${item.id})" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition shadow-sm" title="ลบ">
                     <i class="fas fa-trash-alt text-xs"></i>
                 </button>
             </td>
             </tr>`;
             });        }
         $('#budgetTableBody').html(html);
+    });
+}
+
+let expandedBudgetId = null;
+
+function toggleSubRows(id, row) {
+    const icon = document.getElementById('icon-' + id);
+    const $row = $(row);
+
+    if (expandedBudgetId === id) {
+        // ปิด
+        $row.nextAll('tr.sub-row-' + id).remove();
+        icon.style.transform = 'rotate(0deg)';
+        expandedBudgetId = null;
+        return;
+    }
+
+    // ปิดอันเก่า
+    if (expandedBudgetId) {
+        const oldIcon = document.getElementById('icon-' + expandedBudgetId);
+        if (oldIcon) oldIcon.style.transform = 'rotate(0deg)';
+        $('tr.sub-row-' + expandedBudgetId).remove();
+    }
+
+    icon.style.transform = 'rotate(90deg)';
+    expandedBudgetId = id;
+
+    // โหลด pending adjustments
+    $.get('?action=fetch_history&budget_type_id=' + id, function(data) {
+        const pendingItems = data.filter(item => item.status === 'pending');
+        if (pendingItems.length === 0) {
+            icon.style.transform = 'rotate(0deg)';
+            expandedBudgetId = null;
+            return;
+        }
+
+        let subHtml = '';
+        pendingItems.forEach(item => {
+            const amount = parseFloat(item.amount || 0);
+            const isAddition = amount >= 0;
+
+            let statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
+
+            const cancelBtn = `<button onclick="event.stopPropagation(); cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`;
+
+            subHtml += `
+                <tr class="sub-row-${id} bg-amber-50/40 border-b border-amber-100">
+                    <td colspan="6" class="p-0">
+                        <div class="flex items-center gap-4 px-10 py-2.5 text-xs">
+                            <span class="text-slate-400 font-medium w-[80px] shrink-0">ผู้ขอ:</span>
+                            <span class="text-slate-600 font-bold w-[120px]">${item.requester_name || '-'}</span>
+                            <span class="text-slate-400 font-medium w-[60px] shrink-0">จำนวน:</span>
+                            <span class="font-mono font-bold w-[120px] ${isAddition ? 'text-emerald-600' : 'text-red-600'}">${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <span class="text-slate-400 font-medium w-[50px] shrink-0">เหตุผล:</span>
+                            <span class="text-slate-500 flex-1 truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</span>
+                            <span class="text-slate-400 font-medium w-[50px] shrink-0">สถานะ:</span>
+                            <span class="mr-3">${statusBadge}</span>
+                            ${cancelBtn}
+                        </div>
+                    </td>
+                </tr>`;
+        });
+
+        $row.after(subHtml);
     });
 }
 
@@ -406,19 +493,39 @@ function approveBudget(id, type) {
 }
 
 
+let currentHistoryBudgetId = 0;
+
 function showHistory(id, name) {
+    currentHistoryBudgetId = id;
     $.get('?action=fetch_history&budget_type_id=' + id, function(data) {
         let html = '';
         if(data.length === 0) {
-            html = '<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">ไม่พบประวัติ</td></tr>';
+            html = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">ไม่พบประวัติ</td></tr>';
         } else {
             data.forEach(item => {
-                const color = item.amount >= 0 ? 'text-green-600' : 'text-red-600';
+                const color = item.amount >= 0 ? 'text-emerald-600' : 'text-red-600';
+
+                let statusBadge = '';
+                if (item.status === 'approved') {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>`;
+                } else if (item.status === 'rejected') {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
+                }
+
+                const cancelBtn = item.status === 'pending'
+                    ? `<button onclick="cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`
+                    : '';
+
                 html += `
                     <tr class="text-xs border-b">
-                        <td class="p-2">${item.created_at}</td>
-                        <td class="p-2 ${color} font-bold text-right">${parseFloat(item.amount).toLocaleString()}</td>
-                        <td class="p-2 text-slate-600">${item.reason || '-'}</td>
+                        <td class="p-2 text-slate-500">${item.created_at}</td>
+                        <td class="p-2 font-bold text-slate-600">${item.requester_name || '-'}</td>
+                        <td class="p-2 ${color} font-bold text-right">${parseFloat(item.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="p-2 text-slate-600 max-w-[150px] truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</td>
+                        <td class="p-2 text-center">${statusBadge}</td>
+                        <td class="p-2 text-center">${cancelBtn}</td>
                     </tr>
                 `;
             });
@@ -470,6 +577,31 @@ function deleteBudget(id) {
         });
     }
 }
+
+function cancelAdjust(id) {
+    if(!confirm('ยกเลิกรายการปรับงบประมาณนี้?')) return;
+    $.post('?action=cancel_adjust', { id: id }, function(res) {
+        if(res.status === 'success') {
+            fetchBudget();
+            $('#historyModal').addClass('hidden');
+            if (currentHistoryBudgetId > 0) {
+                showHistory(currentHistoryBudgetId, $('#history-budget-name').text());
+            }
+            // รีเฟรช sub-row ถ้ากำลังเปิดอยู่
+            if (expandedBudgetId) {
+                $('tr.sub-row-' + expandedBudgetId).remove();
+                const oldIcon = document.getElementById('icon-' + expandedBudgetId);
+                if (oldIcon) oldIcon.style.transform = 'rotate(0deg)';
+                const bid = expandedBudgetId;
+                const oldRow = document.querySelector(`tr[onclick*="toggleSubRows(${bid}"]`);
+                expandedBudgetId = null;
+                if (oldRow) toggleSubRows(bid, oldRow);
+            }
+        } else {
+            alert(res.msg);
+        }
+    });
+}
 </script>
 
 <div id="historyModal" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -483,7 +615,7 @@ function deleteBudget(id) {
             <div class="max-h-64 overflow-y-auto">
                 <table class="w-full text-left">
                     <thead class="text-[10px] uppercase text-slate-400 sticky top-0 bg-white">
-                        <tr><th class="p-2">วันที่</th><th class="p-2 text-right">จำนวน</th><th class="p-2">เหตุผล</th></tr>
+                        <tr><th class="p-2">วันที่</th><th class="p-2">ผู้ขอ</th><th class="p-2 text-right">จำนวน</th><th class="p-2">เหตุผล</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-center">จัดการ</th></tr>
                     </thead>
                     <tbody id="history-table-body"></tbody>
                 </table>

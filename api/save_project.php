@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $wht_percent = floatval($_POST['wht_percent'] ?? 3);
 
     $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
+    $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
     $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : "NULL";
 
     // --- 2. ส่วนที่คำนวณ VAT (0=ใน, 1=นอก) และ WHT ---
@@ -106,14 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 net_contract_value, has_vat, start_date, end_date, attachment_path, 
                 attachment_contract, attachment_boq,
                 retention_percent, supplier_id, 
-                wht_percent, project_remarks, created_by, created_at, project_status
+                wht_percent, check_work_url, project_remarks, created_by, created_at, project_status
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
                 '$net_contract_value', $has_vat, '$start_date', '$end_date', '$attachment_name', 
                 '$attachment_contract', '$attachment_boq',
                 '$retention_percent', $supplier_id,
-                '$wht_percent', '$project_remarks', $created_by, NOW(), 'on_hold'
+                '$wht_percent', '$check_work_url', '$project_remarks', $created_by, NOW(), 'on_hold'
             )";
 
     if (mysqli_query($conn, $sql)) {

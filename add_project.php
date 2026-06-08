@@ -120,6 +120,12 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
                             </div>
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">ลิงก์ตรวจงาน</label>
+                            <input type="url" name="check_work_url"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"
+                                placeholder="https://example.com/check-work">
+                        </div>
                     </div>
                 </div>
 

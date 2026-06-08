@@ -130,7 +130,7 @@ if ($current_page == 'pending_approval.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
 $cat_settings = ['settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php'];
 // อื่นๆ คือ cat_system
@@ -182,6 +182,24 @@ $pending_res = mysqli_query($conn, $pending_sql);
 if ($pending_res) {
     $pending_row = mysqli_fetch_assoc($pending_res);
     $pending_count = $pending_row['total'] ?? 0;
+}
+
+// --- ดึงจำนวนรายการรออนุมัติงบประมาณ ---
+$pending_budget_count = 0;
+$budget_approval_roles = ['gmacc', 'mgr', 'admin'];
+if (in_array($user_role_for_count, $budget_approval_roles)) {
+    $budget_count_sql = "SELECT COUNT(*) as total FROM budget_types WHERE status = 'pending'";
+    $budget_res = mysqli_query($conn, $budget_count_sql);
+    if ($budget_res) {
+        $budget_row = mysqli_fetch_assoc($budget_res);
+        $pending_budget_count += $budget_row['total'] ?? 0;
+    }
+    $adjust_count_sql = "SELECT COUNT(*) as total FROM budget_adjustments WHERE status = 'pending'";
+    $adjust_res = mysqli_query($conn, $adjust_count_sql);
+    if ($adjust_res) {
+        $adjust_row = mysqli_fetch_assoc($adjust_res);
+        $pending_budget_count += $adjust_row['total'] ?? 0;
+    }
 }
 
 // --- ดึงชื่อบริษัท (Supplier Name) ถ้ามี sup_id ---
@@ -319,6 +337,11 @@ if (!empty($_SESSION['sup_id'])) {
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>
                     <span class="font-medium">รายการรออนุมัติ <?php echo ($pending_count > 0) ? "($pending_count)" : ""; ?></span>
+                </a>
+                <a href="pending_budget.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_budget.php') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-coins w-5 <?php echo ($current_page == 'pending_budget.php') ? 'text-white' : 'text-amber-400'; ?>"></i>
+                    <span class="font-medium">รายการรออนุมัติงบประมาณ <?php echo ($pending_budget_count > 0) ? "($pending_budget_count)" : ""; ?></span>
                 </a>
                 <?php endif; ?>
 

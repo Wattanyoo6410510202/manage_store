@@ -168,6 +168,11 @@ $result = mysqli_query($conn, $sql);
                                     </a>
                                     <?php endif; ?>
 
+                                    <a href="<?= !empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id ?>"
+                                        class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                        <i class="fas fa-clipboard-check text-xs"></i> ตรวจงาน
+                                    </a>
+
                                     <?php if (!is_viewer()): ?>
                                         <a href="edit_project.php?id=<?= $pj_id ?>"
                                             class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
@@ -349,6 +354,11 @@ $result = mysqli_query($conn, $sql);
                                 <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="ดูงวด">
                                     <i class="fas fa-eye text-xs"></i>
+                                </a>
+
+                                <a href="<?= !empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id ?>"
+                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="ตรวจงาน">
+                                    <i class="fas fa-clipboard-check text-xs"></i>
                                 </a>
 
                                 <?php if (!is_viewer()): ?>

@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $bank_account_no = mysqli_real_escape_string($conn, $_POST['bank_account_no']);
     $bank_account_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
+    $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
     $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
 
     // 1. รับค่าพื้นฐาน
@@ -91,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     bank_account_name = '$bank_account_name',
                     project_remarks = '$project_remarks',
                     supplier_id = '$supplier_id',
+                    check_work_url = '$check_work_url',
                     updated_at = NOW()
                     $file_sql
                     $created_by_sql
