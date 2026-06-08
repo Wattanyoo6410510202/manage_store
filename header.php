@@ -93,7 +93,7 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
 // 4. กลุ่ม "ก่อสร้าง"
-$is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php']);
+$is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php']);
 
 // 5. กลุ่ม "ตั้งค่า"
 $is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
@@ -132,7 +132,7 @@ if ($current_page == 'pending_approval.php') {
 // ==========================================
 $cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
 $cat_settings = ['settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
-$cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php'];
+$cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php'];
 // อื่นๆ คือ cat_system
 
 $active_cat = 'system'; 
@@ -419,9 +419,19 @@ if (!empty($_SESSION['sup_id'])) {
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Construction</p>
                 <?php if (can('projects')): ?>
                     <a href="projects.php"
-                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $is_construction_group ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
-                        <i class="fas fa-tasks w-5 <?php echo $is_construction_group ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php') ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-tasks w-5 text-indigo-400"></i>
                         <span class="font-medium">จัดการงวดงาน</span>
+                    </a>
+                    <a href="upcoming_payments.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'upcoming_payments.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-credit-card w-5 <?php echo $current_page == 'upcoming_payments.php' ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                        <span class="font-medium">ยอดค้างชำระ</span>
+                    </a>
+                    <a href="project_timeline.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'project_timeline.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-clock-rotate-left w-5 <?php echo $current_page == 'project_timeline.php' ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                        <span class="font-medium">Timeline โครงการ</span>
                     </a>
                 <?php endif; ?>
             <?php endif; ?>

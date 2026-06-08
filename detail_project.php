@@ -222,9 +222,6 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                     <button onclick="switchTab('milestones')" id="tab-milestones" class="tab-btn active px-4 py-2 font-bold text-sm text-indigo-600 border-b-2 border-indigo-600 transition-all">
                         <i class="fas fa-list-ul mr-2"></i> งวดงาน (Milestones)
                     </button>
-                    <button onclick="switchTab('timeline')" id="tab-timeline" class="tab-btn px-4 py-2 font-bold text-sm text-slate-400 border-b-2 border-transparent hover:text-indigo-50 transition-all">
-                        <i class="fas fa-history mr-2"></i> ไทม์ไลน์ (Timeline)
-                    </button>
                 </div>
 
                 <!-- Tab: Milestones -->
@@ -388,57 +385,6 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-
-                <!-- Tab: Timeline -->
-                <div id="content-timeline" class="tab-content hidden">
-                    <h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        Project Timeline
-                    </h4>
-                    <div class="relative pl-8 border-l-2 border-slate-100 space-y-8 ml-4">
-                        <?php
-                        // Fetch events for timeline
-                        $timeline_sql = "
-                            (SELECT 'project_created' as event_type, created_at as event_date, project_name as title, 'เริ่มสร้างโครงการ' as detail, '' as extra FROM projects WHERE id = $id)
-                            UNION ALL
-                            (SELECT 'milestone_requested' as event_type, created_at as event_date, milestone_name as title, CONCAT('เรียกเก็บงวดงาน: ', FORMAT(total_request_amount, 2), ' ฿') as detail, status as extra FROM project_milestones WHERE project_id = $id)
-                            UNION ALL
-                            (SELECT 'milestone_inspected' as event_type, inspection_date as event_date, 'ตรวจรับงวดงาน' as title, CONCAT('ผลการตรวจ: ', result_status) as detail, punch_list as extra FROM milestone_inspections i JOIN project_milestones m ON i.milestone_id = m.id WHERE m.project_id = $id)
-                            UNION ALL
-                            (SELECT 'doc_linked' as event_type, created_at as event_date, doc_no as title, CONCAT('เชื่อมโยงเอกสาร: ', UPPER(doc_type)) as detail, '' as extra FROM project_documents WHERE project_id = $id)
-                            ORDER BY event_date DESC";
-                        $timeline_res = mysqli_query($conn, $timeline_sql);
-                        
-                        if (mysqli_num_rows($timeline_res) > 0):
-                            while ($ev = mysqli_fetch_assoc($timeline_res)):
-                                $icon = 'fa-circle';
-                                $color = 'bg-slate-300';
-                                switch($ev['event_type']) {
-                                    case 'project_created': $icon = 'fa-flag-checkered'; $color = 'bg-indigo-500'; break;
-                                    case 'milestone_requested': $icon = 'fa-file-invoice-dollar'; $color = 'bg-amber-500'; break;
-                                    case 'milestone_inspected': $icon = 'fa-clipboard-check'; $color = ($ev['detail'] == 'ผลการตรวจ: pass' ? 'bg-emerald-500' : 'bg-rose-500'); break;
-                                    case 'doc_linked': $icon = 'fa-link'; $color = 'bg-blue-500'; break;
-                                }
-                        ?>
-                            <div class="relative">
-                                <div class="absolute -left-[45px] top-0 w-8 h-8 rounded-full <?= $color ?> text-white flex items-center justify-center border-4 border-white shadow-sm">
-                                    <i class="fas <?= $icon ?> text-[10px]"></i>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><?= date('d M Y | H:i', strtotime($ev['event_date'])) ?></span>
-                                    <h5 class="text-sm font-black text-slate-800 mt-1"><?= htmlspecialchars($ev['title']) ?></h5>
-                                    <p class="text-xs text-slate-500 mt-1"><?= htmlspecialchars($ev['detail']) ?></p>
-                                    <?php if ($ev['extra']): ?>
-                                        <div class="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-100 text-[10px] text-slate-500 italic">
-                                            <?= htmlspecialchars($ev['extra']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endwhile; else: ?>
-                            <p class="text-slate-400 text-sm italic">ไม่มีข้อมูลไทม์ไลน์</p>
-                        <?php endif; ?>
-                    </div>
                 </div>
 
             </div>
