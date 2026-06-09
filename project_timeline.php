@@ -92,7 +92,7 @@ let chartInstance = null;
 function loadProject(id) {
     if (!id) return;
     document.getElementById('chartContainer').innerHTML = '<div class="text-center text-indigo-400"><i class="fas fa-spinner fa-spin text-3xl mb-2"></i><p class="text-sm font-bold">กำลังโหลด...</p></div>';
-    document.getElementById('timelineEvents').innerHTML = '<div class="text-center text-indigo-400"><i class="fas fa-spinner fa-spin text-2xl mr-2"></i> กำลังโหลด...</div>';
+    document.getElementById('calendarGrid').innerHTML = '<div class="text-center text-indigo-400"><i class="fas fa-spinner fa-spin text-2xl mr-2"></i> กำลังโหลด...</div>';
 
     fetch('api/project_timeline_data.php?project_id=' + id)
         .then(r => r.json())
