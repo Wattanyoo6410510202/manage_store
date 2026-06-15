@@ -94,13 +94,26 @@ if (isset($_GET['action'])) {
             exit;
         }
 
+        $file_path = null;
+        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
+            $upload_dir = 'uploads/budgets/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $filename = 'budget_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+            $target = $upload_dir . $filename;
+            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $target)) {
+                $file_path = $target;
+            }
+        }
+
         if (empty($id)) {
             // โหมดเพิ่มใหม่ - บังคับสถานะเป็น pending
-            $sql = "INSERT INTO budget_types (sup_id, name, budget_amount, status, roles, is_active) 
-                    VALUES ($sup_id, '$name', $budget_amount, 'pending', '$roles', 1)";
+            $sql = "INSERT INTO budget_types (sup_id, name, budget_amount, status, roles, is_active, file_path) 
+                    VALUES ($sup_id, '$name', $budget_amount, 'pending', '$roles', 1, " . ($file_path ? "'$file_path'" : "NULL") . ")";
         } else {
             // โหมดแก้ไข
-            $sql = "UPDATE budget_types SET sup_id = $sup_id, name = '$name', budget_amount = $budget_amount, roles = '$roles' WHERE id = " . intval($id);
+            $update_file = $file_path ? ", file_path = '$file_path'" : "";
+            $sql = "UPDATE budget_types SET sup_id = $sup_id, name = '$name', budget_amount = $budget_amount, roles = '$roles' $update_file WHERE id = " . intval($id);
         }
         
         if (mysqli_query($conn, $sql)) {
@@ -173,10 +186,22 @@ if (isset($_GET['action'])) {
         $amount = floatval($_POST['amount'] ?? 0);
         $reason = mysqli_real_escape_string($conn, $_POST['reason'] ?? '');
 
+        $file_path = null;
+        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == 0) {
+            $upload_dir = 'uploads/budgets/adjustments/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $filename = 'adj_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+            $target = $upload_dir . $filename;
+            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $target)) {
+                $file_path = $target;
+            }
+        }
+
         $user_id = intval($_SESSION['user_id'] ?? 0);
         if ($budget_type_id > 0 && $amount != 0) {
-            $sql = "INSERT INTO budget_adjustments (budget_type_id, amount, adjustment_type, reason, status, created_by) 
-                    VALUES ($budget_type_id, $amount, '" . ($amount >= 0 ? 'addition' : 'reduction') . "', '$reason', 'pending', $user_id)";
+            $sql = "INSERT INTO budget_adjustments (budget_type_id, amount, adjustment_type, reason, status, created_by, file_path) 
+                    VALUES ($budget_type_id, $amount, '" . ($amount >= 0 ? 'addition' : 'reduction') . "', '$reason', 'pending', $user_id, " . ($file_path ? "'$file_path'" : "NULL") . ")";
             if (mysqli_query($conn, $sql)) {
                 echo json_encode(['status' => 'success', 'msg' => 'บันทึกคำขอปรับงบประมาณเรียบร้อย รอการอนุมัติ']);
             } else {
@@ -293,6 +318,13 @@ include('header.php');
                 <p class="text-[10px] text-slate-400 mt-1 italic">* หากไม่เลือกเลย จะถือว่าเห็นได้ทุกคน</p>
             </div>
 
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">ไฟล์แนบเอกสาร</label>
+                <input type="file" name="attachment" id="budget-attachment"
+                       class="w-full border-slate-200 rounded-xl p-2.5 text-xs border focus:ring-2 focus:ring-indigo-500 outline-none transition bg-slate-50">
+                <p class="text-[10px] text-slate-400 mt-1 italic">* ถ้าแก้ไขและไม่เลือกไฟล์ใหม่ จะใช้ไฟล์เดิม</p>
+            </div>
+
             <div class="pt-4 flex gap-3">
                 <button type="button" onclick="closeModal()" class="flex-1 px-4 py-3 border border-slate-200 text-slate-600 rounded-2xl hover:bg-slate-50 font-medium transition">ยกเลิก</button>
                 <button type="submit" class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-100 transition">บันทึกข้อมูล</button>
@@ -308,10 +340,13 @@ $(document).ready(function() {
 
     $('#budgetForm').on('submit', function(e) {
         e.preventDefault();
+        let formData = new FormData(this);
         $.ajax({
             url: '?action=save',
             type: 'POST',
-            data: $(this).serialize(),
+            data: formData,
+            processData: false,
+            contentType: false,
             dataType: 'json',
             success: function(res) {
                 if(res.status === 'success') {
@@ -377,6 +412,8 @@ function fetchBudget() {
                 const pendingBadge = pendingCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 ml-1"><i class="fas fa-clock mr-0.5"></i>${pendingCount}</span>` : '';
 
                 const clickableId = `budget-${item.id}`;
+                const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-[9px] text-indigo-500 hover:underline"><i class="fas fa-paperclip mr-0.5"></i>ดูไฟล์แนบ</a>` : '';
+                
                 html += `
             <tr class="hover:bg-slate-50 transition text-sm cursor-pointer" onclick="toggleSubRows(${item.id}, this)">
             <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
@@ -386,6 +423,7 @@ function fetchBudget() {
                     <div class="flex gap-2 items-center">
                         ${statusBadge}
                         <div class="flex gap-1">${approveBtns}</div>
+                        ${fileHtml}
                     </div>
                     ${item.gmacc_name ? `<span class="text-[9px] text-slate-400">บัญชี: ${item.gmacc_name}</span>` : ''}
                     ${item.mgr_name ? `<span class="text-[9px] text-slate-400">ผู้จัดการ: ${item.mgr_name}</span>` : ''}
@@ -440,37 +478,56 @@ function toggleSubRows(id, row) {
     icon.style.transform = 'rotate(90deg)';
     expandedBudgetId = id;
 
-    // โหลด pending adjustments
+    // โหลดประวัติการปรับงบทั้งหมด
     $.get('?action=fetch_history&budget_type_id=' + id, function(data) {
-        const pendingItems = data.filter(item => item.status === 'pending');
-        if (pendingItems.length === 0) {
-            icon.style.transform = 'rotate(0deg)';
-            expandedBudgetId = null;
+        if (data.length === 0) {
+            // ถ้าไม่มีประวัติเลย ให้แสดงว่าไม่มี
+            let subHtml = `
+                <tr class="sub-row-${id} bg-slate-50 border-b border-slate-100">
+                    <td colspan="6" class="p-4 text-center text-slate-400 text-xs italic">
+                        ไม่มีประวัติการปรับปรุงยอดงบประมาณ
+                    </td>
+                </tr>`;
+            $row.after(subHtml);
             return;
         }
 
         let subHtml = '';
-        pendingItems.forEach(item => {
+        data.forEach(item => {
             const amount = parseFloat(item.amount || 0);
             const isAddition = amount >= 0;
 
-            let statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
+            let statusBadge = '';
+            if (item.status === 'approved') {
+                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>`;
+            } else if (item.status === 'rejected') {
+                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>`;
+            } else {
+                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
+            }
 
-            const cancelBtn = `<button onclick="event.stopPropagation(); cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`;
+            const cancelBtn = item.status === 'pending' 
+                ? `<button onclick="event.stopPropagation(); cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`
+                : '';
+            
+            const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-[9px] text-indigo-500 hover:underline"><i class="fas fa-paperclip mr-0.5"></i>ดูไฟล์แนบ</a>` : '';
 
             subHtml += `
-                <tr class="sub-row-${id} bg-amber-50/40 border-b border-amber-100">
+                <tr class="sub-row-${id} ${item.status === 'pending' ? 'bg-amber-50/40' : 'bg-slate-50/50'} border-b border-slate-100">
                     <td colspan="6" class="p-0">
                         <div class="flex items-center gap-4 px-10 py-2.5 text-xs">
-                            <span class="text-slate-400 font-medium w-[80px] shrink-0">ผู้ขอ:</span>
+                            <span class="text-slate-400 font-medium w-[80px] shrink-0">วันที่:</span>
+                            <span class="text-slate-500 w-[120px] shrink-0">${item.created_at}</span>
+                            <span class="text-slate-400 font-medium w-[60px] shrink-0">ผู้ขอ:</span>
                             <span class="text-slate-600 font-bold w-[120px]">${item.requester_name || '-'}</span>
                             <span class="text-slate-400 font-medium w-[60px] shrink-0">จำนวน:</span>
                             <span class="font-mono font-bold w-[120px] ${isAddition ? 'text-emerald-600' : 'text-red-600'}">${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                             <span class="text-slate-400 font-medium w-[50px] shrink-0">เหตุผล:</span>
                             <span class="text-slate-500 flex-1 truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</span>
                             <span class="text-slate-400 font-medium w-[50px] shrink-0">สถานะ:</span>
-                            <span class="mr-3">${statusBadge}</span>
-                            ${cancelBtn}
+                            <span class="w-[80px]">${statusBadge}</span>
+                            <span class="w-[80px]">${fileHtml}</span>
+                            <div class="w-[60px] flex justify-end">${cancelBtn}</div>
                         </div>
                     </td>
                 </tr>`;
@@ -517,6 +574,7 @@ function showHistory(id, name) {
                 const cancelBtn = item.status === 'pending'
                     ? `<button onclick="cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`
                     : '';
+                const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-indigo-500 hover:text-indigo-700"><i class="fas fa-paperclip"></i></a>` : '';
 
                 html += `
                     <tr class="text-xs border-b">
@@ -525,7 +583,10 @@ function showHistory(id, name) {
                         <td class="p-2 ${color} font-bold text-right">${parseFloat(item.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                         <td class="p-2 text-slate-600 max-w-[150px] truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</td>
                         <td class="p-2 text-center">${statusBadge}</td>
-                        <td class="p-2 text-center">${cancelBtn}</td>
+                        <td class="p-2 text-center flex items-center justify-center gap-2">
+                            ${fileHtml}
+                            ${cancelBtn}
+                        </td>
                     </tr>
                 `;
             });
@@ -641,6 +702,10 @@ function cancelAdjust(id) {
                 <label class="block text-sm font-semibold text-slate-700 mb-1">เหตุผล</label>
                 <input type="text" name="reason" class="w-full border-slate-200 rounded-xl p-3 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">ไฟล์แนบ</label>
+                <input type="file" name="attachment" class="w-full border-slate-200 rounded-xl p-2.5 text-xs border focus:ring-2 focus:ring-indigo-500 outline-none transition bg-slate-50">
+            </div>
             <button type="submit" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">บันทึกยอดปรับปรุง</button>
         </form>
     </div>
@@ -648,6 +713,7 @@ function cancelAdjust(id) {
 
 <script>
 function openAdjustModal(id, name) {
+    $('#adjustForm')[0].reset();
     $('#adjust-budget-id').val(id);
     $('#adjust-budget-name').text(name);
     $('#adjustModal').removeClass('hidden');
@@ -655,12 +721,25 @@ function openAdjustModal(id, name) {
 
 $('#adjustForm').on('submit', function(e) {
     e.preventDefault();
-    $.post('?action=adjust', $(this).serialize(), function(res) {
-        if(res.status === 'success') {
-            $('#adjustModal').addClass('hidden');
-            fetchBudget();
-        } else {
-            alert(res.msg);
+    let formData = new FormData(this);
+    $.ajax({
+        url: '?action=adjust',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(res) {
+            if(res.status === 'success') {
+                $('#adjustModal').addClass('hidden');
+                fetchBudget();
+            } else {
+                alert(res.msg);
+            }
+        },
+        error: function(xhr) {
+            console.error(xhr.responseText);
+            alert('Server Error: ไม่สามารถบันทึกได้');
         }
     });
 });

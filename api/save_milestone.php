@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $project_id = intval($_POST['project_id']);
     $milestone_name = mysqli_real_escape_string($conn, $_POST['milestone_name']);
     $claim_date = !empty($_POST['claim_date']) ? mysqli_real_escape_string($conn, $_POST['claim_date']) : date('Y-m-d');
+    $work_start_date = !empty($_POST['work_start_date']) ? mysqli_real_escape_string($conn, $_POST['work_start_date']) : NULL;
     $status = isset($_POST['status']) ? mysqli_real_escape_string($conn, $_POST['status']) : 'pending';
     $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
     
@@ -45,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         move_uploaded_file($_FILES["claim_attachment"]["tmp_name"], $target_dir . $attachment_name);
     }
 
-    // 3. SQL INSERT (เพิ่มคอลัมน์ has_vat)
+    // 3. SQL INSERT (เพิ่มคอลัมน์ has_vat, work_start_date)
     $sql = "INSERT INTO project_milestones (
             project_id, 
             milestone_name, 
@@ -54,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             retention_amount, 
             net_amount, 
             claim_date, 
+            work_start_date, -- เพิ่ม field นี้
             status, 
             claim_attachment, 
             remarks, 
@@ -63,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             vat_amount, 
             wht_percent, 
             wht_amount, 
-            has_vat, -- เพิ่ม field นี้
+            has_vat,
             total_request_amount, 
             remaining_balance, 
             created_at
@@ -75,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             '$retention_amount', 
             '$total_request_amount', 
             '$claim_date', 
+            " . ($work_start_date ? "'$work_start_date'" : "NULL") . ", -- บันทึกวันที่เริ่มงาน
             '$status', 
             '$attachment_name', 
             '$remarks', 
@@ -84,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             '$vat_amount', 
             '$wht_percent', 
             '$wht_amount', 
-            '$has_vat', -- บันทึก 0 หรือ 1
+            '$has_vat', 
             '$total_request_amount', 
             '$remaining_balance', 
             NOW()

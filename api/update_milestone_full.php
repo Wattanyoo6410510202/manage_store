@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $remaining_balance = floatval($_POST['remaining_balance']);
 
     $claim_date = mysqli_real_escape_string($conn, $_POST['claim_date']);
+    $work_start_date = !empty($_POST['work_start_date']) ? mysqli_real_escape_string($conn, $_POST['work_start_date']) : NULL;
     $status = mysqli_real_escape_string($conn, $_POST['status']);
     $remarks = mysqli_real_escape_string($conn, $_POST['remarks']);
 
@@ -81,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 total_request_amount = '$total_request_amount',
                 remaining_balance = '$remaining_balance',
                 claim_date = '$claim_date',
+                work_start_date = " . ($work_start_date ? "'$work_start_date'" : "NULL") . ",
                 status = '$status',
                 remarks = '$remarks'
                 $update_file_query

@@ -299,6 +299,11 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                             <p class="font-black text-slate-700 uppercase text-sm truncate max-w-[250px]">
                                                 <?= $m['milestone_name'] ?>
                                             </p>
+                                            <?php if (!empty($m['work_start_date'])): ?>
+                                                <p class="text-[10px] text-indigo-500 font-bold mt-0.5">
+                                                    <i class="fas fa-calendar-alt mr-1"></i> เริ่ม: <?= date('d/m/Y', strtotime($m['work_start_date'])) ?>
+                                                </p>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="px-4 py-4 text-sm text-slate-800 font-bold">
                                             <?= date('d/m/Y', strtotime($m['claim_date'])) ?>

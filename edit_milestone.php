@@ -85,6 +85,12 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                         </div>
 
                         <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1 text-indigo-600">วันที่เริ่มงาน</label>
+                            <input type="date" name="work_start_date" value="<?= $m_data['work_start_date'] ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                        </div>
+
+                        <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เรียกเก็บ</label>
                             <input type="date" name="claim_date" value="<?= $m_data['claim_date'] ?>"
                                 class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">

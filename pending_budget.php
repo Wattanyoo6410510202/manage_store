@@ -7,7 +7,11 @@ if (isset($_GET['action'])) {
 
     // ===== FETCH: ดึงทั้งงบใหม่และปรับเพิ่ม =====
     if ($_GET['action'] == 'fetch') {
-        // 1. งบใหม่ (pending budget_types)
+        $status = $_GET['status'] ?? 'pending';
+        $status_condition = $status === 'history' ? "bt.status IN ('approved', 'rejected')" : "bt.status = 'pending'";
+        $adj_status_condition = $status === 'history' ? "a.status IN ('approved', 'rejected')" : "a.status = 'pending'";
+
+        // 1. งบใหม่ (budget_types)
         $sql_budgets = "SELECT bt.*, s.company_name,
                         (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id AND a.status = 'approved'), 0)) as total_budget,
                         (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL) as total_spent,
@@ -16,19 +20,21 @@ if (isset($_GET['action'])) {
                         JOIN suppliers s ON bt.sup_id = s.id 
                         LEFT JOIN users u_gmacc ON bt.approved_by_gmacc = u_gmacc.id
                         LEFT JOIN users u_mgr ON bt.approved_by_mgr = u_mgr.id
-                        WHERE bt.status = 'pending'
+                        WHERE $status_condition
                         ORDER BY s.company_name ASC, bt.name ASC";
         $result = mysqli_query($conn, $sql_budgets);
         $budgets = mysqli_fetch_all($result, MYSQLI_ASSOC);
 
-        // 2. ปรับเพิ่มงบ (pending adjustments)
+        // 2. ปรับเพิ่มงบ (adjustments)
         $sql_adjusts = "SELECT a.*, bt.name as budget_name, bt.budget_amount, s.company_name,
-                        u.name as requester_name
+                        u.name as requester_name, u_gmacc.name as gmacc_name, u_mgr.name as mgr_name
                         FROM budget_adjustments a
                         JOIN budget_types bt ON a.budget_type_id = bt.id
                         JOIN suppliers s ON bt.sup_id = s.id
                         LEFT JOIN users u ON a.created_by = u.id
-                        WHERE a.status = 'pending'
+                        LEFT JOIN users u_gmacc ON a.approved_by_gmacc = u_gmacc.id
+                        LEFT JOIN users u_mgr ON a.approved_by_mgr = u_mgr.id
+                        WHERE $adj_status_condition
                         ORDER BY a.created_at DESC";
         $result2 = mysqli_query($conn, $sql_adjusts);
         $adjusts = mysqli_fetch_all($result2, MYSQLI_ASSOC);
@@ -37,6 +43,22 @@ if (isset($_GET['action'])) {
             'budgets' => $budgets,
             'adjusts' => $adjusts
         ]);
+        exit;
+    }
+
+    // API: ดึงประวัติการปรับงบเฉพาะประเภท
+    if ($_GET['action'] == 'fetch_history') {
+        $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
+        $sql = "SELECT a.*, u.name as requester_name, u_gmacc.name as gmacc_name, u_mgr.name as mgr_name
+                FROM budget_adjustments a
+                LEFT JOIN users u ON a.created_by = u.id
+                LEFT JOIN users u_gmacc ON a.approved_by_gmacc = u_gmacc.id
+                LEFT JOIN users u_mgr ON a.approved_by_mgr = u_mgr.id
+                WHERE a.budget_type_id = $budget_type_id
+                ORDER BY a.created_at DESC";
+        $result = mysqli_query($conn, $sql);
+        $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        echo json_encode($data);
         exit;
     }
 
@@ -136,10 +158,11 @@ include('header.php');
         <h2 class="text-xl font-bold text-slate-800">รายการรออนุมัติงบประมาณ</h2>
     </div>
 
-    <!-- Tab: งบใหม่ / ปรับเพิ่ม -->
+    <!-- Tab: งบใหม่ / ปรับเพิ่ม / ประวัติ -->
     <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4 w-fit">
         <button onclick="switchTab('new')" id="tab-new" class="px-4 py-2 text-sm font-bold rounded-lg bg-white text-indigo-600 shadow-sm transition-all">งบประมาณใหม่</button>
-        <button onclick="switchTab('adjust')" id="tab-adjust" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">เพิ่มงบเดิม</button>
+        <button onclick="switchTab('adjust')" id="tab-adjust" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">ปรับเพิ่มงบเดิม</button>
+        <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">รายการย้อนหลัง</button>
     </div>
 
     <!-- ===== ตารางงบประมาณใหม่ ===== -->
@@ -151,7 +174,7 @@ include('header.php');
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ชื่อประเภทงบประมาณ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">งบตั้งต้น</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">คงเหลือปัจจุบัน</th>
-                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">เหตุผล</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">ไฟล์แนบ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">จัดการ</th>
                 </tr>
@@ -169,7 +192,7 @@ include('header.php');
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ชื่องบประมาณ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">จำนวนเงิน</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ผู้ขอ</th>
-                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">เหตุผล</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">ไฟล์แนบ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">จัดการ</th>
                 </tr>
@@ -182,30 +205,41 @@ include('header.php');
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script>
 const USER_ROLE = '<?= $_SESSION['role'] ?? '' ?>';
+let currentTab = 'new';
+let currentStatus = 'pending';
+let expandedAdjId = null;
 
 $(document).ready(function() {
     fetchPending();
 });
 
 function switchTab(tab) {
-    $('#tab-new, #tab-adjust').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
-    $('#table-new, #table-adjust').addClass('hidden');
-    if (tab === 'new') {
-        $('#tab-new').addClass('bg-white text-indigo-600 shadow-sm').removeClass('text-slate-500');
-        $('#table-new').removeClass('hidden');
+    if (tab === 'history') {
+        currentStatus = 'history';
+        $('#tab-history').addClass('bg-white text-indigo-600 shadow-sm').removeClass('text-slate-500');
+        // Keep current content tab (new or adjust)
     } else {
-        $('#tab-adjust').addClass('bg-white text-indigo-600 shadow-sm').removeClass('text-slate-500');
-        $('#table-adjust').removeClass('hidden');
+        currentStatus = 'pending';
+        currentTab = tab;
+        $('#tab-history').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
     }
+
+    $('#tab-new, #tab-adjust').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
+    $(`#tab-${currentTab}`).addClass('bg-white text-indigo-600 shadow-sm').removeClass('text-slate-500');
+
+    $('#table-new, #table-adjust').addClass('hidden');
+    $(`#table-${currentTab}`).removeClass('hidden');
+    
+    fetchPending();
 }
 
 function fetchPending() {
-    $.get('?action=fetch', function(data) {
-        // --- งบใหม่ ---
+    $.get('?action=fetch&status=' + currentStatus, function(data) {
+        // --- งบประมาณใหม่ ---
         let bHtml = '';
         const budgets = data.budgets || [];
         if (budgets.length === 0) {
-            bHtml = '<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่มีรายการงบประมาณใหม่ที่รออนุมัติ</td></tr>';
+            bHtml = `<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่มีรายการ${currentStatus === 'history' ? 'ในประวัติ' : 'งบประมาณใหม่ที่รออนุมัติ'}</td></tr>`;
         } else {
             budgets.forEach(item => {
                 const initial = parseFloat(item.budget_amount || 0);
@@ -214,30 +248,22 @@ function fetchPending() {
                 const balance = total - spent;
 
                 let approveBtn = '';
-                if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>บัญชีอนุมัติ</button>`;
-                }
-                if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>MGR อนุมัติ</button>`;
-                }
-                if (USER_ROLE === 'admin') {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>Admin อนุมัติ</button>`;
-                }
-
-                let statusHtml = '';
-                if (item.approved_by_gmacc && item.approved_by_mgr) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-1"></i> อนุมัติแล้ว</span>`;
-                } else if (item.approved_by_gmacc) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> บัญชีอนุมัติแล้ว</span>`;
-                } else if (item.approved_by_mgr) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> MGR อนุมัติแล้ว</span>`;
+                if (currentStatus === 'pending') {
+                    if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
+                        approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>บัญชีอนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
+                        approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>MGR อนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'admin') {
+                        approveBtn += `<button onclick="approveBudget(${item.id}, 'budget')" class="text-[10px] bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>Admin อนุมัติ</button>`;
+                    }
                 } else {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-1"></i> รออนุมัติ</span>`;
+                    approveBtn = `<button onclick="viewDetails(${item.id}, 'budget')" class="text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition shadow-sm font-bold"><i class="fas fa-eye mr-1"></i>รายละเอียด</button>`;
                 }
 
-                const approvedInfo = [];
-                if (item.gmacc_name) approvedInfo.push(`<span class="text-[9px] text-slate-400">บัญชี: ${item.gmacc_name}</span>`);
-                if (item.mgr_name) approvedInfo.push(`<span class="text-[9px] text-slate-400">ผู้จัดการ: ${item.mgr_name}</span>`);
+                let statusHtml = getStatusBadge(item);
+                const fileLink = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-file-pdf text-lg"></i></a>` : '<span class="text-slate-300">-</span>';
 
                 bHtml += `
                 <tr class="hover:bg-slate-50 transition text-sm">
@@ -245,14 +271,17 @@ function fetchPending() {
                     <td class="p-4">
                         <div class="flex flex-col gap-1">
                             <span class="text-slate-600 font-bold">${item.name}</span>
-                            <div class="flex gap-1">${approvedInfo.join('')}</div>
+                            <div class="flex gap-1 text-[9px] text-slate-400">
+                                ${item.gmacc_name ? `<span>บัญชี: ${item.gmacc_name}</span>` : ''}
+                                ${item.mgr_name ? `<span>ผู้จัดการ: ${item.mgr_name}</span>` : ''}
+                            </div>
                         </div>
                     </td>
                     <td class="p-4 text-slate-600 text-right font-mono">${initial.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td class="p-4 text-right font-mono font-bold ${balance < 0 ? 'text-red-600' : 'text-indigo-600'}">
                         ${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
-                    <td class="p-4 text-slate-400 text-[10px] max-w-[150px] truncate">-</td>
+                    <td class="p-4 text-center">${fileLink}</td>
                     <td class="p-4 text-center">${statusHtml}</td>
                     <td class="p-4 text-center">${approveBtn || '<span class="text-[10px] text-slate-400 italic">ไม่มีสิทธิ์</span>'}</td>
                 </tr>`;
@@ -260,53 +289,125 @@ function fetchPending() {
         }
         $('#budgetTableBody').html(bHtml);
 
-        // --- ปรับเพิ่มงบ ---
+        // --- ปรับเพิ่มงบเดิม ---
         let aHtml = '';
         const adjusts = data.adjusts || [];
         if (adjusts.length === 0) {
-            aHtml = '<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่มีรายการปรับเพิ่มงบที่รออนุมัติ</td></tr>';
+            aHtml = `<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่มีรายการ${currentStatus === 'history' ? 'ในประวัติ' : 'ปรับเพิ่มงบที่รออนุมัติ'}</td></tr>`;
         } else {
             adjusts.forEach(item => {
                 const amount = parseFloat(item.amount || 0);
                 const isAddition = amount >= 0;
 
                 let approveBtn = '';
-                if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>บัญชีอนุมัติ</button>`;
-                }
-                if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>MGR อนุมัติ</button>`;
-                }
-                if (USER_ROLE === 'admin') {
-                    approveBtn += `<button onclick="approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>Admin อนุมัติ</button>`;
+                if (currentStatus === 'pending') {
+                    if (USER_ROLE === 'gmacc' && !item.approved_by_gmacc) {
+                        approveBtn += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>บัญชีอนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'mgr' && !item.approved_by_mgr) {
+                        approveBtn += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>MGR อนุมัติ</button>`;
+                    }
+                    if (USER_ROLE === 'admin') {
+                        approveBtn += `<button onclick="event.stopPropagation(); approveBudget(${item.id}, 'adjust')" class="text-[10px] bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-black transition shadow-sm font-bold"><i class="fas fa-check-circle mr-1"></i>Admin อนุมัติ</button>`;
+                    }
+                } else {
+                    approveBtn = `<button onclick="event.stopPropagation(); viewDetails(${item.id}, 'adjust')" class="text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition shadow-sm font-bold"><i class="fas fa-eye mr-1"></i>รายละเอียด</button>`;
                 }
 
-                let statusHtml = '';
-                if (item.approved_by_gmacc && item.approved_by_mgr) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-1"></i> อนุมัติแล้ว</span>`;
-                } else if (item.approved_by_gmacc) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> บัญชีอนุมัติแล้ว</span>`;
-                } else if (item.approved_by_mgr) {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> MGR อนุมัติแล้ว</span>`;
-                } else {
-                    statusHtml = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-1"></i> รออนุมัติ</span>`;
-                }
+                let statusHtml = getStatusBadge(item);
+                const fileLink = item.file_path ? `<a href="${item.file_path}" target="_blank" onclick="event.stopPropagation();" class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-file-pdf text-lg"></i></a>` : '<span class="text-slate-300">-</span>';
 
                 aHtml += `
-                <tr class="hover:bg-slate-50 transition text-sm">
+                <tr class="hover:bg-slate-50 transition text-sm cursor-pointer" onclick="toggleAdjHistory(${item.budget_type_id}, this, ${item.id})">
                     <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
-                    <td class="p-4 font-bold text-slate-600">${item.budget_name}</td>
+                    <td class="p-4 font-bold text-slate-600">
+                        <i class="fas fa-chevron-right text-[8px] mr-1.5 text-slate-300 transition-transform" id="adj-icon-${item.id}"></i>
+                        ${item.budget_name}
+                    </td>
                     <td class="p-4 text-right font-mono font-bold ${isAddition ? 'text-emerald-600' : 'text-red-600'}">
                         ${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                     <td class="p-4 text-slate-500">${item.requester_name || '-'}</td>
-                    <td class="p-4 text-slate-500 text-[10px] max-w-[200px] truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</td>
+                    <td class="p-4 text-center">${fileLink}</td>
                     <td class="p-4 text-center">${statusHtml}</td>
                     <td class="p-4 text-center">${approveBtn || '<span class="text-[10px] text-slate-400 italic">ไม่มีสิทธิ์</span>'}</td>
                 </tr>`;
             });
         }
         $('#adjustTableBody').html(aHtml);
+    });
+}
+
+function getStatusBadge(item) {
+    if (item.status === 'rejected') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-1"></i> ปฏิเสธ</span>`;
+    } else if (item.approved_by_gmacc && item.approved_by_mgr) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-1"></i> อนุมัติแล้ว</span>`;
+    } else if (item.approved_by_gmacc) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> บัญชีอนุมัติแล้ว</span>`;
+    } else if (item.approved_by_mgr) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200"><i class="fas fa-user-check mr-1"></i> MGR อนุมัติแล้ว</span>`;
+    } else {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-1"></i> รออนุมัติ</span>`;
+    }
+}
+
+function toggleAdjHistory(budget_type_id, row, adj_id) {
+    const icon = document.getElementById('adj-icon-' + adj_id);
+    const $row = $(row);
+
+    if (expandedAdjId === adj_id) {
+        $row.nextAll('tr.adj-history-' + adj_id).remove();
+        icon.style.transform = 'rotate(0deg)';
+        expandedAdjId = null;
+        return;
+    }
+
+    if (expandedAdjId) {
+        const oldIcon = document.getElementById('adj-icon-' + expandedAdjId);
+        if (oldIcon) oldIcon.style.transform = 'rotate(0deg)';
+        $('tr.adj-history-' + expandedAdjId).remove();
+    }
+
+    icon.style.transform = 'rotate(90deg)';
+    expandedAdjId = adj_id;
+
+    $.get('?action=fetch_history&budget_type_id=' + budget_type_id, function(data) {
+        if (data.length <= 1) {
+            let subHtml = `
+                <tr class="adj-history-${adj_id} bg-slate-50 border-b border-slate-100">
+                    <td colspan="7" class="p-4 text-center text-slate-400 text-xs italic">ไม่มีประวัติรายการอื่น</td>
+                </tr>`;
+            $row.after(subHtml);
+            return;
+        }
+
+        let subHtml = `<tr class="adj-history-${adj_id} bg-slate-100/50"><td colspan="7" class="px-10 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">ประวัติการปรับยอดอื่นของงบประเภทนี้:</td></tr>`;
+        
+        data.forEach(item => {
+            if (item.id == adj_id) return; 
+            
+            const amount = parseFloat(item.amount || 0);
+            const isAddition = amount >= 0;
+            let statusBadge = getStatusBadge(item);
+            const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-[9px] text-indigo-500 hover:underline"><i class="fas fa-paperclip mr-0.5"></i>ดูไฟล์</a>` : '';
+
+            subHtml += `
+                <tr class="adj-history-${adj_id} bg-slate-50/50 border-b border-slate-100">
+                    <td colspan="7" class="p-0">
+                        <div class="flex items-center gap-4 px-10 py-2 text-[11px]">
+                            <span class="text-slate-400 w-[100px] shrink-0">${item.created_at}</span>
+                            <span class="text-slate-600 font-bold w-[120px] truncate">${item.requester_name || '-'}</span>
+                            <span class="font-mono font-bold w-[100px] text-right ${isAddition ? 'text-emerald-600' : 'text-red-600'}">${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <span class="text-slate-500 flex-1 truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</span>
+                            <span class="w-[80px]">${statusBadge}</span>
+                            <span class="w-[60px] text-center">${fileHtml}</span>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+
+        $row.after(subHtml);
     });
 }
 
@@ -320,6 +421,74 @@ function approveBudget(id, type) {
         }
     });
 }
+
+function viewDetails(id, type) {
+    $.get('?action=fetch&status=history', function(data) {
+        let item = null;
+        if (type === 'budget') {
+            item = data.budgets.find(b => b.id == id);
+        } else {
+            item = data.adjusts.find(a => a.id == id);
+        }
+
+        if (item) {
+            let html = `
+                <div class="space-y-4">
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">บริษัท:</span>
+                        <span class="font-bold">${item.company_name}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">ชื่อรายการ:</span>
+                        <span class="font-bold">${type === 'budget' ? item.name : item.budget_name}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">จำนวนเงิน:</span>
+                        <span class="font-bold text-indigo-600">${parseFloat(item.amount || item.budget_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">ผู้ขอ/ผู้สร้าง:</span>
+                        <span>${item.requester_name || 'System'}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">เหตุผล:</span>
+                        <span>${item.reason || '-'}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">สถานะ:</span>
+                        <span class="font-bold">${item.status}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">ผู้อนุมัติ (บัญชี):</span>
+                        <span>${item.gmacc_name || '-'}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">ผู้อนุมัติ (Manager):</span>
+                        <span>${item.mgr_name || '-'}</span>
+                    </div>
+                    ${item.file_path ? `
+                    <div class="pt-2">
+                        <a href="${item.file_path}" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition">
+                            <i class="fas fa-file-pdf"></i> ดูเอกสารแนบ
+                        </a>
+                    </div>` : ''}
+                </div>
+            `;
+            $('#detailContent').html(html);
+            $('#detailModal').removeClass('hidden');
+        }
+    });
+}
 </script>
+
+<div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="font-bold text-slate-700 text-lg">รายละเอียดงบประมาณ</h3>
+            <button onclick="$('#detailModal').addClass('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6" id="detailContent"></div>
+    </div>
+</div>
 
 <?php include 'footer.php'; ?>
