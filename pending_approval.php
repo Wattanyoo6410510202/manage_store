@@ -149,7 +149,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         'น้อย' => ['bg' => 'bg-slate-50', 'text' => 'text-slate-600', 'border' => 'border-slate-100'],
                                         'ปานกลาง' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-600', 'border' => 'border-blue-100'],
                                         'เร่งด่วน' => ['bg' => 'bg-orange-50', 'text' => 'text-orange-600', 'border' => 'border-orange-100'],
-                                        'วิกฤต' => ['bg' => 'bg-red-50', 'text' => 'text-red-600', 'border' => 'border-red-100'],
+                                        'เร่งสุดขีด' => ['bg' => 'bg-red-50', 'text' => 'text-red-600', 'border' => 'border-red-100'],
                                     ];
                                     $p_style = $p_config[$prio] ?? $p_config['ปานกลาง'];
                                     ?>
@@ -389,7 +389,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                 'น้อย': { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100' },
                 'ปานกลาง': { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
                 'เร่งด่วน': { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100' },
-                'วิกฤต': { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-100' },
+                'เร่งสุดขีด': { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-100' },
             };
             const p_style = p_config[prio] || p_config['ปานกลาง'];
 

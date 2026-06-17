@@ -20,6 +20,12 @@ include('assets/alert.php');
                     </div>
 
                     <div>
+                        <input type="text" name="phone" id="form-phone"
+                            class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="เบอร์โทรศัพท์">
+                    </div>
+
+                    <div>
                         <input type="text" name="username" id="form-username" required
                             class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none transition"
                             placeholder="Username *">
@@ -187,6 +193,7 @@ include('assets/alert.php');
         $('#form-title').text('แก้ไขข้อมูล: ' + data.username);
         $('#form-user-id').val(data.id);
         $('#form-name').val(data.name);
+        $('#form-phone').val(data.phone || '');
         $('#form-username').val(data.username);
         $('#form-role').val(data.role);
 

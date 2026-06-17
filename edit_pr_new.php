@@ -40,6 +40,23 @@ $suppliers = [];
 while ($s = mysqli_fetch_assoc($suppliers_query)) {
     $suppliers[] = $s;
 }
+
+// 6. ดึงข้อมูลเพื่อนร่วมงานในแผนก/บริษัทเดียวกัน (sup_id เดียวกัน)
+$my_sup_id = $_SESSION['sup_id'] ?? 0;
+$colleagues = [];
+if ($my_sup_id > 0) {
+    // ดึงทุกคนที่มี sup_id เดียวกัน
+    $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users WHERE sup_id = '$my_sup_id' ORDER BY name ASC");
+    while ($col = mysqli_fetch_assoc($col_query)) {
+        $colleagues[] = $col;
+    }
+} else {
+    // ถ้าไม่มี sup_id ให้ดึงทุกคนมาให้เลือก
+    $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users ORDER BY name ASC");
+    while ($col = mysqli_fetch_assoc($col_query)) {
+        $colleagues[] = $col;
+    }
+}
 ?>
 
 <form action="api/update_pr_new.php" method="POST" enctype="multipart/form-data">
@@ -95,7 +112,7 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                             <option value="น้อย" <?= $pr_data['priority'] == 'น้อย' ? 'selected' : '' ?>>น้อย (Low)</option>
                             <option value="ปานกลาง" <?= $pr_data['priority'] == 'ปานกลาง' ? 'selected' : '' ?>>ปานกลาง (Medium)</option>
                             <option value="เร่งด่วน" <?= $pr_data['priority'] == 'เร่งด่วน' ? 'selected' : '' ?>>เร่งด่วน (Urgent)</option>
-                            <option value="วิกฤต" <?= $pr_data['priority'] == 'วิกฤต' ? 'selected' : '' ?>>วิกฤต (Critical)</option>
+                            <option value="เร่งสุดขีด" <?= $pr_data['priority'] == 'เร่งสุดขีด' ? 'selected' : '' ?>>เร่งสุดขีด (Critical)</option>
                         </select>
                     </div>
                     <div>
@@ -116,7 +133,19 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
                     </div>
                     <div class="col-span-1">
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ผู้ต้องการ / แผนก</label>
-                        <input type="text" name="requested_by" value="<?= htmlspecialchars($pr_data['requested_by']) ?>" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                        <?php if (!empty($colleagues)): ?>
+                            <select name="requested_by" onchange="updateContactTel(this)"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                                <?php foreach ($colleagues as $col): ?>
+                                    <option value="<?= htmlspecialchars($col['name']) ?>" data-phone="<?= htmlspecialchars($col['phone'] ?? '') ?>"
+                                        <?= ($pr_data['requested_by'] == $col['name']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($col['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <input type="text" name="requested_by" value="<?= htmlspecialchars($pr_data['requested_by']) ?>" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                        <?php endif; ?>
                     </div>
                     <div class="col-span-1">
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">เบอร์โทรผู้ติดต่อ</label>
@@ -441,6 +470,49 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         });
     }
 
+    // ฟังก์ชันอัปเดตเบอร์โทรอัตโนมัติเมื่อเลือกผู้ต้องการ
+    function updateContactTel(select) {
+        const selectedOption = select.options[select.selectedIndex];
+        const phone = selectedOption ? selectedOption.getAttribute('data-phone') : '';
+        const contactTel = document.querySelector('input[name="contact_tel"]');
+        if (contactTel) {
+            contactTel.value = phone || '';
+        }
+    }
+
+    // === Unit Auto-Detect Functions ===
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    const detectUnit = debounce(async function(productName, unitInput) {
+        if (!productName || productName.length < 3) return;
+        // เช็คว่าชื่อสินค้าเปลี่ยนจากครั้งที่แล้วหรือยัง
+        const lastProduct = unitInput.getAttribute('data-last-product');
+        if (lastProduct === productName) return;
+        unitInput.classList.add('bg-amber-50');
+        try {
+            const response = await fetch('api/detect_unit.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: productName })
+            });
+            const data = await response.json();
+            if (data && data.unit) {
+                unitInput.value = data.unit;
+                unitInput.setAttribute('data-last-product', productName);
+            }
+        } catch (e) {
+            console.error('Unit detection error:', e);
+        } finally {
+            unitInput.classList.remove('bg-amber-50');
+        }
+    }, 1000);
+
     function autoResize(textarea) {
         if (!textarea) return;
         textarea.style.height = 'auto';
@@ -463,9 +535,31 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
         document.getElementById('delete_file_' + index).value = '1';
     }
 
+    // Event Delegation สำหรับ unit auto-detect
+    document.addEventListener('DOMContentLoaded', () => {
+        const tbody = document.querySelector('#itemsTable tbody');
+        if (tbody) {
+            tbody.addEventListener('input', function(e) {
+                const textarea = e.target;
+                if (textarea.matches('textarea[name="item_desc[]"]')) {
+                    const row = textarea.closest('tr');
+                    const unitInput = row.querySelector('input[name="item_unit[]"]');
+                    if (unitInput) {
+                        detectUnit(textarea.value, unitInput);
+                    }
+                }
+            });
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         const supplierSelect = document.getElementById('supplier_select');
         if (supplierSelect && supplierSelect.value !== "0") { updateSupplierInfo(); }
+        // อัปเดตเบอร์โทรตามผู้ที่เลือกไว้ตอน edit
+        const requestedBy = document.querySelector('select[name="requested_by"]');
+        if (requestedBy) {
+            updateContactTel(requestedBy);
+        }
         calculateTotal();
         document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => { autoResize(el); });
     });

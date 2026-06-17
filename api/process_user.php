@@ -9,6 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // --- 1. เพิ่มผู้ใช้ใหม่ (Save) ---
 if (isset($_POST['save_user'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone'] ?? '');
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $role = $_POST['role'];
@@ -20,7 +21,7 @@ if (isset($_POST['save_user'])) {
         $_SESSION['flash_msg'] = 'duplicate';
     } else {
         // แก้ชื่อคอลัมน์จาก supplier_id เป็น sup_id
-        $sql = "INSERT INTO users (name, username, password, role, sup_id) VALUES ('$name', '$username', '$password', '$role', $sup_id)";
+        $sql = "INSERT INTO users (name, phone, username, password, role, sup_id) VALUES ('$name', '$phone', '$username', '$password', '$role', $sup_id)";
         $_SESSION['flash_msg'] = mysqli_query($conn, $sql) ? 'success' : 'error';
     }
     header("Location: ../user_settings.php");
@@ -31,6 +32,7 @@ if (isset($_POST['save_user'])) {
 if (isset($_POST['update_user'])) {
     $id = intval($_POST['user_id']);
     $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone'] ?? '');
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $role = $_POST['role'];
     $sup_id = intval($_POST['supplier_id'] ?? 0); // รับจากฟอร์ม
@@ -46,7 +48,7 @@ if (isset($_POST['update_user'])) {
         }
 
         // แก้ชื่อคอลัมน์จาก supplier_id เป็น sup_id
-        $sql = "UPDATE users SET name='$name', username='$username', role='$role', sup_id=$sup_id $pw_sql WHERE id = $id";
+        $sql = "UPDATE users SET name='$name', phone='$phone', username='$username', role='$role', sup_id=$sup_id $pw_sql WHERE id = $id";
         $_SESSION['flash_msg'] = mysqli_query($conn, $sql) ? 'updated' : 'error';
     }
     header("Location: ../user_settings.php");
