@@ -154,6 +154,20 @@ if (isset($_GET['action'])) {
         exit;
     }
 
+    // API: ดึงรายการ PR (ค่าใช้จ่าย) ที่ใช้ในงบนี้
+    if ($_GET['action'] == 'fetch_pr_expenses') {
+        $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
+        $sql = "SELECT p.id, p.doc_no, p.grand_total, p.status, p.created_at, p.requested_by, s.company_name as supplier_name
+                FROM pr p
+                LEFT JOIN suppliers s ON p.supplier_id = s.id
+                WHERE p.budget_type_id = $budget_type_id AND p.deleted_at IS NULL
+                ORDER BY p.created_at DESC";
+        $result = mysqli_query($conn, $sql);
+        $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        echo json_encode($data);
+        exit;
+    }
+
     // API: ดึงประวัติการปรับงบ
     if ($_GET['action'] == 'fetch_history') {
         $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
@@ -478,60 +492,104 @@ function toggleSubRows(id, row) {
     icon.style.transform = 'rotate(90deg)';
     expandedBudgetId = id;
 
-    // โหลดประวัติการปรับงบทั้งหมด
-    $.get('?action=fetch_history&budget_type_id=' + id, function(data) {
-        if (data.length === 0) {
-            // ถ้าไม่มีประวัติเลย ให้แสดงว่าไม่มี
-            let subHtml = `
-                <tr class="sub-row-${id} bg-slate-50 border-b border-slate-100">
-                    <td colspan="6" class="p-4 text-center text-slate-400 text-xs italic">
-                        ไม่มีประวัติการปรับปรุงยอดงบประมาณ
-                    </td>
-                </tr>`;
-            $row.after(subHtml);
-            return;
-        }
-
+    // โหลดทั้งประวัติการปรับงบและรายการ PR ที่ใช้ไป
+    $.when(
+        $.get('?action=fetch_history&budget_type_id=' + id),
+        $.get('?action=fetch_pr_expenses&budget_type_id=' + id)
+    ).done(function(historyRes, prRes) {
+        const historyData = historyRes[0];
+        const prData = prRes[0];
         let subHtml = '';
-        data.forEach(item => {
-            const amount = parseFloat(item.amount || 0);
-            const isAddition = amount >= 0;
-
-            let statusBadge = '';
-            if (item.status === 'approved') {
-                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>`;
-            } else if (item.status === 'rejected') {
-                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>`;
-            } else {
-                statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
-            }
-
-            const cancelBtn = item.status === 'pending' 
-                ? `<button onclick="event.stopPropagation(); cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`
-                : '';
+        
+        // === ส่วน PR (ค่าใช้จ่าย) ===
+        if (prData && prData.length > 0) {
+            subHtml += `<tr class="sub-row-${id} bg-slate-100/50"><td colspan="6" class="px-8 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <i class="fas fa-shopping-cart mr-1"></i> รายการค่าใช้จ่ายที่ใช้ในงบนี้:
+            </td></tr>`;
             
-            const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-[9px] text-indigo-500 hover:underline"><i class="fas fa-paperclip mr-0.5"></i>ดูไฟล์แนบ</a>` : '';
-
-            subHtml += `
-                <tr class="sub-row-${id} ${item.status === 'pending' ? 'bg-amber-50/40' : 'bg-slate-50/50'} border-b border-slate-100">
+            prData.forEach(pr => {
+                let prStatusBadge = '';
+                if (pr.status === 'approved') {
+                    prStatusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>`;
+                } else if (pr.status === 'rejected') {
+                    prStatusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>`;
+                } else {
+                    prStatusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> ${pr.status}</span>`;
+                }
+                
+                subHtml += `
+                <tr class="sub-row-${id} bg-sky-50/30 border-b border-slate-100">
                     <td colspan="6" class="p-0">
-                        <div class="flex items-center gap-4 px-10 py-2.5 text-xs">
-                            <span class="text-slate-400 font-medium w-[80px] shrink-0">วันที่:</span>
-                            <span class="text-slate-500 w-[120px] shrink-0">${item.created_at}</span>
-                            <span class="text-slate-400 font-medium w-[60px] shrink-0">ผู้ขอ:</span>
-                            <span class="text-slate-600 font-bold w-[120px]">${item.requester_name || '-'}</span>
-                            <span class="text-slate-400 font-medium w-[60px] shrink-0">จำนวน:</span>
-                            <span class="font-mono font-bold w-[120px] ${isAddition ? 'text-emerald-600' : 'text-red-600'}">${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            <span class="text-slate-400 font-medium w-[50px] shrink-0">เหตุผล:</span>
-                            <span class="text-slate-500 flex-1 truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</span>
-                            <span class="text-slate-400 font-medium w-[50px] shrink-0">สถานะ:</span>
-                            <span class="w-[80px]">${statusBadge}</span>
-                            <span class="w-[80px]">${fileHtml}</span>
-                            <div class="w-[60px] flex justify-end">${cancelBtn}</div>
+                        <div class="flex items-center gap-4 px-8 py-2 text-xs">
+                            <span class="text-slate-400 w-[90px] shrink-0">${pr.created_at ? pr.created_at.substring(0,10) : '-'}</span>
+                            <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="text-indigo-600 font-bold w-[130px] shrink-0 hover:underline truncate">${pr.doc_no || '-'}</a>
+                            <span class="text-slate-600 w-[120px] truncate">${pr.supplier_name || '-'}</span>
+                            <span class="text-slate-500 w-[100px] truncate">${pr.requested_by || '-'}</span>
+                            <span class="font-mono font-bold w-[120px] text-right text-slate-700">${parseFloat(pr.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <span class="w-[80px]">${prStatusBadge}</span>
+                            <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="text-[9px] text-indigo-500 hover:underline ml-auto"><i class="fas fa-external-link-alt mr-0.5"></i>ดูเอกสาร</a>
                         </div>
                     </td>
                 </tr>`;
-        });
+            });
+        }
+
+        // === ส่วนประวัติการปรับงบ ===
+        if (historyData && historyData.length > 0) {
+            subHtml += `<tr class="sub-row-${id} bg-slate-100/50"><td colspan="6" class="px-8 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <i class="fas fa-history mr-1"></i> ประวัติการปรับปรุงยอดงบประมาณ:
+            </td></tr>`;
+            
+            historyData.forEach(item => {
+                const amount = parseFloat(item.amount || 0);
+                const isAddition = amount >= 0;
+
+                let statusBadge = '';
+                if (item.status === 'approved') {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>`;
+                } else if (item.status === 'rejected') {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> รออนุมัติ</span>`;
+                }
+
+                const cancelBtn = item.status === 'pending' 
+                    ? `<button onclick="event.stopPropagation(); cancelAdjust(${item.id})" class="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded hover:bg-rose-500 hover:text-white transition"><i class="fas fa-times mr-0.5"></i>ยกเลิก</button>`
+                    : '';
+                
+                const fileHtml = item.file_path ? `<a href="${item.file_path}" target="_blank" class="text-[9px] text-indigo-500 hover:underline"><i class="fas fa-paperclip mr-0.5"></i>ดูไฟล์แนบ</a>` : '';
+
+                subHtml += `
+                    <tr class="sub-row-${id} ${item.status === 'pending' ? 'bg-amber-50/40' : 'bg-slate-50/50'} border-b border-slate-100">
+                        <td colspan="6" class="p-0">
+                            <div class="flex items-center gap-4 px-10 py-2.5 text-xs">
+                                <span class="text-slate-400 font-medium w-[80px] shrink-0">วันที่:</span>
+                                <span class="text-slate-500 w-[120px] shrink-0">${item.created_at}</span>
+                                <span class="text-slate-400 font-medium w-[60px] shrink-0">ผู้ขอ:</span>
+                                <span class="text-slate-600 font-bold w-[120px]">${item.requester_name || '-'}</span>
+                                <span class="text-slate-400 font-medium w-[60px] shrink-0">จำนวน:</span>
+                                <span class="font-mono font-bold w-[120px] ${isAddition ? 'text-emerald-600' : 'text-red-600'}">${isAddition ? '+' : ''}${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                <span class="text-slate-400 font-medium w-[50px] shrink-0">เหตุผล:</span>
+                                <span class="text-slate-500 flex-1 truncate" title="${(item.reason || '').replace(/"/g, '&quot;')}">${item.reason || '-'}</span>
+                                <span class="text-slate-400 font-medium w-[50px] shrink-0">สถานะ:</span>
+                                <span class="w-[80px]">${statusBadge}</span>
+                                <span class="w-[80px]">${fileHtml}</span>
+                                <div class="w-[60px] flex justify-end">${cancelBtn}</div>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        // ถ้าไม่มีทั้งสอง
+        if ((!prData || prData.length === 0) && (!historyData || historyData.length === 0)) {
+            subHtml = `
+                <tr class="sub-row-${id} bg-slate-50 border-b border-slate-100">
+                    <td colspan="6" class="p-4 text-center text-slate-400 text-xs italic">
+                        ไม่มีรายการค่าใช้จ่ายหรือประวัติการปรับปรุงยอด
+                    </td>
+                </tr>`;
+        }
 
         $row.after(subHtml);
     });

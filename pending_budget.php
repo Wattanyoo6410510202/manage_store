@@ -59,6 +59,20 @@ if (isset($_GET['action'])) {
         exit;
     }
 
+    // API: ดึงรายการ PR (ค่าใช้จ่าย) ที่ใช้ในงบนี้
+    if ($_GET['action'] == 'fetch_pr_expenses') {
+        $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
+        $sql = "SELECT p.id, p.doc_no, p.grand_total, p.status, p.created_at, p.requested_by, s.company_name as supplier_name
+                FROM pr p
+                LEFT JOIN suppliers s ON p.supplier_id = s.id
+                WHERE p.budget_type_id = $budget_type_id AND p.deleted_at IS NULL
+                ORDER BY p.created_at DESC";
+        $result = mysqli_query($conn, $sql);
+        $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        echo json_encode($data);
+        exit;
+    }
+
     // API: ดึงประวัติการปรับงบเฉพาะประเภท
     if ($_GET['action'] == 'fetch_history') {
         $budget_type_id = intval($_GET['budget_type_id'] ?? 0);
@@ -486,21 +500,68 @@ function viewDetails(id, type) {
                         </a>
                     </div>` : ''}
                 </div>
+
+                <!-- รายการ PR (ค่าใช้จ่าย) -->
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                        <i class="fas fa-shopping-cart text-indigo-500"></i> รายการค่าใช้จ่ายที่ใช้ในงบนี้
+                    </h4>
+                    <div id="pr-list-${id}" class="text-center text-slate-400 text-xs py-4">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> กำลังโหลด...
+                    </div>
+                </div>
             `;
             $('#detailContent').html(html);
             $('#detailModal').removeClass('hidden');
+
+            // โหลดรายการ PR
+            $.get('?action=fetch_pr_expenses&budget_type_id=' + (type === 'budget' ? id : item.budget_type_id), function(prData) {
+                const container = document.getElementById('pr-list-' + id);
+                if (!prData || prData.length === 0) {
+                    container.innerHTML = '<span class="text-slate-400 italic">ไม่มีรายการค่าใช้จ่ายในงบนี้</span>';
+                    return;
+                }
+                
+                let prHtml = '<div class="space-y-2 max-h-48 overflow-y-auto">';
+                prData.forEach(pr => {
+                    let prStatusBadge = '';
+                    if (pr.status === 'approved') {
+                        prStatusBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-0.5"></i> อนุมัติ</span>';
+                    } else if (pr.status === 'rejected') {
+                        prStatusBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-0.5"></i> ปฏิเสธ</span>';
+                    } else {
+                        prStatusBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock mr-0.5"></i> ' + pr.status + '</span>';
+                    }
+                    
+                    prHtml += `
+                        <div class="flex items-center justify-between p-2.5 bg-sky-50/50 rounded-xl border border-sky-100 hover:border-sky-200 transition">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="font-bold text-indigo-600 text-xs hover:underline truncate">${pr.doc_no || '-'}</a>
+                                <span class="text-[10px] text-slate-500 truncate">${pr.supplier_name || '-'}</span>
+                                <span class="text-[10px] text-slate-400">${pr.requested_by || ''}</span>
+                            </div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="font-mono font-bold text-xs text-slate-700">${parseFloat(pr.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                ${prStatusBadge}
+                                <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="text-[9px] text-indigo-500 hover:text-indigo-700"><i class="fas fa-external-link-alt"></i></a>
+                            </div>
+                        </div>`;
+                });
+                prHtml += '</div>';
+                container.innerHTML = prHtml;
+            });
         }
     });
 }
 </script>
 
 <div id="detailModal" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h3 class="font-bold text-slate-700 text-lg">รายละเอียดงบประมาณ</h3>
             <button onclick="$('#detailModal').addClass('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i class="fas fa-times text-xl"></i></button>
         </div>
-        <div class="p-6" id="detailContent"></div>
+        <div class="p-6 max-h-[70vh] overflow-y-auto" id="detailContent"></div>
     </div>
 </div>
 
