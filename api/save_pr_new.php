@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') die("Method not allowed");
 
 $customer_id = (int) ($_POST['customer_id'] ?? 0);
 $supplier_id = (int)($_POST['supplier_id'] ?? 0);
+$store_id    = (int)($_POST['store_id'] ?? 0);
 $doc_date    = $_POST['doc_date'] ?? date('Y-m-d');
 $due_date    = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
 $priority    = $_POST['priority'] ?? 'ปานกลาง';
@@ -43,6 +44,9 @@ function uploadPRFile($file_key) {
 $attachment_1 = uploadPRFile('attachment_1');
 $attachment_2 = uploadPRFile('attachment_2');
 
+// ถ้า store_id = 0 ให้เก็บเป็น NULL
+if ($store_id === 0) $store_id = null;
+
 $items_desc = $_POST['item_desc'] ?? [];
 $items_qty = $_POST['item_qty'] ?? [];
 $items_price = $_POST['item_price'] ?? [];
@@ -66,7 +70,7 @@ try {
 
     // SQL สำหรับ Insert (ใส่ค่าว่างสำหรับ budget_limit_type ไปก่อนเพื่อกัน error)
     $sql = "INSERT INTO pr SET 
-        doc_no = ?, doc_date = ?, due_date = ?, priority = ?, supplier_id = ?, customer_id = ?, 
+        doc_no = ?, doc_date = ?, due_date = ?, priority = ?, supplier_id = ?, store_id = ?, customer_id = ?, 
         expense_cat_id = ?, budget_type_id = ?, objective_id = ?, budget_amount = ?, 
         expectation = ?, practice_method = ?, budget_details = ?, is_internal = ?, reference_no = ?, 
         payment_term = ?, requested_by = ?, contact_tel = ?, notes = ?, subtotal = ?, 
@@ -74,9 +78,9 @@ try {
         total_after_wht = ?, created_by = ?, attachment_1 = ?, attachment_2 = ?, status = ?";
         
     $stmt = $conn->prepare($sql);
-    // Bind 30 ตัว (ตัด budget_limit_type ออกไปก่อนเพื่อกัน error)
-    $stmt->bind_param("ssssiiiiidsssissssddddddisssss", 
-        $temp_no, $doc_date, $due_date, $priority, $supplier_id, $customer_id, 
+    // Bind 31 ตัว (เพิ่ม store_id)
+    $stmt->bind_param("ssssiiiiiidsssissssddddddisssss", 
+        $temp_no, $doc_date, $due_date, $priority, $supplier_id, $store_id, $customer_id, 
         $expense_cat_id, $budget_type_id, $objective_id, $budget_amount, 
         $expectation, $practice_method, $budget_details, $is_internal, $reference_no, 
         $payment_term, $requested_by, $contact_tel, $notes_to_save, $total_subtotal, 

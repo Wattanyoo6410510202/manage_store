@@ -11,9 +11,10 @@ header('Content-Type: application/json');
 // ป้องกัน Error กรณีไม่มีค่าส่งมา
 $action = $_GET['action'] ?? '';
 $sup_id = intval($_GET['sup_id'] ?? 0);
+$expense_cat_id = intval($_GET['expense_cat_id'] ?? 0);
 $user_role = $_SESSION['role'] ?? '';
 
-if ($sup_id <= 0) {
+if ($sup_id <= 0 && $action !== 'get_stores_by_expense_cat') {
     echo json_encode([]);
     exit;
 }
@@ -23,6 +24,13 @@ $role_filter = " AND (roles = '' OR roles IS NULL OR FIND_IN_SET('$user_role', r
 
 if ($action == 'get_expense_cats') {
     $sql = "SELECT id, name FROM expense_categories WHERE sup_id = $sup_id $role_filter";
+} elseif ($action == 'get_stores_by_expense_cat') {
+    if ($expense_cat_id <= 0) { echo json_encode([]); exit; }
+    $sql = "SELECT s.id, s.store_name
+            FROM stores s
+            INNER JOIN expense_category_stores ecs ON s.id = ecs.store_id
+            WHERE ecs.expense_category_id = $expense_cat_id
+            ORDER BY s.store_name ASC";
 } elseif ($action == 'get_budget_types') {
     $sql = "SELECT b.id, b.name, 
                    (b.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = b.id), 0)) as current_total_budget,

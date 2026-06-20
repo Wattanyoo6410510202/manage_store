@@ -28,9 +28,11 @@ $sql = "SELECT p.*,
                own.email as my_email, own.address as my_address, own.logo_path,
                ec.name as expense_cat_name,
                bt.name as budget_type_name,
-               obj.name as objective_name
+               obj.name as objective_name,
+               st.store_name as store_name
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
+        LEFT JOIN stores st ON p.store_id = st.id
         LEFT JOIN customers c ON p.customer_id = c.id 
         LEFT JOIN suppliers own ON p.supplier_id = own.id 
         LEFT JOIN users u_creator ON p.created_by = u_creator.id
@@ -90,11 +92,11 @@ $display_list[] = ['label' => 'ผู้จัดทำ', 'name' => $data['creat
 
 $real_apps = [];
 $apps = [
-    ['id' => $data['approved_by_0'], 'name' => $data['app0_name'], 'sig' => $data['app0_sig'], 'date' => $data['approved_at_0'], 'role' => 'หัวหน้างาน'],
-    ['id' => $data['approved_by'], 'name' => $data['app1_name'], 'sig' => $data['app1_sig'], 'date' => $data['approved_at'], 'role' => 'จัดซื้อ'],
-    ['id' => $data['approved_by_1'], 'name' => $data['app2_name'], 'sig' => $data['app2_sig'], 'date' => $data['approved_at_1'], 'role' => 'บัญชี'],
-    ['id' => $data['approved_by_2'], 'name' => $data['app3_name'], 'sig' => $data['app3_sig'], 'date' => $data['approved_at_2'], 'role' => 'Mgr'],
-    ['id' => $data['approved_by_3'], 'name' => $data['app4_name'], 'sig' => $data['app4_sig'], 'date' => $data['approved_at_3'], 'role' => 'Mgr2']
+    ['id' => $data['approved_by_0'] ?? null, 'name' => $data['app0_name'] ?? '', 'sig' => $data['app0_sig'] ?? '', 'date' => $data['approved_at_0'] ?? '', 'role' => 'หัวหน้างาน'],
+    ['id' => $data['approved_by'] ?? null, 'name' => $data['app1_name'] ?? '', 'sig' => $data['app1_sig'] ?? '', 'date' => $data['approved_at'] ?? '', 'role' => 'จัดซื้อ'],
+    ['id' => $data['approved_by_1'] ?? null, 'name' => $data['app2_name'] ?? '', 'sig' => $data['app2_sig'] ?? '', 'date' => $data['approved_at_1'] ?? '', 'role' => 'บัญชี'],
+    ['id' => $data['approved_by_2'] ?? null, 'name' => $data['app3_name'] ?? '', 'sig' => $data['app3_sig'] ?? '', 'date' => $data['approved_at_2'] ?? '', 'role' => 'Mgr'],
+    ['id' => $data['approved_by_3'] ?? null, 'name' => $data['app4_name'] ?? '', 'sig' => $data['app4_sig'] ?? '', 'date' => $data['approved_at_3'] ?? '', 'role' => 'Mgr2']
 ];
 
 
@@ -237,9 +239,9 @@ function ReadNumber($number) {
     <div style="display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px;">
         <div style="flex: 1; border: 1px solid #f1f5f9; border-radius: 6px; padding: 8px; background: #f8fafc; ">
             <h3 style="margin: 0; font-size: 13px; color: #0f172a;"><?= $data['customer_name'] ?></h3>
-            <div style="margin-top: 5px; font-size: 10px; line-height: 1.5;">
-                <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทค่าใช้จ่าย:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expense_cat_name'] ?? '-') ?></span></div>
-                <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทงบประมาณ:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['budget_type_name'] ?? '-') ?></span></div>
+            <div style="margin-top: 5px; font-size: 10px; line-height: 1.5;">                            <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ร้านค้า:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['store_name'] ?? '-') ?></span></div>
+                                <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทค่าใช้จ่าย:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expense_cat_name'] ?? '-') ?></span></div>
+                                <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทงบประมาณ:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['budget_type_name'] ?? '-') ?></span></div>
                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">วัตถุประสงค์:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['objective_name'] ?? '-') ?></span></div>
                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ความคาดหวัง:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expectation'] ?? '-') ?></span></div>
             </div>

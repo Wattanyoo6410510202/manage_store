@@ -9,6 +9,7 @@ include('assets/alert.php');
 $sql = "SELECT 
             p.*, 
             s.company_name as supplier_name,
+            st.store_name as store_name,
             -- (ของเดิม) ดึงชื่อคนขอ/ลูกค้า --
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
             
@@ -21,6 +22,7 @@ $sql = "SELECT
              ORDER BY id ASC LIMIT 1) as first_item_desc
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
+        LEFT JOIN stores st ON p.store_id = st.id
         LEFT JOIN customers c ON p.customer_id = c.id AND p.is_internal = 0
         -- u1 (ของเดิม) สำหรับ logic display_requester
         LEFT JOIN users u1 ON p.created_by = u1.id AND p.is_internal = 1
@@ -127,6 +129,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th class="w-8 text-center">ID</th>
                             <th>เลขที่เอกสาร</th>
                             <th>หน่วยงาน</th>
+                            <th>ร้านค้า</th>
                             <th>รายละเอียด</th>
                             <th>ลูกค้า</th>
                             <th class="text-right">ยอดรวม</th>
@@ -152,6 +155,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[200px]">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[150px]">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[11px] font-bold">
+                                            <i class="fas fa-store-alt text-[9px]"></i>
+                                            <?= htmlspecialchars($row['store_name'] ?: '-') ?>
+                                        </span>
                                     </div>
                                 </td>
                                 <td>
@@ -291,7 +302,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
         // 2. Custom Filters
         $('#filterSupplier').on('change', function () { prTable.column(3).search(this.value).draw(); });
-        $('#filterStatus').on('change', function () { prTable.column(7).search(this.value).draw(); });
+        $('#filterStatus').on('change', function () { prTable.column(8).search(this.value).draw(); });
         $('#filterMyWork').on('change', function () { prTable.draw(); });
 
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
@@ -521,9 +532,9 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             // 2. หาแถว (Row) ที่เราเพิ่งกด
                             const targetRow = $(`.pr-checkbox[value="${id}"]`).closest('tr');
 
-                            // 3. อัปเดต Column สถานะ (ช่องที่ 8 คือ index 7) ด้วย HTML Badge
+                            // 3. อัปเดต Column สถานะ (ช่องที่ 9 คือ index 8) ด้วย HTML Badge
                             // ใช้ .draw(false) เพื่อค้างอยู่ที่หน้าเดิม ไม่ดีดไปหน้า 1
-                            prTable.cell(targetRow, 7).data(approvedBadge).draw(false);
+                            prTable.cell(targetRow, 8).data(approvedBadge).draw(false);
 
                             // 4. ซ่อนปุ่มที่ไม่เกี่ยวข้องทิ้ง (เพราะอนุมัติแล้ว)
                             targetRow.find('button[onclick^="approvePR"]').fadeOut();
@@ -569,7 +580,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
         // สั่งล้างการ search ทุกคอลัมน์แล้ววาดใหม่
         prTable.column(3).search('');
-        prTable.column(7).search('');
+        prTable.column(8).search('');
         prTable.draw();
     }
 </script>

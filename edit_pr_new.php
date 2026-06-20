@@ -45,17 +45,22 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
 $my_sup_id = $_SESSION['sup_id'] ?? 0;
 $colleagues = [];
 if ($my_sup_id > 0) {
-    // ดึงทุกคนที่มี sup_id เดียวกัน
     $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users WHERE sup_id = '$my_sup_id' ORDER BY name ASC");
     while ($col = mysqli_fetch_assoc($col_query)) {
         $colleagues[] = $col;
     }
 } else {
-    // ถ้าไม่มี sup_id ให้ดึงทุกคนมาให้เลือก
     $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users ORDER BY name ASC");
     while ($col = mysqli_fetch_assoc($col_query)) {
         $colleagues[] = $col;
     }
+}
+
+// 7. ดึงข้อมูลร้านค้า (Stores)
+$stores_query = mysqli_query($conn, "SELECT id, store_name FROM stores ORDER BY store_name ASC");
+$stores = [];
+while ($st = mysqli_fetch_assoc($stores_query)) {
+    $stores[] = $st;
 }
 ?>
 
@@ -182,12 +187,23 @@ if ($my_sup_id > 0) {
                                         <option value="">-- รอเลือกผู้ขาย --</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ (Budget Type)</label>
-                                    <select name="budget_type_id" id="budget_type_id" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
-                                        <option value="">-- รอเลือกผู้ขาย --</option>
-                                    </select>
-                                </div>
+                    <div>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ร้านค้า (Store)</label>
+                        <select name="store_id" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-emerald-500 transition-all">
+                            <option value="">-- ไม่ระบุ --</option>
+                            <?php foreach ($stores as $st): ?>
+                                <option value="<?= $st['id'] ?>" <?= ($pr_data['store_id'] == $st['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($st['store_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ (Budget Type)</label>
+                        <select name="budget_type_id" id="budget_type_id" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                            <option value="">-- รอเลือกผู้ขาย --</option>
+                        </select>
+                    </div>
                                 <div>
                                     <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">วัตถุประสงค์ (Objective)</label>
                                     <select name="objective_id" id="objective_id" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">

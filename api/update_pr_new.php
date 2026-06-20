@@ -10,6 +10,8 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pr_id             = (int)$_POST['pr_id'];
     $supplier_id       = (int)$_POST['supplier_id'];
+$store_id          = (int)($_POST['store_id'] ?? 0);
+if ($store_id === 0) $store_id = null;
     $customer_id       = (int)($_POST['customer_id'] ?? 0);
     $due_date          = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
     $priority          = $_POST['priority'] ?? 'ปานกลาง';
@@ -89,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $net_grand_total = ($new_subtotal + $new_vat) - $new_wht_amount;
 
         $sql_main = "UPDATE pr SET 
-                        supplier_id = ?, customer_id = ?, is_internal = ?, due_date = ?, 
+                        supplier_id = ?, store_id = ?, customer_id = ?, is_internal = ?, due_date = ?, 
                         priority = ?, reference_no = ?, payment_term = ?, requested_by = ?, contact_tel = ?, 
                         notes = ?, expense_cat_id = ?, budget_type_id = ?, objective_id = ?, 
                         budget_limit_type = ?, budget_amount = ?, budget_details = ?, 
@@ -100,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $conn->prepare($sql_main);
         $stmt->bind_param(
-            "iiisssssssiiisdssssddddsssi",
-            $supplier_id, $customer_id, $is_internal, $due_date, $priority, $reference_no, $payment_term,
+            "iiiisssssssiiisdssssddddsssi",
+            $supplier_id, $store_id, $customer_id, $is_internal, $due_date, $priority, $reference_no, $payment_term,
             $requested_by, $contact_tel, $notes, $expense_cat_id, $budget_type_id, $objective_id,
             $budget_limit_type, $budget_amount, $budget_details, $expectation, $practice_method,
             $new_subtotal, $new_vat, $vat_percent, $wht_percent, $new_wht_amount, $net_grand_total,

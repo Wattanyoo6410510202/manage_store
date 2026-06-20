@@ -57,6 +57,13 @@ if ($my_sup_id > 0) {
         $colleagues[] = $col;
     }
 }
+
+// 5. ดึงข้อมูลร้านค้า (Stores)
+$stores_query = mysqli_query($conn, "SELECT id, store_name FROM stores ORDER BY store_name ASC");
+$stores = [];
+while ($st = mysqli_fetch_assoc($stores_query)) {
+    $stores[] = $st;
+}
 ?>
 
 <form action="api/save_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
@@ -119,7 +126,7 @@ if ($my_sup_id > 0) {
             </div>
 
             <div class="lg:col-span-2 space-y-6">
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
                         <label
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความสำคัญ</label>
@@ -136,6 +143,17 @@ if ($my_sup_id > 0) {
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">วันที่ต้องการสินค้า</label>
                         <input type="date" name="due_date" value="<?= date('Y-m-d'); ?>"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ร้านค้า
+                            (Store)</label>
+                        <select name="store_id"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer">
+                            <option value="">-- ไม่ระบุ --</option>
+                            <?php foreach ($stores as $st): ?>
+                                <option value="<?= $st['id'] ?>"><?= htmlspecialchars($st['store_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div>
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">อ้างอิงเอกสาร
@@ -331,11 +349,6 @@ if ($my_sup_id > 0) {
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <!-- <div class="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
                         <div
                             class="bg-slate-800/50 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
@@ -365,6 +378,11 @@ if ($my_sup_id > 0) {
                             </div>
                         </div>
                     </div> -->
+            </div>
+        </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4">
@@ -759,8 +777,14 @@ if ($my_sup_id > 0) {
         }
     }
 
+    let current_sup_id = 0;
+
+    // ข้อมูลร้านค้าทั้งหมดสำหรับใช้ใน JS
+    const ALL_STORES = <?= json_encode($stores) ?>;
+
     // ฟังก์ชันดึงข้อมูลจาก API ตาม id บริษัท
     function fetchRelatedData(sup_id) {
+        current_sup_id = sup_id;
         const targets = [
             { id: 'expense_cat_id', action: 'get_expense_cats' },
             { id: 'budget_type_id', action: 'get_budget_types' },
@@ -787,6 +811,11 @@ if ($my_sup_id > 0) {
                     });
                     el.innerHTML = html;
                     
+                    // ถ้ามีข้อมูลและเป็น expense_cat_id ให้อัปเดตร้านค้า
+                    if (target.id === 'expense_cat_id') {
+                        updateStoresByExpenseCat();
+                    }
+
                     // ถ้ามีข้อมูลและเป็น budget_type_id ให้เรียก showBudgetAmount เพื่อแสดงยอดเงินทันที
                     if (target.id === 'budget_type_id') {
                         if (data.length > 0) {
@@ -827,6 +856,49 @@ if ($my_sup_id > 0) {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '<option value="">-- รอเลือกผู้ขาย --</option>';
         });
+        resetStoreDropdown();
+    }
+
+    // ฟังก์ชันรีเซ็ตร้านค้ากลับเป็นค่าเริ่มต้น
+    function resetStoreDropdown() {
+        const storeSelect = document.querySelector('select[name="store_id"]');
+        if (!storeSelect) return;
+        let html = '<option value="">-- ไม่ระบุ --</option>';
+        ALL_STORES.forEach(st => {
+            html += `<option value="${st.id}">${st.name}</option>`;
+        });
+        storeSelect.innerHTML = html;
+    }
+
+    // ฟังก์ชันอัปเดตร้านค้าตาม Expense Category ที่เลือก
+    function updateStoresByExpenseCat() {
+        const catSelect = document.getElementById('expense_cat_id');
+        const storeSelect = document.querySelector('select[name="store_id"]');
+        if (!catSelect || !storeSelect) return;
+
+        const expense_cat_id = catSelect.value;
+        if (!expense_cat_id) {
+            storeSelect.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+            return;
+        }
+
+        fetch(`get_pr_support_data.php?action=get_stores_by_expense_cat&expense_cat_id=${expense_cat_id}`)
+            .then(response => response.json())
+            .then(stores => {
+                if (!stores || stores.length === 0) {
+                    storeSelect.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+                    return;
+                }
+                let html = '<option value="">-- ไม่ระบุ --</option>';
+                stores.forEach((st, index) => {
+                    const selected = index === 0 ? 'selected' : '';
+                    html += `<option value="${st.id}" ${selected}>${st.store_name}</option>`;
+                });
+                storeSelect.innerHTML = html;
+            })
+            .catch(() => {
+                storeSelect.innerHTML = '<option value="">-- ไม่ระบุ --</option>';
+            });
     }
 
     // 5. ฟังก์ชันปรับความสูง Textarea
@@ -857,6 +929,12 @@ if ($my_sup_id > 0) {
         document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => {
             autoResize(el);
         });
+
+        // Event: เมื่อเปลี่ยน Expense Category ให้อัปเดตร้านค้า
+        const expenseCatSelect = document.getElementById('expense_cat_id');
+        if (expenseCatSelect) {
+            expenseCatSelect.addEventListener('change', updateStoresByExpenseCat);
+        }
     });
 
     // ฟังก์ชันอัปเดตเบอร์โทรอัตโนมัติเมื่อเลือกผู้ต้องการ

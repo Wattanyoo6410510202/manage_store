@@ -7,9 +7,14 @@ if (isset($_GET['action'])) {
     
     // ดึงข้อมูลทั้งหมด
     if ($_GET['action'] == 'fetch') {
-        $sql = "SELECT ec.*, s.company_name 
+        $sql = "SELECT ec.*, s.company_name,
+                       GROUP_CONCAT(DISTINCT st.store_name ORDER BY st.store_name SEPARATOR '||') AS store_names,
+                       GROUP_CONCAT(DISTINCT ecs.store_id ORDER BY st.store_name SEPARATOR ',') AS store_ids
                 FROM expense_categories ec 
                 JOIN suppliers s ON ec.sup_id = s.id 
+                LEFT JOIN expense_category_stores ecs ON ecs.expense_category_id = ec.id
+                LEFT JOIN stores st ON ecs.store_id = st.id
+                GROUP BY ec.id
                 ORDER BY s.company_name ASC, ec.name ASC";
         $result = mysqli_query($conn, $sql);
         $data = mysqli_fetch_all($result, MYSQLI_ASSOC);
@@ -23,6 +28,7 @@ if (isset($_GET['action'])) {
         $sup_id = intval($_POST['sup_id'] ?? 0);
         $name = mysqli_real_escape_string($conn, $_POST['name'] ?? '');
         $roles = isset($_POST['roles']) ? implode(',', $_POST['roles']) : '';
+        $store_ids = isset($_POST['store_ids']) ? $_POST['store_ids'] : [];
 
         if ($sup_id == 0 || empty($name)) {
             echo json_encode(['status' => 'error', 'msg' => 'กรุณากรอกข้อมูลให้ครบ']);
@@ -36,6 +42,19 @@ if (isset($_GET['action'])) {
         }
         
         if (mysqli_query($conn, $sql)) {
+            $cat_id = empty($id) ? mysqli_insert_id($conn) : intval($id);
+            
+            // จัดการร้านค้าที่เลือก (pivot table)
+            mysqli_query($conn, "DELETE FROM expense_category_stores WHERE expense_category_id = $cat_id");
+            if (!empty($store_ids)) {
+                foreach ($store_ids as $sid) {
+                    $sid = intval($sid);
+                    if ($sid > 0) {
+                        mysqli_query($conn, "INSERT INTO expense_category_stores (expense_category_id, store_id) VALUES ($cat_id, $sid)");
+                    }
+                }
+            }
+            
             echo json_encode(['status' => 'success']);
         } else {
             echo json_encode(['status' => 'error', 'msg' => mysqli_error($conn)]);
@@ -46,6 +65,7 @@ if (isset($_GET['action'])) {
     // ลบข้อมูล
     if ($_GET['action'] == 'delete') {
         $id = intval($_POST['id'] ?? 0);
+        mysqli_query($conn, "DELETE FROM expense_category_stores WHERE expense_category_id = $id");
         $sql = "DELETE FROM expense_categories WHERE id = $id";
         if (mysqli_query($conn, $sql)) {
             echo json_encode(['status' => 'success']);
@@ -61,7 +81,7 @@ include('header.php');
 ?>
 
 <div class="container-fluid p-0">
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center mb-4">
         <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl transition shadow-lg text-sm font-semibold">
             <i class="fas fa-plus mr-1"></i> เพิ่มหมวดหมู่
         </button>
@@ -72,6 +92,7 @@ include('header.php');
             <thead class="bg-slate-50 border-b border-slate-100">
                 <tr>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase">บริษัท / Supplier</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase">ร้านค้า</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase">ชื่อรายการค่าใช้จ่าย</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase">สิทธิ์ที่เห็นได้</th>
                     <th class="p-4 text-xs font-bold text-slate-500 uppercase text-center">จัดการ</th>
@@ -103,6 +124,22 @@ include('header.php');
                     }
                     ?>
                 </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">เลือกร้านค้า (เลือกได้หลายร้าน)</label>
+                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 border border-slate-200 rounded-xl bg-slate-50">
+                    <?php
+                    $stores = mysqli_query($conn, "SELECT id, store_name FROM stores ORDER BY store_name ASC");
+                    while($st = mysqli_fetch_assoc($stores)) {
+                        echo "<label class='flex items-center gap-2 cursor-pointer'>
+                                <input type='checkbox' name='store_ids[]' value='{$st['id']}' class='store-checkbox rounded border-slate-300 text-emerald-600 focus:ring-emerald-500'>
+                                <span class='text-xs text-slate-600'>{$st['store_name']}</span>
+                              </label>";
+                    }
+                    ?>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1 italic">* หากไม่เลือกเลย จะไม่ผูกกับร้านค้าใด</p>
             </div>
 
             <div>
@@ -147,7 +184,6 @@ include('header.php');
 $(document).ready(function() {
     fetchData();
 
-    // บันทึกข้อมูล
     $('#expenseForm').on('submit', function(e) {
         e.preventDefault();
         $.ajax({
@@ -174,13 +210,15 @@ function fetchData() {
     $.get('?action=fetch', function(data) {
         let html = '';
         if(!data || data.length === 0) {
-            html = '<tr><td colspan="4" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลรายการค่าใช้จ่าย</td></tr>';
+            html = '<tr><td colspan="5" class="p-12 text-center text-slate-400 font-medium">ไม่พบข้อมูลรายการค่าใช้จ่าย</td></tr>';
         } else {
             data.forEach(item => {
                 let rolesDisplay = item.roles ? item.roles.split(',').map(r => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] mr-1">${r}</span>`).join('') : '<span class="text-slate-400 italic text-[10px]">ทั้งหมด</span>';
+                let storeDisplay = item.store_names ? item.store_names.split('||').map(n => `<span class="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] mr-1">${$('<span>').text(n).html()}</span>`).join('') : '<span class="text-slate-300 italic">-</span>';
                 html += `
                 <tr class="hover:bg-slate-50 transition text-sm">
                     <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
+                    <td class="p-4">${storeDisplay}</td>
                     <td class="p-4 text-slate-600">${item.name}</td>
                     <td class="p-4">${rolesDisplay}</td>
                     <td class="p-4 text-center space-x-2">
@@ -201,6 +239,7 @@ function fetchData() {
 function openModal() {
     $('#expenseForm')[0].reset();
     $('.role-checkbox').prop('checked', false);
+    $('.store-checkbox').prop('checked', false);
     $('#item-id').val('');
     $('#modalTitle').text('เพิ่มรายการค่าใช้จ่าย');
     $('#expenseModal').removeClass('hidden');
@@ -221,6 +260,14 @@ function editItem(item) {
         let roles = item.roles.split(',');
         roles.forEach(r => {
             $(`.role-checkbox[value="${r}"]`).prop('checked', true);
+        });
+    }
+
+    $('.store-checkbox').prop('checked', false);
+    if(item.store_ids) {
+        let ids = item.store_ids.split(',').map(Number);
+        ids.forEach(id => {
+            $(`.store-checkbox[value="${id}"]`).prop('checked', true);
         });
     }
 

@@ -54,7 +54,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า (Customer)</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">คู่ค้า</label>
                                 <select name="customer_id" id="customer_select"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
                                     <option value="">-- เลือกบริษัทลูกค้า --</option>

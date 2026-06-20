@@ -1,6 +1,19 @@
 <?php
 require 'config.php';
 
+// บล็อกการเข้าถึงสำหรับหัวหน้างาน (hok) และบทบาทอื่นๆ ที่ไม่เกี่ยวข้อง
+$user_role = $_SESSION['role'] ?? '';
+$allowed_budget_roles = ['admin', 'gmacc', 'mgr', 'mgr2'];
+if (!in_array($user_role, $allowed_budget_roles)) {
+    if (isset($_GET['action'])) {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'msg' => 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้']);
+    } else {
+        echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
+    }
+    exit;
+}
+
 if (isset($_GET['action'])) {
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json');

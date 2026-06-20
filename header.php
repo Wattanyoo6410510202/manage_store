@@ -32,10 +32,10 @@ $permissions = [
     'viewer' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     'procure' => ['dashboard', 'docs', 'projects', 'compare', 'setup', 'trash'],
     
-    // 7. ฝ่ายบัญชี/บริหาร (acc, mgr, mgr2) - เอา projects และ docs ออก
+    // 7. ฝ่ายบัญชี/บริหาร
     'acc' => ['dashboard', 'compare'],
-    'mgr' => ['dashboard', 'compare'],
-    'mgr2' => ['dashboard', 'compare'],
+    'mgr' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
+    'mgr2' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     
     'fin' => ['dashboard', 'compare']
 ];
@@ -93,10 +93,10 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
 // 4. กลุ่ม "ก่อสร้าง"
-$is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php']);
+$is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php']);
 
 // 5. กลุ่ม "ตั้งค่า"
-$is_setup_active = in_array($current_page, ['settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
+$is_setup_active = in_array($current_page, ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
 
 // ==========================================
 // [เพิ่มใหม่] บล็อกการเข้าหน้าทางตรง (URL Security)
@@ -127,12 +127,19 @@ if ($current_page == 'pending_approval.php') {
         exit;
     }
 }
+
+if ($current_page == 'pending_budget.php') {
+    if ($user_role === 'hok' || strpos($user_role, 'staff') === 0 || $user_role === 'acc' || $user_role === 'viewer') {
+        echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
+        exit;
+    }
+}
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
 $cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
-$cat_settings = ['settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
-$cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php'];
+$cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
+$cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
 // อื่นๆ คือ cat_system
 
 $active_cat = 'system'; 
@@ -186,7 +193,7 @@ if ($pending_res) {
 
 // --- ดึงจำนวนรายการรออนุมัติงบประมาณ ---
 $pending_budget_count = 0;
-$budget_approval_roles = ['gmacc', 'mgr', 'admin'];
+$budget_approval_roles = ['gmacc', 'mgr', 'mgr2', 'admin'];
 if (in_array($user_role_for_count, $budget_approval_roles)) {
     $budget_count_sql = "SELECT COUNT(*) as total FROM budget_types WHERE status = 'pending'";
     $budget_res = mysqli_query($conn, $budget_count_sql);
@@ -338,6 +345,9 @@ if (!empty($_SESSION['sup_id'])) {
                     <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>
                     <span class="font-medium">รายการรออนุมัติ <?php echo ($pending_count > 0) ? "($pending_count)" : ""; ?></span>
                 </a>
+                <?php endif; ?>
+
+                <?php if (in_array($user_role, ['admin', 'gmacc', 'mgr', 'mgr2'])): ?>
                 <a href="pending_budget.php"
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_budget.php') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-coins w-5 <?php echo ($current_page == 'pending_budget.php') ? 'text-white' : 'text-amber-400'; ?>"></i>
@@ -418,6 +428,11 @@ if (!empty($_SESSION['sup_id'])) {
             <?php if ($active_cat == 'construction'): ?>
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Construction</p>
                 <?php if (can('projects')): ?>
+                     <a href="big_projects.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo in_array($current_page, ['big_projects.php', 'add_big_project.php', 'detail_big_project.php']) ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-diagram-project w-5 <?php echo in_array($current_page, ['big_projects.php', 'add_big_project.php', 'detail_big_project.php']) ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                        <span class="font-medium">โปรเจคใหญ่</span>
+                    </a>
                     <a href="projects.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php') ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-tasks w-5 text-indigo-400"></i>
@@ -433,6 +448,7 @@ if (!empty($_SESSION['sup_id'])) {
                         <i class="fas fa-clock-rotate-left w-5 <?php echo $current_page == 'project_timeline.php' ? 'text-white' : 'text-indigo-400'; ?>"></i>
                         <span class="font-medium">Timeline โครงการ</span>
                     </a>
+                   
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -443,6 +459,11 @@ if (!empty($_SESSION['sup_id'])) {
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-cog w-5 text-indigo-400"></i>
                         <span class="font-medium">ตั้งค่าระบบ</span>
+                    </a>
+                    <a href="store_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'store_settings.php' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-store-alt w-5 text-emerald-400"></i>
+                        <span class="font-medium">ร้านค้า</span>
                     </a>
                     <a href="user_settings.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'user_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">

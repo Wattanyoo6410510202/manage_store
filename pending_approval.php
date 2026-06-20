@@ -6,6 +6,7 @@ include('assets/alert.php');
 $sql = "SELECT 
             p.*, 
             s.company_name as supplier_name,
+            st.store_name as store_name,
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
             u_creator.name AS creator_real_name, 
             u_creator.role AS creator_role,
@@ -19,6 +20,7 @@ $sql = "SELECT
              ORDER BY id ASC LIMIT 1) as first_item_desc
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
+        LEFT JOIN stores st ON p.store_id = st.id
         LEFT JOIN customers c ON p.customer_id = c.id AND p.is_internal = 0
         LEFT JOIN users u1 ON p.created_by = u1.id AND p.is_internal = 1
         LEFT JOIN users u_creator ON p.created_by = u_creator.id
@@ -121,6 +123,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                             <th>เลขที่เอกสาร</th>
                             <th>ความสำคัญ</th>
                             <th>หน่วยงาน</th>
+                            <th>ร้านค้า</th>
                             <th>รายละเอียด</th>
                             <th class="text-center">ไฟล์แนบ</th>
                             <th class="text-right">ยอดรวม</th>
@@ -160,6 +163,16 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-slate-700 truncate max-w-[120px]">
+                                        <?php if (!empty($row['store_name'])): ?>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[11px] font-bold">
+                                                <i class="fas fa-store-alt text-[9px]"></i>
+                                                <?= htmlspecialchars($row['store_name']) ?>
+                                            </span>
+                                        <?php else: echo '-'; endif; ?>
                                     </div>
                                 </td>
                                 <td>
@@ -313,7 +326,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
         });
 
         // Initial Filter
-        prTable.column(7).search('รอ').draw();
+        prTable.column(8).search('รอ').draw();
         if (AUTO_FILTER_SUPPLIER) {
             $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
             prTable.column(3).search(AUTO_FILTER_SUPPLIER).draw();
@@ -325,7 +338,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             renderMobileCards();
         });
         $('#filterStatus').on('change', function () { 
-            prTable.column(7).search(this.value).draw(); 
+            prTable.column(8).search(this.value).draw(); 
             renderMobileCards();
         });
         $('#minDate, #maxDate, #mobileSearch').on('input change', () => {
@@ -476,9 +489,6 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                          </div>
                     </div>
                     <div class="flex gap-2">
-                        <?php if (!is_viewer()): ?>
-                        <a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm"><i class="fas fa-edit text-xs"></i></a>
-                        <?php endif; ?>
                         <a href="view_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200"><i class="fas fa-eye text-xs"></i></a>
                     </div>
                 </div>
@@ -622,7 +632,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
         $('#filterStatus').val('');
         $('#minDate, #maxDate, #mobileSearch').val('');
         prTable.column(3).search(AUTO_FILTER_SUPPLIER || '');
-        prTable.column(7).search('');
+        prTable.column(8).search('');
         prTable.draw();
         renderMobileCards();
     }

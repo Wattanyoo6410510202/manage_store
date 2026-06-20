@@ -1,6 +1,14 @@
 <?php
 require_once '../config.php';
 
+// กำหนดหน้าที่จะ redirect กลับ (รองรับ supplier_settings.php)
+$redirect_to = $_GET['redirect_to'] ?? $_POST['redirect_to'] ?? 'settings.php';
+// ป้องกัน path traversal
+$allowed_pages = ['settings.php', 'supplier_settings.php'];
+if (!in_array($redirect_to, $allowed_pages)) {
+    $redirect_to = 'settings.php';
+}
+
 // --- 1. กรณีการลบ (Delete) ---
 if (isset($_GET['delete_id'])) {
     $did = intval($_GET['delete_id']);
@@ -23,7 +31,7 @@ if (isset($_GET['delete_id'])) {
     } else {
         $_SESSION['flash_msg'] = 'error';
     }
-    header("Location: ../settings.php");
+    header("Location: ../$redirect_to");
     exit();
 }
 
@@ -109,6 +117,6 @@ if (isset($_POST['save_supplier']) || isset($_POST['update_supplier'])) {
     } else {
         $_SESSION['flash_msg'] = 'error';
     }
-    header("Location: ../settings.php");
+    header("Location: ../$redirect_to");
     exit();
 }
