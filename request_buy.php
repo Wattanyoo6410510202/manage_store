@@ -66,6 +66,141 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
 }
 ?>
 
+<style>
+    @media (max-width: 767px) {
+        .overflow-x-auto { overflow: visible !important; }
+        #itemsTable { width: 100%; }
+        #itemsTable thead { display: none; }
+        #itemsTable tbody { display: flex; flex-direction: column; gap: 16px; }
+        #itemsTable tr.item-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 16px 16px 12px;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            gap: 8px;
+            margin: 0;
+        }
+        #itemsTable td {
+            display: flex;
+            align-items: center;
+            padding: 4px 0 !important;
+            border: none !important;
+            gap: 6px;
+        }
+        #itemsTable td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            font-size: 9px;
+            color: #94a3b8;
+            letter-spacing: 0.3px;
+        }
+
+        /* # - row badge top-right */
+        #itemsTable td:nth-child(1) {
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            padding: 0 !important;
+            z-index: 1;
+        }
+        #itemsTable td:nth-child(1)::before { display: none; }
+        #itemsTable td:nth-child(1) .row-number {
+            background: #4f46e5;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 6px rgba(79,70,229,0.3);
+        }
+
+        /* delete top-left */
+        #itemsTable td:last-child {
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            padding: 0 !important;
+        }
+        #itemsTable td:last-child::before { display: none; }
+        #itemsTable td:last-child button { font-size: 18px; color: #fca5a5; }
+
+        /* description - full width */
+        #itemsTable td:nth-child(2) {
+            flex: 1 1 100%;
+            order: -1;
+            margin-bottom: 4px;
+        }
+        #itemsTable td:nth-child(2)::before { display: none; }
+        #itemsTable td:nth-child(2) textarea {
+            font-size: 14px !important;
+            font-weight: 700;
+            background: #f8fafc;
+            border-radius: 10px !important;
+            padding: 10px 12px !important;
+            border: 1px solid #e2e8f0 !important;
+            min-height: 44px;
+        }
+
+        /* qty (3) + unit (4) side by side */
+        #itemsTable td:nth-child(3) { flex: 1; }
+        #itemsTable td:nth-child(3) input {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+            padding: 8px !important;
+            font-size: 15px !important;
+        }
+        #itemsTable td:nth-child(4) { flex: 1; }
+        #itemsTable td:nth-child(4) select {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+            padding: 8px !important;
+            font-size: 13px !important;
+            border: none !important;
+            text-align: center;
+        }
+
+        /* price (5) + discount (6) side by side */
+        #itemsTable td:nth-child(5) { flex: 1; }
+        #itemsTable td:nth-child(5) input {
+            font-size: 14px !important;
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+            padding: 8px !important;
+            text-align: center !important;
+        }
+        #itemsTable td:nth-child(6) { flex: 1; }
+        #itemsTable td:nth-child(6) input {
+            font-size: 14px !important;
+            border-radius: 10px !important;
+            padding: 8px !important;
+            text-align: center !important;
+        }
+
+        /* total - full width, highlighted */
+        #itemsTable td:nth-child(7) {
+            flex: 1 1 100%;
+            justify-content: space-between;
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 8px 12px !important;
+            margin-top: 4px;
+            border: 1px solid #e2e8f0 !important;
+        }
+        #itemsTable td:nth-child(7)::before {
+            font-size: 11px;
+            color: #64748b;
+        }
+        #itemsTable td:nth-child(7) .row-total {
+            font-size: 16px !important;
+            color: #4f46e5;
+        }
+    }
+</style>
 <form action="api/save_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
@@ -414,17 +549,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                         <tr class="item-row group">
                             <td class="px-6 py-4 text-center text-xs font-bold text-slate-800 row-number">1
                             </td>
-                            <td class="px-2 py-4">
+                            <td class="px-2 py-4" data-label="รายละเอียด">
                                 <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รหัสสินค้า..." rows="1"
                                     oninput="autoResize(this)"
                                     class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
                             </td>
-                            <td class="px-2 py-4">
+                            <td class="px-2 py-4" data-label="จำนวน">
                                 <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
                                     oninput="calculateTotal()"
                                     class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50">
                             </td>
-                            <td class="px-2 py-4">
+                            <td class="px-2 py-4" data-label="หน่วย">
                                 <select name="item_unit[]"
                                     class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400 cursor-pointer">
                                     <option value="">- หน่วย -</option>
@@ -448,17 +583,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                                     <option value="ตัน">ตัน</option>
                                 </select>
                             </td>
-                            <td class="px-2 py-4">
+                            <td class="px-2 py-4" data-label="ราคา/หน่วย">
                                 <input type="number" name="item_price[]" value="0.00" step="0.01"
                                     oninput="calculateTotal()"
                                     class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0">
                             </td>
-                            <td class="px-2 py-4">
+                            <td class="px-2 py-4" data-label="ส่วนลด">
                                 <input type="number" name="item_discount[]" value="0.00" step="0.01"
                                     oninput="calculateTotal()"
                                     class="w-full bg-amber-50/50 border-none rounded-lg px-2 py-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-50">
                             </td>
-                            <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">
+                            <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total" data-label="รวมเงิน">
                                 0.00</td>
                             <td class="px-4 py-4 text-center">
                                 <button type="button" onclick="removeRow(this)"
@@ -530,17 +665,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         // ไส้ในของแถว (เพิ่มช่องส่วนลด และ หน่วยสินค้า)
         newRow.innerHTML = `
         <td class="px-6 py-4 text-center text-xs font-bold text-slate-800 row-number"></td>
-        <td class="px-2 py-4">
+        <td class="px-2 py-4" data-label="รายละเอียด">
             <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รายละเอียด..."
                 rows="1" oninput="autoResize(this)"
                 class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
         </td>
-        <td class="px-2 py-4">
+        <td class="px-2 py-4" data-label="จำนวน">
             <input type="number" name="item_qty[]" value="1" min="0" step="0.01"
                 oninput="calculateTotal()"
                 class="w-full bg-slate-50 border-none rounded-lg px-2 py-2 text-center text-sm font-black text-indigo-600 focus:bg-indigo-50 outline-none">
         </td>
-        <td class="px-2 py-4">
+        <td class="px-2 py-4" data-label="หน่วย">
             <select name="item_unit[]"
                 class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400 cursor-pointer">
                 <option value="">- หน่วย -</option>
@@ -564,17 +699,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                 <option value="ตัน">ตัน</option>
             </select>
         </td>
-        <td class="px-2 py-4">
+        <td class="px-2 py-4" data-label="ราคา/หน่วย">
             <input type="number" name="item_price[]" value="0.00" step="0.01"
                 oninput="calculateTotal()"
                 class="w-full bg-transparent border-none text-right text-sm font-mono font-black focus:ring-0 outline-none">
         </td>
-        <td class="px-2 py-4">
+        <td class="px-2 py-4" data-label="ส่วนลด">
             <input type="number" name="item_discount[]" value="0.00" step="0.01"
                 oninput="calculateTotal()"
                 class="w-full bg-amber-50/50 border-none rounded-lg px-2 py-2 text-right text-sm font-mono font-black text-amber-600 focus:bg-amber-100 outline-none">
         </td>
-        <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total">0.00</td>
+        <td class="px-6 py-4 text-right text-sm font-mono font-black text-slate-700 row-total" data-label="รวมเงิน">0.00</td>
         <td class="px-4 py-4 text-center">
             <button type="button" onclick="removeRow(this)"
                 class="text-slate-200 hover:text-red-500 transition-colors">

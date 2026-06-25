@@ -41,19 +41,11 @@ while ($s = mysqli_fetch_assoc($suppliers_query)) {
     $suppliers[] = $s;
 }
 
-// 6. ดึงข้อมูลเพื่อนร่วมงานในแผนก/บริษัทเดียวกัน (sup_id เดียวกัน)
-$my_sup_id = $_SESSION['sup_id'] ?? 0;
+// 6. ดึงข้อมูลพนักงานทั้งหมด (ไม่จำกัด sup_id) เพื่อให้ dropdown แสดงค่าเก่าได้
 $colleagues = [];
-if ($my_sup_id > 0) {
-    $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users WHERE sup_id = '$my_sup_id' ORDER BY name ASC");
-    while ($col = mysqli_fetch_assoc($col_query)) {
-        $colleagues[] = $col;
-    }
-} else {
-    $col_query = mysqli_query($conn, "SELECT id, name, phone FROM users ORDER BY name ASC");
-    while ($col = mysqli_fetch_assoc($col_query)) {
-        $colleagues[] = $col;
-    }
+$col_query = mysqli_query($conn, "SELECT id, name, phone FROM users ORDER BY name ASC");
+while ($col = mysqli_fetch_assoc($col_query)) {
+    $colleagues[] = $col;
 }
 
 // 7. ดึงข้อมูลร้านค้า (Stores)

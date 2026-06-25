@@ -249,18 +249,21 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                     <?php else: echo '-'; endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <?php if (!empty($row['approver_1_name'])): ?>
+                                    <?php if (!empty($row['approver_2_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                     <?php else: echo '-'; endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <?php if (!empty($row['approver_2_name'])): ?>
+                                    <?php if (!empty($row['approver_3_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                     <?php else: echo '-'; endif; ?>
                                 </td>
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
                                         <a href="view_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-eye text-xs"></i></a>
+                                        <?php if (strpos($user_role_sup, 'procure') === 0 && $row['status'] === 'pending'): ?>
+                                            <a href="edit_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-amber-500 text-white rounded-lg shadow-sm" title="แก้ไข"><i class="fas fa-edit text-xs"></i></a>
+                                        <?php endif; ?>
                                         <?php
                                         $canApproveDesktop = false;
                                         if ($row['status'] === 'pending') {
@@ -481,15 +484,16 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                          </div>
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">SUP</span>
-                            ${row.approver_1_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
+                            ${row.approver_2_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
                          </div>
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">CEO</span>
-                            ${row.approver_2_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
+                            ${row.approver_3_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
                          </div>
                     </div>
                     <div class="flex gap-2">
                         <a href="view_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200"><i class="fas fa-eye text-xs"></i></a>
+                        ${USER_ROLE === 'procure' && row.status === 'pending' ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-amber-500 text-white rounded-xl shadow-md shadow-amber-200"><i class="fas fa-edit text-xs"></i></a>` : ''}
                     </div>
                 </div>
                 ${canApprove ? `

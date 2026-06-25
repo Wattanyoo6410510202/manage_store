@@ -150,26 +150,26 @@ if ($update_stmt->execute()) {
     $limit_type = strtolower(trim($pr['budget_limit_type'] ?? 'low'));
     $is_fully = false;
     
-    // Updated is_fully logic to require Mgr (level 2) and GMACC (level 1)
     $has_level0 = !empty($pr['approved_by_0']);
     $has_gmacc = !empty($pr['approved_by_1']);
     $has_mgr = !empty($pr['approved_by_2']);
     
-    if ($has_level0 && $has_gmacc && $has_mgr) {
-        if ($limit_type === 'low') {
-            $is_fully = true; 
-        } elseif ($limit_type === 'mid') {
-            // Mid: Level 0 + GMACC + MGR + Procure
-            if (!empty($pr['approved_by'])) $is_fully = true;
-        } elseif ($limit_type === 'high') {
-            // High: Level 0 + GMACC + MGR + Procure + Mgr2
-            if (!empty($pr['approved_by']) && !empty($pr['approved_by_3'])) {
-                $is_fully = true;
-            }
-        } else {
-            // Default fully approved if all levels are done
-            if ($approver_count >= 4) $is_fully = true;
+    if ($limit_type === 'low') {
+        // Low: หัวหน้างาน (Level 0) + จัดซื้อ (Procure)
+        if ($has_level0 && !empty($pr['approved_by'])) $is_fully = true;
+    } elseif ($limit_type === 'mid') {
+        // Mid: Level 0 + Procure + MGR
+        if ($has_level0 && !empty($pr['approved_by']) && $has_mgr) {
+            $is_fully = true;
         }
+    } elseif ($limit_type === 'high') {
+        // High: Level 0 + Procure + Mgr2
+        if ($has_level0 && !empty($pr['approved_by']) && !empty($pr['approved_by_3'])) {
+            $is_fully = true;
+        }
+    } else {
+        // Default fully approved if all levels are done
+        if ($approver_count >= 4) $is_fully = true;
     }
 
     if ($is_fully) {

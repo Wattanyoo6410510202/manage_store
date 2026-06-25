@@ -14,7 +14,7 @@ $sup_id = intval($_GET['sup_id'] ?? 0);
 $expense_cat_id = intval($_GET['expense_cat_id'] ?? 0);
 $user_role = $_SESSION['role'] ?? '';
 
-if ($sup_id <= 0 && $action !== 'get_stores_by_expense_cat') {
+if ($sup_id <= 0 && $action !== 'get_stores_by_expense_cat' && !($user_role === 'procure' && $action === 'get_expense_cats')) {
     echo json_encode([]);
     exit;
 }
@@ -23,7 +23,12 @@ $data = [];
 $role_filter = " AND (roles = '' OR roles IS NULL OR FIND_IN_SET('$user_role', roles))";
 
 if ($action == 'get_expense_cats') {
-    $sql = "SELECT id, name FROM expense_categories WHERE sup_id = $sup_id $role_filter";
+    // ถ้าเป็นจัดซื้อ ให้แสดงทั้งหมด ไม่กรอง sup_id และ role
+    if ($user_role === 'procure') {
+        $sql = "SELECT id, name FROM expense_categories";
+    } else {
+        $sql = "SELECT id, name FROM expense_categories WHERE sup_id = $sup_id $role_filter";
+    }
 } elseif ($action == 'get_stores_by_expense_cat') {
     if ($expense_cat_id <= 0) { echo json_encode([]); exit; }
     $sql = "SELECT s.id, s.store_name

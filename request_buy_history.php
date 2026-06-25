@@ -30,7 +30,7 @@ $sql = "SELECT
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
         WHERE p.deleted_at IS NULL AND p.created_by = '{$_SESSION['user_id']}' AND p.is_internal = 1
-        ORDER BY p.created_at DESC";
+        ORDER BY FIELD(p.status, 'pending', 'approved') ASC, p.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
 $pr_list = [];

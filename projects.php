@@ -239,7 +239,7 @@ $result = mysqli_query($conn, $sql);
                                     </div>
 
                                     <!-- Status Buttons Only -->
-                                    <?php if ($user_role === 'admin' && !is_viewer()): ?>
+                                    <?php if (in_array($user_role, ['admin', 'procure']) && !is_viewer()): ?>
                                         <div class="mt-2 w-full">
                                             <?php if ($row['project_status'] == 'on_hold'): ?>
                                                 <button onclick="changeProjectStatus(<?= $pj_id ?>, 'active', 'ยืนยันการอนุมัติงาน?')"
