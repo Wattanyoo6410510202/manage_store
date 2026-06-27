@@ -267,7 +267,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         <?php
                                         $canApproveDesktop = false;
                                         if ($row['status'] === 'pending') {
-                                            $deptMap = [ 'hok' => 'gmhok', 'hr' => 'gmhr', 'staff_shotel' => 'gmshotel', 'staff_manonta' => 'gmmanonta', 'staff_nijuni' => 'gmnijuni', 'acc' => 'gmacc' ];
+                                            $deptMap = [ 'hok' => 'gmhok', 'hr' => 'gmhr', 'staff_shotel' => 'gmshotel', 'maid_shotel' => 'gmshotel', 'tech_shotel' => 'gmshotel', 'cater_shotel' => 'gmshotel', 'staff_manonta' => 'gmmanonta', 'staff_nijuni' => 'gmnijuni', 'acc' => 'gmacc' ];
                                             $targetRole = $deptMap[$row['creator_role'] ?? ''] ?? '';
                                             if (!empty($row['approved_by_0'])) {
                                                 if ($user_role_sup === 'procure' && empty($row['approved_by'])) $canApproveDesktop = true;
@@ -420,7 +420,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             const alreadyApproved = (row.approved_by_0 == USER_ID || row.approved_by == USER_ID || row.approved_by_1 == USER_ID || row.approved_by_2 == USER_ID || row.approved_by_3 == USER_ID);
             
             if (row.status === 'pending' && !alreadyApproved) {
-                const deptMap = { 'hok': 'gmhok', 'hr': 'gmhr', 'staff_shotel': 'gmshotel', 'staff_manonta': 'gmmanonta', 'staff_nijuni': 'gmnijuni', 'acc': 'gmacc' };
+                const deptMap = { 'hok': 'gmhok', 'hr': 'gmhr', 'staff_shotel': 'gmshotel', 'maid_shotel': 'gmshotel', 'tech_shotel': 'gmshotel', 'cater_shotel': 'gmshotel', 'staff_manonta': 'gmmanonta', 'staff_nijuni': 'gmnijuni', 'acc': 'gmacc' };
                 const targetRole = deptMap[row.creator_role] || '';
                 if (!row.approved_by_0) {
                     if (USER_ROLE === targetRole || (USER_ID == row.created_by && Object.values(deptMap).includes(USER_ROLE))) canApprove = true;

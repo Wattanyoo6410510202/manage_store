@@ -319,8 +319,9 @@ include('header.php');
                         'fin' => 'Finance', 'viewer' => 'Viewer', 'gmhok' => 'GM HOK',
                         'gmhr' => 'GM HR', 'staff_hr' => 'Staff HR', 'gmacc' => 'GM ACC',
                         'gmshotel' => 'GM SHotel', 'gmmanonta' => 'GM Manonta',
-                        'gmnijuni' => 'GM Nijuni', 'hok' => 'HOK', 'staff_shotel' => 'Staff SHotel',
-                        'staff_manonta' => 'Staff Manonta', 'staff_nijuni' => 'Staff Nijuni'
+                        'gmnijuni' => 'GM Nijuni', 'hok' => 'HOK',
+                        'maid_shotel' => 'แม่บ้าน SHotel', 'tech_shotel' => 'ช่าง SHotel', 'cater_shotel' => 'จัดเลี้ยง SHotel',
+                        'staff_shotel' => 'Staff SHotel', 'staff_manonta' => 'Staff Manonta', 'staff_nijuni' => 'Staff Nijuni'
                     ];
                     foreach($roles_list as $val => $label): ?>
                         <label class="flex items-center gap-2 cursor-pointer">

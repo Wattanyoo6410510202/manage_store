@@ -27,6 +27,9 @@ $permissions = [
 
     // 5. Staff: พนักงานปฏิบัติการ (เอา projects และ docs ออกตามสั่ง)
     'staff' => ['dashboard', 'compare', 'inventory'],
+    'maid_shotel' => ['dashboard', 'compare'],
+    'tech_shotel' => ['dashboard', 'compare'],
+    'cater_shotel' => ['dashboard', 'compare'],
 
     // 6. Viewer: ดูได้ทุกอย่าง (ยกเว้นตั้งค่า) แต่จะไปคุมที่ปุ่มห้าม เพิ่ม/แก้ไข/ลบ
     'viewer' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
@@ -172,9 +175,19 @@ if ($user_role_for_count === 'procure') {
         'gmhok' => 'hok', 'gmhr' => 'hr', 'gmshotel' => 'staff_shotel',
         'gmmanonta' => 'staff_manonta', 'gmnijuni' => 'staff_nijuni'
     ];
+    // แผนกที่มีหลาย role ย่อยภายใต้ GM คนเดียวกัน
+    $dept_group_map = [
+        'gmshotel' => ['staff_shotel', 'maid_shotel', 'tech_shotel', 'cater_shotel'],
+    ];
     $target_dept = $dept_map[$user_role_for_count] ?? '';
+    $dept_group = $dept_group_map[$user_role_for_count] ?? [];
     if ($target_dept) {
-        $pending_sql .= " AND u.role = '$target_dept' AND p.approved_by_0 IS NULL";
+        if (!empty($dept_group)) {
+            $roles_list = "'" . implode("','", $dept_group) . "'";
+            $pending_sql .= " AND u.role IN ($roles_list) AND p.approved_by_0 IS NULL";
+        } else {
+            $pending_sql .= " AND u.role = '$target_dept' AND p.approved_by_0 IS NULL";
+        }
     } else {
         $pending_sql .= " AND 1=0";
     }

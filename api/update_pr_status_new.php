@@ -89,6 +89,16 @@ $is_gm = (strpos($user_role, 'gm') === 0);
 // เช่น ถ้า requester เป็น 'staff_shotel' และ user เป็น 'gmshotel' ให้ผ่าน
 $target_head_role = 'gm' . str_replace('staff_', '', $requester_role);
 
+// รองรับ role ย่อยอื่นๆ ที่ไม่ใช่ staff_ (แม่บ้าน, ช่าง, จัดเลี้ยง)
+$sub_role_gm_map = [
+    'maid_shotel' => 'gmshotel',
+    'tech_shotel' => 'gmshotel',
+    'cater_shotel' => 'gmshotel',
+];
+if (isset($sub_role_gm_map[$requester_role])) {
+    $target_head_role = $sub_role_gm_map[$requester_role];
+}
+
 // กรณีพิเศษ: ถ้า requester เป็น 'hok'
 if ($requester_role == 'hok') $target_head_role = 'gmhok';
 
