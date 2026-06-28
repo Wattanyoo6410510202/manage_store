@@ -37,15 +37,15 @@ if (isset($_GET['delete_id'])) {
 
 // --- 2. กรณีการบันทึกใหม่ หรือ แก้ไข (Save/Update) ---
 if (isset($_POST['save_supplier']) || isset($_POST['update_supplier'])) {
-    $company_name = mysqli_real_escape_string($conn, $_POST['company_name']);
-    $tax_id       = mysqli_real_escape_string($conn, $_POST['tax_id']);
-    $contact_name = mysqli_real_escape_string($conn, $_POST['contact_name']);
-    $phone        = mysqli_real_escape_string($conn, $_POST['phone']);
-    $address      = mysqli_real_escape_string($conn, $_POST['address']);
-    $email        = mysqli_real_escape_string($conn, $_POST['email']);
-    $bank_name    = mysqli_real_escape_string($conn, $_POST['bank_name']);
-    $bank_acc_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
-    $bank_acc_no   = mysqli_real_escape_string($conn, $_POST['bank_account_number']);
+    $company_name = mysqli_real_escape_string($conn, $_POST['company_name'] ?? '');
+    $tax_id       = mysqli_real_escape_string($conn, $_POST['tax_id'] ?? '');
+    $contact_name = mysqli_real_escape_string($conn, $_POST['contact_name'] ?? '');
+    $phone        = mysqli_real_escape_string($conn, $_POST['phone'] ?? '');
+    $address      = mysqli_real_escape_string($conn, $_POST['address'] ?? '');
+    $email        = mysqli_real_escape_string($conn, $_POST['email'] ?? '');
+    $bank_name    = mysqli_real_escape_string($conn, $_POST['bank_name'] ?? '');
+    $bank_acc_name = mysqli_real_escape_string($conn, $_POST['bank_account_name'] ?? '');
+    $bank_acc_no   = mysqli_real_escape_string($conn, $_POST['bank_account_number'] ?? '');
     $line_token    = mysqli_real_escape_string($conn, $_POST['line_token'] ?? '');
 
     $id = isset($_POST['supplier_id']) ? intval($_POST['supplier_id']) : 0;
