@@ -249,7 +249,10 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 <td class="px-4">
                                     <div class="flex justify-center gap-1.5">
                                         <a href="view_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-eye text-xs"></i></a>
-                                        <?php if (!is_viewer()): ?>
+                                        <?php
+                                        $can_edit = !is_viewer() && (empty($row['approved_by_0']) || $_SESSION['role'] === 'admin' || strpos($_SESSION['role'] ?? '', 'procure') === 0);
+                                        ?>
+                                        <?php if ($can_edit): ?>
                                             <?php if ($row['status'] === 'pending'): ?>
                                                 <a href="edit_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-edit text-xs"></i></a>
                                             <?php endif; ?>
@@ -279,6 +282,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
     const PR_DATA = <?= json_encode($pr_list, JSON_UNESCAPED_UNICODE) ?>;
     const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
     const IS_VIEWER = <?= json_encode(is_viewer()) ?>;
+    const USER_ROLE = <?= json_encode($_SESSION['role'] ?? '') ?>;
     
     let prTable;
 
@@ -439,7 +443,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </div>
                     <div class="flex gap-2">
                         <a href="view_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200"><i class="fas fa-eye text-xs"></i></a>
-                        ${!IS_VIEWER ? `
+                        ${!IS_VIEWER && (!row.approved_by_0 || USER_ROLE === 'admin' || USER_ROLE === 'procure') ? `
                             ${row.status === 'pending' ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm"><i class="fas fa-edit text-xs"></i></a>` : ''}
                             <button onclick="deletePR(${row.id})" class="w-9 h-9 flex items-center justify-center bg-white text-red-500 rounded-xl border border-red-100 shadow-sm"><i class="fas fa-trash text-xs"></i></button>
                         ` : ''}

@@ -352,7 +352,7 @@ if (!empty($_SESSION['sup_id'])) {
                     </div>
                 </div>
 
-                <?php if (strpos($user_role, 'staff') !== 0 && $user_role !== 'acc'): ?>
+                <?php if (strpos($user_role, 'staff') !== 0 && !in_array($user_role, ['acc', 'maid_shotel', 'tech_shotel', 'cater_shotel'])): ?>
                 <a href="pending_approval.php"
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>

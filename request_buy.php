@@ -265,18 +265,18 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                     <div>
                         <label
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความสำคัญ</label>
-                        <select name="priority"
+                        <select name="priority" id="priority_select" onchange="restrictDueDate()"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             <option value="น้อย">น้อย (Low)</option>
                             <option value="ปานกลาง" selected>ปานกลาง (Medium)</option>
-                            <option value="เร่งด่วน">เร่งด่วน (Urgent)</option>
-                            <option value="เร่งสุดขีด">เร่งสุดขีด (Critical)</option>
+                            <option value="เร่งด่วน">เร่งด่วน (Urgent) — 3 วัน</option>
+                            <option value="เร่งสุดขีด">เร่งสุดขีด (Critical) — 2 วัน</option>
                         </select>
                     </div>
                     <div>
                         <label
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">วันที่ต้องการสินค้า</label>
-                        <input type="date" name="due_date" value="<?= date('Y-m-d'); ?>"
+                        <input type="date" name="due_date" id="due_date_input" value="<?= date('Y-m-d'); ?>"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                     </div>
                     <div>
@@ -358,14 +358,18 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                 <div class="lg:col-span-3 space-y-6">
                     <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                         <!-- Card Header with Toggle -->
+                        <?php
+                        $user_role = $_SESSION['role'] ?? '';
+                        $is_staff = (strpos($user_role, 'staff') === 0 || in_array($user_role, ['maid_shotel', 'tech_shotel', 'cater_shotel', 'acc', 'hr', 'staff_hr']));
+                        ?>
                         <div onclick="toggleExpenseCard()" class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all">
                             <span class="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
                                 <i class="fas fa-file-invoice-dollar text-indigo-500"></i> รายละเอียดงบประมาณ (Expense & Budget)
                             </span>
-                            <i id="expense_toggle_icon" class="fas fa-chevron-up text-slate-400 transition-transform duration-300"></i>
+                            <i id="expense_toggle_icon" class="fas fa-chevron-up text-slate-400 transition-transform duration-300 <?= $is_staff ? 'rotate-180' : '' ?>"></i>
                         </div>
 
-                        <div id="expense_card_content" class="p-6 transition-all duration-300 overflow-hidden">
+                        <div id="expense_card_content" class="p-6 transition-all duration-300 overflow-hidden <?= $is_staff ? 'hidden' : '' ?>">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div class="space-y-4">
                                     <div>
@@ -445,45 +449,6 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                                             class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"></textarea>
                                     </div>
                                 </div>
-                                <div
-                                    class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-4 border-t border-slate-100">
-                                    <div class="relative">
-                                        <label
-                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
-                                            1</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="file" name="attachment_1" id="file1"
-                                                class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
-                    file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                            <button type="button" onclick="clearFile('file1')"
-                                                class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="relative">
-                                        <label
-                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ
-                                            2</label>
-                                        <div class="flex items-center gap-2">
-                                            <input type="file" name="attachment_2" id="file2"
-                                                class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
-                    file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                            <button type="button" onclick="clearFile('file2')"
-                                                class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
                 <!-- <div class="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
                         <div
                             class="bg-slate-800/50 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
@@ -520,6 +485,40 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                 </div>
             </div>
         </div>
+
+        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="relative">
+                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ 1</label>
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="attachment_1" id="file1"
+                            class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
+file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                        <button type="button" onclick="clearFile('file1')"
+                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ 2</label>
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="attachment_2" id="file2"
+                            class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
+file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                        <button type="button" onclick="clearFile('file2')"
+                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                 <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i
@@ -849,6 +848,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                 submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
                 submitBtn.innerText = 'บันทึกและออกเอกสาร';
             }
+        }
+
+        // --- เลือกประเภทวงเงินอัตโนมัติตามยอดรวมสุทธิ ---
+        const radios = document.querySelectorAll('input[name="budget_limit_type"]');
+        radios.forEach(r => r.checked = false);
+        if (grandtotal <= 10000) {
+            document.querySelector('input[name="budget_limit_type"][value="low"]').checked = true;
+        } else if (grandtotal <= 99999) {
+            document.querySelector('input[name="budget_limit_type"][value="mid"]').checked = true;
+        } else {
+            document.querySelector('input[name="budget_limit_type"][value="high"]').checked = true;
         }
     }
     function updateSupplierInfo() {
@@ -1187,6 +1197,45 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
             icon.classList.add('rotate-180');
         }
     }
+
+    function restrictDueDate() {
+        const priority = document.getElementById('priority_select').value;
+        const input = document.getElementById('due_date_input');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        input.min = todayStr;
+        input.removeAttribute('max');
+
+        if (priority === 'เร่งด่วน') {
+            const max = new Date(today);
+            max.setDate(max.getDate() + 3);
+            const y = max.getFullYear();
+            const m = String(max.getMonth() + 1).padStart(2, '0');
+            const d = String(max.getDate()).padStart(2, '0');
+            input.max = `${y}-${m}-${d}`;
+            if (input.value < todayStr || input.value > input.max) {
+                input.value = input.max;
+            }
+        } else if (priority === 'เร่งสุดขีด') {
+            const max = new Date(today);
+            max.setDate(max.getDate() + 2);
+            const y = max.getFullYear();
+            const m = String(max.getMonth() + 1).padStart(2, '0');
+            const d = String(max.getDate()).padStart(2, '0');
+            input.max = `${y}-${m}-${d}`;
+            if (input.value < todayStr || input.value > input.max) {
+                input.value = input.max;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', restrictDueDate);
 </script>
 <script src="assets/js/demo-data.js"></script>
 <?php include 'footer.php'; ?>

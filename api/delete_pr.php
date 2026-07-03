@@ -11,19 +11,29 @@ if (ob_get_length())
 header('Content-Type: application/json');
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
-$user_id = $_SESSION['user_id'] ?? 0; // เก็บ ID คนลบไว้ตรวจสอบ
+$user_id = $_SESSION['user_id'] ?? 0;
+$user_role = $_SESSION['role'] ?? '';
 
 // 1. ลบรายตัว (GET) - เปลี่ยนเป็น Soft Delete
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
     $id = mysqli_real_escape_string($conn, $_GET['id']);
 
-    // ดึงเลขที่เอกสารมาแสดงใน Alert (เหมือนเดิม)
-    $get_doc = mysqli_query($conn, "SELECT doc_no FROM pr WHERE id = '$id'");
-    $doc_data = mysqli_fetch_assoc($get_doc);
-    $doc_no = $doc_data['doc_no'] ?? 'N/A';
+    // เช็คว่าหัวหน้างานอนุมัติแล้วหรือยัง (ยกเว้น admin)
+    $check = mysqli_query($conn, "SELECT doc_no, approved_by_0 FROM pr WHERE id = '$id'");
+    $pr_data = mysqli_fetch_assoc($check);
+    if (!$pr_data) {
+        $response['message'] = 'ไม่พบใบขอซื้อนี้';
+        echo json_encode($response);
+        exit;
+    }
+    if (!empty($pr_data['approved_by_0']) && $user_role !== 'admin' && strpos($user_role, 'procure') !== 0) {
+        $response['message'] = 'ไม่สามารถลบได้ หัวหน้างานอนุมัติแล้ว';
+        echo json_encode($response);
+        exit;
+    }
 
-    // ใช้ UPDATE แทน DELETE เพื่อทำ Soft Delete
-    // เราไม่ลบ pr_items เพื่อรักษา Data Integrity ไว้
+    $doc_no = $pr_data['doc_no'] ?? 'N/A';
+
     $sql = "UPDATE pr SET 
             deleted_at = NOW(), 
             deleted_by = '$user_id' 
@@ -43,14 +53,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $ids = json_decode($_POST['ids'], true);
 
     if (is_array($ids) && count($ids) > 0) {
-        // ทำความสะอาด IDs ป้องกัน SQL Injection
         $clean_ids = array_map(function ($id) use ($conn) {
             return mysqli_real_escape_string($conn, $id);
         }, $ids);
 
         $id_list = implode("','", $clean_ids);
 
-        // UPDATE พร้อมกันทั้งกลุ่ม
+        // เช็คว่ามีรายการที่หัวหน้างานอนุมัติแล้วหรือไม่ (ยกเว้น admin)
+        if ($user_role !== 'admin' && strpos($user_role, 'procure') !== 0) {
+            $check = mysqli_query($conn, "SELECT id FROM pr WHERE id IN ('$id_list') AND approved_by_0 IS NOT NULL LIMIT 1");
+            if (mysqli_num_rows($check) > 0) {
+                $response['message'] = 'ไม่สามารถลบได้ มีรายการที่หัวหน้างานอนุมัติแล้ว';
+                echo json_encode($response);
+                exit;
+            }
+        }
+
         $sql_bulk = "UPDATE pr SET 
                      deleted_at = NOW(), 
                      deleted_by = '$user_id' 

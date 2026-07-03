@@ -15,6 +15,12 @@ if (!$pr_data) {
     exit;
 }
 
+$current_role = $_SESSION['role'] ?? '';
+if (!empty($pr_data['approved_by_0']) && $current_role !== 'admin' && strpos($current_role, 'procure') !== 0) {
+    echo "<script>alert('ไม่สามารถแก้ไขได้ หัวหน้างานอนุมัติแล้ว'); window.location.href='view_pr_new.php?id=$pr_id';</script>";
+    exit;
+}
+
 // 3. จัดการข้อมูล "ผู้ขอซื้อ/ลูกค้า"
 $customer = null;
 if ($pr_data['is_internal'] == 1) {
@@ -104,17 +110,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                 <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความสำคัญ</label>
-                        <select name="priority"
+                        <select name="priority" id="priority_select" onchange="restrictDueDate()"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             <option value="น้อย" <?= $pr_data['priority'] == 'น้อย' ? 'selected' : '' ?>>น้อย (Low)</option>
                             <option value="ปานกลาง" <?= $pr_data['priority'] == 'ปานกลาง' ? 'selected' : '' ?>>ปานกลาง (Medium)</option>
-                            <option value="เร่งด่วน" <?= $pr_data['priority'] == 'เร่งด่วน' ? 'selected' : '' ?>>เร่งด่วน (Urgent)</option>
-                            <option value="เร่งสุดขีด" <?= $pr_data['priority'] == 'เร่งสุดขีด' ? 'selected' : '' ?>>เร่งสุดขีด (Critical)</option>
+                            <option value="เร่งด่วน" <?= $pr_data['priority'] == 'เร่งด่วน' ? 'selected' : '' ?>>เร่งด่วน (Urgent) — 3 วัน</option>
+                            <option value="เร่งสุดขีด" <?= $pr_data['priority'] == 'เร่งสุดขีด' ? 'selected' : '' ?>>เร่งสุดขีด (Critical) — 2 วัน</option>
                         </select>
                     </div>
                     <div>
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">วันที่ต้องการสินค้า</label>
-                        <input type="date" name="due_date" value="<?= $pr_data['due_date'] ?>" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
+                        <input type="date" name="due_date" id="due_date_input" value="<?= $pr_data['due_date'] ?>" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                     </div>
                     <div>
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">อ้างอิงเอกสาร (Ref.)</label>
@@ -240,37 +246,41 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                                     <textarea name="practice_method" rows="2" placeholder="ขั้นตอนการทำงาน..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 min-h-[60px]"><?= htmlspecialchars($pr_data['practice_method']) ?></textarea>
                                 </div>
                             </div>
-                            <div class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-4 border-t border-slate-100">
-                                <?php for ($i = 1; $i <= 2; $i++): 
-                                    $fieldName = "attachment_$i";
-                                    $existingFile = $pr_data[$fieldName] ?? '';
-                                ?>
-                                <div class="relative">
-                                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ <?= $i ?></label>
-                                    <div class="flex items-center gap-2" id="file_wrapper_<?= $i ?>">
-                                        <?php if (!empty($existingFile)): ?>
-                                            <div id="existing_file_<?= $i ?>" class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 w-full">
-                                                <a href="uploads/pr/<?= htmlspecialchars($existingFile) ?>" target="_blank" class="text-indigo-700 text-[11px] font-bold truncate hover:underline flex-grow">
-                                                    <i class="fas fa-file-alt mr-1"></i> <?= htmlspecialchars($existingFile) ?>
-                                                </a>
-                                                <button type="button" onclick="removeExistingFile(<?= $i ?>)" class="text-red-500 hover:text-red-700 shrink-0">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                                <input type="hidden" name="delete_file_<?= $i ?>" value="0" id="delete_file_<?= $i ?>">
-                                            </div>
-                                            <input type="file" name="<?= $fieldName ?>" id="input_file_<?= $i ?>" class="hidden w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                        <?php else: ?>
-                                            <input type="file" name="<?= $fieldName ?>" id="input_file_<?= $i ?>" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <?php endfor; ?>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4 p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <?php for ($i = 1; $i <= 2; $i++): 
+                    $fieldName = "attachment_$i";
+                    $existingFile = $pr_data[$fieldName] ?? '';
+                ?>
+                <div class="relative">
+                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ <?= $i ?></label>
+                    <div class="flex items-center gap-2" id="file_wrapper_<?= $i ?>">
+                        <?php if (!empty($existingFile)): ?>
+                            <div id="existing_file_<?= $i ?>" class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 w-full">
+                                <a href="uploads/pr/<?= htmlspecialchars($existingFile) ?>" target="_blank" class="text-indigo-700 text-[11px] font-bold truncate hover:underline flex-grow">
+                                    <i class="fas fa-file-alt mr-1"></i> <?= htmlspecialchars($existingFile) ?>
+                                </a>
+                                <button type="button" onclick="removeExistingFile(<?= $i ?>)" class="text-red-500 hover:text-red-700 shrink-0">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <input type="hidden" name="delete_file_<?= $i ?>" value="0" id="delete_file_<?= $i ?>">
+                            </div>
+                            <input type="file" name="<?= $fieldName ?>" id="input_file_<?= $i ?>" class="hidden w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                        <?php else: ?>
+                            <input type="file" name="<?= $fieldName ?>" id="input_file_<?= $i ?>" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endfor; ?>
+            </div>
+        </div>
+
         <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4">
             <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                 <span class="text-xs font-black text-slate-700 uppercase tracking-widest"><i class="fas fa-shopping-cart mr-2 text-indigo-500"></i> รายการที่ขอซื้อ</span>
@@ -401,6 +411,19 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         const whtDisplay = document.getElementById('wht_display');
         if (whtDisplay) whtDisplay.innerText = wht.toLocaleString(undefined, { minimumFractionDigits: 2 });
         document.getElementById('grandtotal_display').innerText = grandtotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        // --- เลือกประเภทวงเงินอัตโนมัติตามยอดรวมสุทธิ ---
+        const radios = document.querySelectorAll('input[name="budget_limit_type"]');
+        if (radios.length) {
+            radios.forEach(r => r.checked = false);
+            if (grandtotal <= 10000) {
+                document.querySelector('input[name="budget_limit_type"][value="low"]').checked = true;
+            } else if (grandtotal <= 99999) {
+                document.querySelector('input[name="budget_limit_type"][value="mid"]').checked = true;
+            } else {
+                document.querySelector('input[name="budget_limit_type"][value="high"]').checked = true;
+            }
+        }
     }
 
     function updateSupplierInfo() {
@@ -560,10 +583,41 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         }
     });
 
+    function restrictDueDate() {
+        const priority = document.getElementById('priority_select').value;
+        const input = document.getElementById('due_date_input');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        input.min = todayStr;
+        input.removeAttribute('max');
+
+        if (priority === 'เร่งด่วน') {
+            const max = new Date(today);
+            max.setDate(max.getDate() + 3);
+            const y = max.getFullYear();
+            const m = String(max.getMonth() + 1).padStart(2, '0');
+            const d = String(max.getDate()).padStart(2, '0');
+            input.max = `${y}-${m}-${d}`;
+        } else if (priority === 'เร่งสุดขีด') {
+            const max = new Date(today);
+            max.setDate(max.getDate() + 2);
+            const y = max.getFullYear();
+            const m = String(max.getMonth() + 1).padStart(2, '0');
+            const d = String(max.getDate()).padStart(2, '0');
+            input.max = `${y}-${m}-${d}`;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        restrictDueDate();
         const supplierSelect = document.getElementById('supplier_select');
         if (supplierSelect && supplierSelect.value !== "0") { updateSupplierInfo(); }
-        // อัปเดตเบอร์โทรตามผู้ที่เลือกไว้ตอน edit
         const requestedBy = document.querySelector('select[name="requested_by"]');
         if (requestedBy) {
             updateContactTel(requestedBy);
