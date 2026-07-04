@@ -42,8 +42,19 @@ $sql = "UPDATE po SET
 
 if (mysqli_query($conn, $sql)) {
     if (mysqli_affected_rows($conn) > 0) {
-        $res_po = mysqli_query($conn, "SELECT doc_no FROM po WHERE id = '$safe_id'");
+        $res_po = mysqli_query($conn, "SELECT doc_no, created_by FROM po WHERE id = '$safe_id'");
         $po_data = mysqli_fetch_assoc($res_po);
+
+        // --- LINE NOTIFY แจ้งผู้สร้าง PO ทราบว่าอนุมัติแล้ว ---
+        try {
+            require_once 'notify_helper.php';
+            if (!empty($po_data['created_by'])) {
+                $msg = "\n✅ ใบสั่งซื้อได้รับการอนุมัติ\n";
+                $msg .= "เลขที่ PO: " . ($po_data['doc_no'] ?? '-') . "\n";
+                $msg .= "ผู้อนุมัติ: " . ($_SESSION['user_name'] ?? 'ผู้บริหาร') . "\n";
+                notifyUserLine($po_data['created_by'], $msg);
+            }
+        } catch (Exception $e) {}
 
         echo json_encode([
             'status' => 'success',

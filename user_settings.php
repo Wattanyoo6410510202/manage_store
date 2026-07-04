@@ -84,6 +84,23 @@ include('assets/alert.php');
                         </p>
                     </div>
 
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">LINE OA User ID <span class="text-indigo-400">(แนะนำ)</span></label>
+                        <input type="text" name="line_user_id" id="form-line-user-id" placeholder="UserId จาก LINE OA (ส่งถึงตัวบุคคล)"
+                            class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                        <p class="text-[12px] text-slate-400 mt-1 italic">
+                            <i class="fab fa-line mr-1"></i> ใช้ LINE OA ส่งถึงตัวบุคคล (ต้องตั้งค่า Channel Token ในตั้งค่าระบบก่อน)
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">LINE Notify Token <span class="text-slate-400">(ทางเลือก)</span></label>
+                        <input type="text" name="line_token" id="form-line-token" placeholder="LINE Notify Token"
+                            class="w-full border-slate-200 rounded-xl p-2.5 text-sm border focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                        <p class="text-[12px] text-slate-400 mt-1 italic">
+                            <i class="fab fa-line mr-1"></i> ใช้ LINE Notify (ถ้าไม่มี OA) — ระบบจะพยายามส่ง OA ก่อน
+                        </p>
+                    </div>
+
                     <div class="pt-2">
                         <button type="submit" name="save_user" id="form-submit-btn"
                             class="w-full bg-slate-900 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition shadow-lg flex items-center justify-center">
@@ -101,20 +118,20 @@ include('assets/alert.php');
                         <i class="fas fa-plus-circle mr-1"></i> เพิ่มผู้ใช้งานใหม่
                     </button>
                 </div>
-                <table id="userTable" class="table table-hover w-full">
-                    <thead>
-                        <tr class="text-slate-800 text-[11px] uppercase">
-                            <th>ผู้ใช้งาน</th>
-                            <th>Username</th>
-                            <th>ระดับสิทธิ์</th>
-                            <th>Supplier</th>
-                            <th class="text-center">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm">
-                        <?php
-                        // เปลี่ยนจาก users.supplier_id เป็น users.sup_id
-                        $query = mysqli_query($conn, "SELECT users.*, suppliers.company_name FROM users LEFT JOIN suppliers ON users.sup_id = suppliers.id ORDER BY users.id DESC");
+                        <table id="userTable" class="table table-hover w-full">
+                            <thead>
+                                <tr class="text-slate-800 text-[11px] uppercase">
+                                    <th>ผู้ใช้งาน</th>
+                                    <th>Username</th>
+                                    <th>ระดับสิทธิ์</th>
+                                    <th>Supplier</th>
+                                    <th class="text-center">LINE</th>
+                                    <th class="text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                <?php
+                                $query = mysqli_query($conn, "SELECT users.*, suppliers.company_name FROM users LEFT JOIN suppliers ON users.sup_id = suppliers.id ORDER BY users.id DESC");
                         while ($row = mysqli_fetch_assoc($query)):
                             $json_data = htmlspecialchars(json_encode($row, JSON_UNESCAPED_UNICODE));
                             ?>
@@ -158,6 +175,15 @@ include('assets/alert.php');
                                 </td>
                                 <td class="text-slate-500 text-xs">
                                     <?= $row['company_name'] ? htmlspecialchars($row['company_name']) : '<span class="text-slate-300 italic">ไม่ระบุ</span>' ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if (!empty($row['line_user_id'])): ?>
+                                        <span class="text-indigo-500" title="LINE OA พร้อม"><i class="fab fa-line text-lg"></i></span>
+                                    <?php elseif (!empty($row['line_token'])): ?>
+                                        <span class="text-green-500" title="LINE Notify พร้อม"><i class="fab fa-line text-lg"></i></span>
+                                    <?php else: ?>
+                                        <span class="text-slate-300"><i class="fab fa-line text-lg"></i></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center space-x-2">
                                     <button type="button" class="text-indigo-400 hover:text-indigo-600 transition p-2"
@@ -203,6 +229,8 @@ include('assets/alert.php');
         // --- จุดที่ต้องแก้คือตรงนี้ครับจาร ---
         // เปลี่ยนจาก data.supplier_id เป็น data.sup_id ให้ตรงกับ SQL ที่ Query ออกมา
         $('#form-supplier-id').val(data.sup_id || '0');
+        $('#form-line-token').val(data.line_token || '');
+        $('#form-line-user-id').val(data.line_user_id || '');
 
         // สำหรับการแก้ไข รหัสผ่านไม่ต้อง Required
         $('#form-password').val('').attr('placeholder', 'ป้อนรหัสใหม่ถ้าต้องการเปลี่ยน');
@@ -226,6 +254,8 @@ include('assets/alert.php');
         $('#form-password').attr('placeholder', 'กำหนดรหัสผ่าน');
         $('#pw-hint').addClass('hidden');
 
+        $('#form-line-token').val('');
+        $('#form-line-user-id').val('');
         $('#form-submit-btn')
             .text('บันทึกข้อมูล')
             .attr('name', 'save_user')

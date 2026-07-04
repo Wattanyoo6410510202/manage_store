@@ -182,6 +182,53 @@ if ($update_stmt->execute()) {
         if ($approver_count >= 4) $is_fully = true;
     }
 
+    // --- LINE NOTIFY (ยกเว้นขั้นตอน Procure) ---
+    if ($update_col !== 'approved_by') {
+        try {
+            require_once 'notify_helper.php';
+            $level_labels = [
+                'approved_by_0' => 'หัวหน้าแผนก (Level 0)',
+                'approved_by_1' => 'GM ฝ่ายบัญชี (GMACC)',
+                'approved_by_2' => 'ผู้จัดการ (MGR)',
+                'approved_by_3' => 'ผู้จัดการอาวุโส (MGR2)',
+            ];
+            $level_label = $level_labels[$update_col] ?? 'ผู้อนุมัติ';
+
+            if ($pr['created_by']) {
+                $msg = "\n✅ ใบขอซื้อได้รับการอนุมัติ\n";
+                $msg .= "เลขที่: " . $pr['doc_no'] . "\n";
+                $msg .= "ขั้นตอน: $level_label\n";
+                $msg .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
+                $msg .= "เปิดดู: " . getPRUrl($pr_id);
+                notifyUserLine($pr['created_by'], $msg);
+            }
+
+            // แจ้งผู้อนุมัติคนถัดไป (ถ้ายังอนุมัติไม่ครบ)
+            if (!$is_fully) {
+                $next_roles = [];
+                if (empty($pr['approved_by'])) {
+                    $next_roles = ['procure'];
+                } elseif (empty($pr['approved_by_1'])) {
+                    $next_roles = ['gmacc'];
+                } elseif (empty($pr['approved_by_2'])) {
+                    $next_roles = ['mgr'];
+                } elseif (empty($pr['approved_by_3'])) {
+                    $next_roles = ['mgr2'];
+                }
+
+                if (!empty($next_roles)) {
+                    $msg_next = "\n📋 ใบขอซื้อรอการอนุมัติจากคุณ\n";
+                    $msg_next .= "เลขที่: " . $pr['doc_no'] . "\n";
+                    $msg_next .= "ผ่านขั้นตอน: $level_label แล้ว\n";
+                    $msg_next .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
+                    $msg_next .= "เปิดดู: " . getPRUrl($pr_id) . "\n";
+                    $msg_next .= "⚠️ กรุณาอนุมัติในขั้นตอนถัดไป";
+                    notifyRoleGroupLine($next_roles, $msg_next, $pr['supplier_id']);
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
     if ($is_fully) {
         $finish_stmt = $conn->prepare("UPDATE pr SET status = 'approved' WHERE id = ?");
         $finish_stmt->bind_param("i", $pr_id);
@@ -276,6 +323,21 @@ if ($update_stmt->execute()) {
         } catch (Exception $e) {
             // กรณีสร้าง PO พลาด อาจจะ log ไว้ แต่ PR ยังถือว่าอนุมัติสำเร็จ
         }
+
+        // --- LINE NOTIFY แจ้งผู้สร้าง PR ว่าอนุมัติครบถ้วน + สร้าง PO ---
+        try {
+            require_once 'notify_helper.php';
+            if ($pr['created_by']) {
+                $pr_full = $pr_full ?? $pr;
+                $new_po_no = isset($new_po_no) ? $new_po_no : ($pr['doc_no'] ?? '');
+                $msg = "\n🎉 ใบขอซื้ออนุมัติครบถ้วน!\n";
+                $msg .= "เลขที่ PR: " . $pr['doc_no'] . "\n";
+                $msg .= "สร้าง PO อัตโนมัติแล้ว\n";
+                $msg .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
+                $msg .= "เปิดดู: " . getPRUrl($pr_id);
+                notifyUserLine($pr['created_by'], $msg);
+            }
+        } catch (Exception $e) {}
     }
 
     send_json('success', 'อนุมัติเรียบร้อยแล้ว', [

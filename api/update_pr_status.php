@@ -31,6 +31,20 @@ if ($id && $action === 'approved') {
                 WHERE id = '$id'";
 
         if (mysqli_query($conn, $sql)) {
+            // --- LINE NOTIFY แจ้งผู้สร้าง PR ---
+            $pr_res = mysqli_query($conn, "SELECT created_by, doc_no, grand_total FROM pr WHERE id = '$id'");
+            if ($pr_row = mysqli_fetch_assoc($pr_res)) {
+                try {
+                    require_once 'notify_helper.php';
+                    if ($pr_row['created_by']) {
+                        $msg = "\n✅ ใบขอซื้อได้รับการอนุมัติ\n";
+                        $msg .= "เลขที่: " . $pr_row['doc_no'] . "\n";
+                        $msg .= "ยอดสุทธิ: " . number_format($pr_row['grand_total'], 2) . " บาท\n";
+                        $msg .= "เปิดดู: " . getPRUrl($id);
+                        notifyUserLine($pr_row['created_by'], $msg);
+                    }
+                } catch (Exception $e) {}
+            }
             $response = ['status' => 'success', 'message' => 'อนุมัติใบขอซื้อเรียบร้อยแล้ว'];
         } else {
             $response['message'] = 'Database Error: ' . mysqli_error($conn);
