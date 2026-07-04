@@ -96,6 +96,42 @@ include('header.php');
         </div>
     </div>
 
+    <!-- LINE Official Account -->
+    <div class="mb-10 mt-10">
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+            <div class="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
+                <div class="shrink-0">
+                    <img src="https://qr-official.line.me/gs/L_952uzgli_GW.png?oat_content=qr"
+                         alt="LINE QR Code"
+                         class="w-44 h-44 rounded-2xl shadow-lg">
+                </div>
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-600 text-xs font-bold rounded-full mb-4">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                        พร้อมใช้งาน
+                    </div>
+                    <h3 class="text-xl font-black text-slate-800">LINE Official Account</h3>
+                    <p class="text-slate-500 text-sm mt-2 leading-relaxed max-w-md">
+                        แอด LINE Official Account เพื่อรับการแจ้งเตือนสถานะ PR, PO และเอกสารต่างๆ
+                        ถึงคุณโดยตรง
+                    </p>
+                    <div class="mt-4 flex items-center gap-3">
+                        <span class="text-sm text-slate-400">LINE ID:</span>
+                        <code class="px-4 py-2 bg-slate-50 rounded-xl text-green-600 font-bold text-lg border border-slate-200">@952uzgli</code>
+                        <button onclick="navigator.clipboard.writeText('@952uzgli').then(()=>{this.innerHTML='<i class=\'fas fa-check\'></i> คัดลอกแล้ว';setTimeout(()=>{this.innerHTML='<i class=\'fas fa-copy\'></i> คัดลอก'},2000)})" class="px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition text-sm font-semibold">
+                            <i class="fas fa-copy"></i> คัดลอก
+                        </button>
+                    </div>
+                    <div class="mt-4">
+                        <a href="https://line.me/R/ti/p/%40952uzgli" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition shadow-lg shadow-green-200 text-sm">
+                            <i class="fab fa-line text-lg"></i> เพิ่มเพื่อน
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Brand Divider -->
     <div class="text-center my-14">
         <p class="text-xs uppercase tracking-[.25em] text-slate-400 font-semibold">ระบบที่กำลังจะมาถึง</p>
