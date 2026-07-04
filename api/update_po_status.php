@@ -49,7 +49,7 @@ if (mysqli_query($conn, $sql)) {
         try {
             require_once 'notify_helper.php';
             if (!empty($po_data['created_by'])) {
-                $msg = "\n✅ ใบสั่งซื้อได้รับการอนุมัติ\n";
+                $msg = "✅ ใบสั่งซื้อได้รับการอนุมัติ\n";
                 $msg .= "เลขที่ PO: " . ($po_data['doc_no'] ?? '-') . "\n";
                 $msg .= "ผู้อนุมัติ: " . ($_SESSION['user_name'] ?? 'ผู้บริหาร') . "\n";
                 notifyUserLine($po_data['created_by'], $msg);

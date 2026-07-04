@@ -63,7 +63,7 @@ if ($stmt_update->execute()) {
         require_once 'notify_helper.php';
         if ($pr['created_by']) {
             $rejector_name = $_SESSION['user_name'] ?? $_SESSION['user'] ?? 'ผู้บริหาร';
-            $msg = "\n❌ ใบขอซื้อถูกปฏิเสธ\n";
+            $msg = "❌ ใบขอซื้อถูกปฏิเสธ\n";
             $msg .= "เลขที่: " . $pr['doc_no'] . "\n";
             $msg .= "ปฏิเสธโดย: $rejector_name\n";
             $msg .= "เหตุผล: $reason\n";

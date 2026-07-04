@@ -195,7 +195,7 @@ if ($update_stmt->execute()) {
             $level_label = $level_labels[$update_col] ?? 'ผู้อนุมัติ';
 
             if ($pr['created_by']) {
-                $msg = "\n✅ ใบขอซื้อได้รับการอนุมัติ\n";
+                $msg = "✅ ใบขอซื้อได้รับการอนุมัติ\n";
                 $msg .= "เลขที่: " . $pr['doc_no'] . "\n";
                 $msg .= "ขั้นตอน: $level_label\n";
                 $msg .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
@@ -217,7 +217,7 @@ if ($update_stmt->execute()) {
                 }
 
                 if (!empty($next_roles)) {
-                    $msg_next = "\n📋 ใบขอซื้อรอการอนุมัติจากคุณ\n";
+                    $msg_next = "📋 ใบขอซื้อรอการอนุมัติจากคุณ\n";
                     $msg_next .= "เลขที่: " . $pr['doc_no'] . "\n";
                     $msg_next .= "ผ่านขั้นตอน: $level_label แล้ว\n";
                     $msg_next .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
@@ -225,6 +225,15 @@ if ($update_stmt->execute()) {
                     $msg_next .= "⚠️ กรุณาอนุมัติในขั้นตอนถัดไป";
                     notifyRoleGroupLine($next_roles, $msg_next, $pr['supplier_id']);
                 }
+            }
+
+            // แจ้งจัดซื้อ (Procure) ทุกครั้งที่หัวหน้าอนุมัติ โดยไม่ filter supplier
+            if ($update_col === 'approved_by_0') {
+                $msg_procure = "📋 ใบขอซื้อผ่านหัวหน้าแผนกแล้ว กรุณาดำเนินการจัดซื้อ\n";
+                $msg_procure .= "เลขที่: " . $pr['doc_no'] . "\n";
+                $msg_procure .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";
+                $msg_procure .= "เปิดดู: " . getPRUrl($pr_id);
+                notifyRoleGroupLine(['procure'], $msg_procure);
             }
         } catch (Exception $e) {}
     }
@@ -311,7 +320,7 @@ if ($update_stmt->execute()) {
                     $sup_res = mysqli_query($conn, "SELECT company_name, line_token FROM suppliers WHERE id = " . $pr_full['supplier_id']);
                     $sup_data = mysqli_fetch_assoc($sup_res);
                     if (!empty($sup_data['line_token'])) {
-                        $msg = "\n✅ ใบขอซื้ออนุมัติสมบูรณ์\n";
+                        $msg = "✅ ใบขอซื้ออนุมัติสมบูรณ์\n";
                         $msg .= "เลขที่ PR: " . $pr_full['doc_no'] . "\n";
                         $msg .= "สร้างเลขที่ PO: " . $new_doc_no . "\n";
                         $msg .= "บริษัท: " . $sup_data['company_name'] . "\n";
@@ -330,7 +339,7 @@ if ($update_stmt->execute()) {
             if ($pr['created_by']) {
                 $pr_full = $pr_full ?? $pr;
                 $new_po_no = isset($new_po_no) ? $new_po_no : ($pr['doc_no'] ?? '');
-                $msg = "\n🎉 ใบขอซื้ออนุมัติครบถ้วน!\n";
+                $msg = "🎉 ใบขอซื้ออนุมัติครบถ้วน!\n";
                 $msg .= "เลขที่ PR: " . $pr['doc_no'] . "\n";
                 $msg .= "สร้าง PO อัตโนมัติแล้ว\n";
                 $msg .= "ยอดสุทธิ: " . number_format($pr['grand_total'], 2) . " บาท\n";

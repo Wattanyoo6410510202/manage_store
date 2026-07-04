@@ -37,7 +37,7 @@ if ($id && $action === 'approved') {
                 try {
                     require_once 'notify_helper.php';
                     if ($pr_row['created_by']) {
-                        $msg = "\n✅ ใบขอซื้อได้รับการอนุมัติ\n";
+                        $msg = "✅ ใบขอซื้อได้รับการอนุมัติ\n";
                         $msg .= "เลขที่: " . $pr_row['doc_no'] . "\n";
                         $msg .= "ยอดสุทธิ: " . number_format($pr_row['grand_total'], 2) . " บาท\n";
                         $msg .= "เปิดดู: " . getPRUrl($id);

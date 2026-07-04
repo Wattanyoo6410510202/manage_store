@@ -118,7 +118,7 @@ try {
         $sup_data = mysqli_fetch_assoc($sup_res);
         
         if (!empty($sup_data['line_token'])) {
-            $msg = "\n🔔 มีใบขอซื้อใหม่ (PR)\n";
+            $msg = "🔔 มีใบขอซื้อใหม่ (PR)\n";
             $msg .= "เลขที่: " . $new_doc_no . "\n";
             $msg .= "บริษัท: " . $sup_data['company_name'] . "\n";
             $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
@@ -149,7 +149,7 @@ try {
         $target_gm_role = $sub_role_gm_map[$creator_role] ?? null;
 
         if ($target_gm_role) {
-            $msg = "\n📋 ใบขอซื้อใหม่รอการอนุมัติ\n";
+            $msg = "📋 ใบขอซื้อใหม่รอการอนุมัติ\n";
             $msg .= "เลขที่: " . $new_doc_no . "\n";
             $msg .= "บริษัท: " . ($sup_data['company_name'] ?? '-') . "\n";
             $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
@@ -164,7 +164,7 @@ try {
             notifyRoleGroupLine(['admin', 'gmhok'], $msg, $supplier_id);
         } else {
             // ถ้าไม่เจอหัวหน้าแผนก ให้แจ้ง admin/gmhok ทั่วไป
-            $msg = "\n📋 ใบขอซื้อใหม่ (ไม่มีหัวหน้าแผนกในระบบ)\n";
+            $msg = "📋 ใบขอซื้อใหม่ (ไม่มีหัวหน้าแผนกในระบบ)\n";
             $msg .= "เลขที่: " . $new_doc_no . "\n";
             $msg .= "บริษัท: " . ($sup_data['company_name'] ?? '-') . "\n";
             $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
