@@ -242,14 +242,17 @@ if ($num_rows <= 5) {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                 <div style="font-size: 11px; color: #64748b; line-height: 1.8; margin-top: 6px;">
                     <div>
-                        <strong>ผู้รับจ้าง:</strong> <span style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
+                        <strong>ผู้รับจ้าง:</strong> <span
+                            style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
                         &nbsp;&nbsp;&nbsp;&nbsp;
                         <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= $first['bank_name'] ?: '-' ?></span>
                     </div>
                     <div>
-                        <strong>ชื่อบัญชี:</strong> <span style="color: #334155;"><?= $first['bank_account_name'] ?: '-' ?></span>
+                        <strong>ชื่อบัญชี:</strong> <span
+                            style="color: #334155;"><?= $first['bank_account_name'] ?: '-' ?></span>
                         &nbsp;&nbsp;&nbsp;&nbsp;
-                        <strong>เลขที่บัญชี:</strong> <span style="color: #334155;"><?= $first['bank_account_no'] ?: '-' ?></span>
+                        <strong>เลขที่บัญชี:</strong> <span
+                            style="color: #334155;"><?= $first['bank_account_no'] ?: '-' ?></span>
                     </div>
                 </div>
 
@@ -458,22 +461,15 @@ if ($num_rows <= 5) {
                 style="position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-between; text-align: center; gap: 20px; padding: 0 40px;">
 
                 <div style="width: 32%;">
-                    <div
-                        style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
-                        <?php if (!empty($prepared_sig)): ?>
-                            <img src="<?= $prepared_sig ?>?v=<?= time() ?>"
-                                style="max-height: 50px; object-fit: contain;">
-                        <?php endif; ?>
-                    </div>
+                    <div style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
                     <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง / ร้านค้า</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
-                        (<?= $_SESSION['user_name'] ?? '................................' ?>)
+                        (<?= !empty($first['contractor_name']) ? $first['contractor_name'] : '.........................................' ?>)
                     </p>
-                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
-                        วันที่:
-                        <?= isset($first['created_at']) ? date('d/m/Y', strtotime($first['created_at'])) : '......../......../........' ?>
-                    </p>
+                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
                 </div>
+
+
 
                 <div style="width: 32%;">
                     <div
@@ -491,14 +487,22 @@ if ($num_rows <= 5) {
                         <?= !empty($first['approved_at']) ? date('d/m/Y', strtotime($first['approved_at'])) : '......../......../........' ?>
                     </p>
                 </div>
-
                 <div style="width: 32%;">
-                    <div style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">ผู้จัดทำ</div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;"></p>
+                    <div
+                        style="height: 60px; display: flex; align-items: center; justify-content: center; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;">
+                        <?php if (!empty($prepared_sig)): ?>
+                            <img src="<?= $prepared_sig ?>?v=<?= time() ?>" style="max-height: 50px; object-fit: contain;">
+                        <?php endif; ?>
+                    </div>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
-                        (<?= !empty($first['contractor_name']) ? $first['contractor_name'] : '.........................................' ?>)
+                        (
+                        <?= $_SESSION['user_name'] ?? '................................' ?>)
                     </p>
-                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>
+                    <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">
+                        วันที่:
+                        <?= isset($first['created_at']) ? date('d/m/Y', strtotime($first['created_at'])) : '......../......../........' ?>
+                    </p>
                 </div>
 
             </div>
