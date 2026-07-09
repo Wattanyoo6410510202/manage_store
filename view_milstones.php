@@ -462,7 +462,7 @@ if ($num_rows <= 5) {
 
                 <div style="width: 32%;">
                     <div style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง / ร้านค้า</p>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
                         (<?= !empty($first['contractor_name']) ? $first['contractor_name'] : '.........................................' ?>)
                     </p>
@@ -494,7 +494,7 @@ if ($num_rows <= 5) {
                             <img src="<?= $prepared_sig ?>?v=<?= time() ?>" style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
                     </div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง / ร้านค้า</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
                         (
                         <?= $_SESSION['user_name'] ?? '................................' ?>)
