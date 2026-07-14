@@ -133,46 +133,23 @@ try {
     // --- LINE NOTIFY หัวหน้าแผนก (GM) เมื่อมี PR ใหม่รออนุมัติ ---
     try {
         require_once 'notify_helper.php';
-        $creator_role = $_SESSION['role'] ?? '';
 
-        $sub_role_gm_map = [
-            'maid_shotel' => 'gmshotel',
-            'tech_shotel' => 'gmshotel',
-            'cater_shotel' => 'gmshotel',
-            'staff_shotel' => 'gmshotel',
-            'staff_manonta' => 'gmmanonta',
-            'staff_nijuni' => 'gmnijuni',
-            'staff_hr' => 'gmhr',
-            'hok' => 'gmhok',
-            'acc' => 'gmacc',
-        ];
-        $target_gm_role = $sub_role_gm_map[$creator_role] ?? null;
+        $msg = "📋 ใบขอซื้อใหม่รอการอนุมัติ\n";
+        $msg .= "เลขที่: " . $new_doc_no . "\n";
+        $msg .= "บริษัท: " . ($sup_data['company_name'] ?? '-') . "\n";
+        $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
+        $msg .= "ผู้ขอซื้อ: " . ($_SESSION['user_name'] ?? 'ไม่ระบุ') . "\n";
+        $msg .= "เปิดดู: " . getPRUrl($pr_id) . "\n";
+        $msg .= "⚠️ กรุณาอนุมัติใบขอซื้อนี้";
 
-        if ($target_gm_role) {
-            $msg = "📋 ใบขอซื้อใหม่รอการอนุมัติ\n";
-            $msg .= "เลขที่: " . $new_doc_no . "\n";
-            $msg .= "บริษัท: " . ($sup_data['company_name'] ?? '-') . "\n";
-            $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
-            $msg .= "ผู้ขอซื้อ: " . ($_SESSION['user_name'] ?? 'ไม่ระบุ') . "\n";
-            $msg .= "เปิดดู: " . getPRUrl($pr_id) . "\n";
-            $msg .= "⚠️ กรุณาอนุมัติใบขอซื้อนี้";
-
-            notifyRoleLine($target_gm_role, $msg, $supplier_id);
-
-            // แจ้ง Admin/GMHOK ด้วย (เผื่อกรณีหัวหน้าไม่อยู่)
-            $msg .= "\n\n(แจ้ง Admin: มี PR ใหม่รอการดำเนินการ)";
-            notifyRoleGroupLine(['admin', 'gmhok'], $msg, $supplier_id);
-        } else {
-            // ถ้าไม่เจอหัวหน้าแผนก ให้แจ้ง admin/gmhok ทั่วไป
-            $msg = "📋 ใบขอซื้อใหม่ (ไม่มีหัวหน้าแผนกในระบบ)\n";
-            $msg .= "เลขที่: " . $new_doc_no . "\n";
-            $msg .= "บริษัท: " . ($sup_data['company_name'] ?? '-') . "\n";
-            $msg .= "ยอดสุทธิ: " . number_format($grand_total, 2) . " บาท\n";
-            $msg .= "ผู้ขอซื้อ: " . ($_SESSION['user_name'] ?? 'ไม่ระบุ') . "\n";
-            $msg .= "Role: $creator_role\n";
-            $msg .= "เปิดดู: " . getPRUrl($pr_id);
-            notifyRoleGroupLine(['admin', 'gmhok'], $msg);
+        // แจ้ง GM ทุกคนที่ sup_id ตรงกับ supplier_id ของ PR
+        if (!empty($supplier_id)) {
+            notifyGMsBySupId($msg, $supplier_id);
         }
+
+        // แจ้ง Admin/GMHOK ด้วย (เผื่อกรณีหัวหน้าไม่อยู่)
+        $msg_admin = $msg . "\n\n(แจ้ง Admin: มี PR ใหม่รอการดำเนินการ)";
+        notifyRoleGroupLine(['admin', 'gmhok'], $msg_admin, $supplier_id);
     } catch (Exception $e) { /* Ignore line error */ }
 
     $_SESSION['flash_msg'] = 'add_success';

@@ -64,4 +64,19 @@ function getPRUrl($pr_id) {
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     return "$protocol://$host/manage_store/view_pr_new.php?id=$pr_id";
 }
+
+// แจ้งเตือน LINE ให้ GM ทุกคนที่มี sup_id ตรงกับ supplier_id ที่ระบุ
+function notifyGMsBySupId($message, $supplier_id) {
+    global $conn;
+    $stmt = $conn->prepare("SELECT id FROM users WHERE role LIKE 'gm%' AND sup_id = ? AND (line_user_id IS NOT NULL AND line_user_id != '' OR line_token IS NOT NULL AND line_token != '')");
+    $stmt->bind_param("i", $supplier_id);
+    $stmt->execute();
+    $ids = [];
+    $res = $stmt->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $ids[] = $row['id'];
+    }
+    $stmt->close();
+    return notifyUsersLine($ids, $message);
+}
 ?>

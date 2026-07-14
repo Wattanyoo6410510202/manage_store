@@ -39,9 +39,9 @@ if ($action !== 'approved') {
     send_json('error', 'Invalid action');
 }
 
-// Fetch PR data with requester role
+// Fetch PR data with requester role and sup_id
 $stmt = $conn->prepare("
-    SELECT pr.*, u.role as requester_role 
+    SELECT pr.*, u.role as requester_role, u.sup_id as requester_sup_id
     FROM pr 
     LEFT JOIN users u ON pr.created_by = u.id 
     WHERE pr.id = ?
@@ -81,31 +81,23 @@ if (
 $update_col = "";
 $time_col = "";
 
-// --- Dynamic Level 0 (Supervisor) Mapping ---
-$requester_role = $pr['requester_role'] ?? '';
+// --- Dynamic Level 0 (Supervisor) Mapping by pr.supplier_id vs approver.sup_id ---
 $is_gm = (strpos($user_role, 'gm') === 0);
 
-// ถ้าเป็น GM ของแผนกไหน ให้สิทธิ์อนุมัติหัวหน้าของแผนกนั้น
-// เช่น ถ้า requester เป็น 'staff_shotel' และ user เป็น 'gmshotel' ให้ผ่าน
-$target_head_role = 'gm' . str_replace('staff_', '', $requester_role);
+// ดึง sup_id ของผู้อนุมัติ
+$approver_sup_id = 0;
+$approver_stmt = $conn->prepare("SELECT sup_id FROM users WHERE id = ?");
+$approver_stmt->bind_param("i", $user_id);
+$approver_stmt->execute();
+$approver_result = $approver_stmt->get_result()->fetch_assoc();
+$approver_sup_id = intval($approver_result['sup_id'] ?? 0);
+$approver_stmt->close();
 
-// รองรับ role ย่อยอื่นๆ ที่ไม่ใช่ staff_ (แม่บ้าน, ช่าง, จัดเลี้ยง)
-$sub_role_gm_map = [
-    'maid_shotel' => 'gmshotel',
-    'tech_shotel' => 'gmshotel',
-    'cater_shotel' => 'gmshotel',
-];
-if (isset($sub_role_gm_map[$requester_role])) {
-    $target_head_role = $sub_role_gm_map[$requester_role];
-}
-
-// กรณีพิเศษ: ถ้า requester เป็น 'hok'
-if ($requester_role == 'hok') $target_head_role = 'gmhok';
-
-// Check for Level 0 Approval
+// Check for Level 0 Approval: GM ที่มี sup_id ตรงกับ supplier_id ของ PR หรือ Admin/GMHOK
 if (empty($pr['approved_by_0'])) {
-    // อนุมัติได้ถ้าเป็น GM ที่ถูกต้อง หรือ Admin/GMHOK
-    if (($is_gm && $user_role === $target_head_role) || in_array($user_role, ['admin', 'gmhok'])) {
+    $pr_supplier_id = intval($pr['supplier_id'] ?? 0);
+    $is_match = ($pr_supplier_id > 0 && $approver_sup_id > 0 && $pr_supplier_id === $approver_sup_id);
+    if (($is_gm && $is_match) || in_array($user_role, ['admin', 'gmhok'])) {
         $update_col = "approved_by_0";
         $time_col = "approved_at_0";
     }
@@ -122,9 +114,8 @@ if (!$update_col) {
     } elseif ($user_role === 'mgr2') {
         if (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = "approved_at_3"; }
     } elseif (in_array($user_role, ['admin', 'gmhok'])) {
-        // Admin/GMHOK can act as backup for other levels
-        if (empty($pr['approved_by_0']) && $target_head_role === 'gmhok') { $update_col = "approved_by_0"; $time_col = "approved_at_0"; }
-        elseif (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
+        // Admin/GMHOK can act as backup for remaining levels
+        if (empty($pr['approved_by'])) { $update_col = "approved_by"; $time_col = "approved_at"; }
         elseif (empty($pr['approved_by_1'])) { $update_col = "approved_by_1"; $time_col = "approved_at_1"; }
         elseif (empty($pr['approved_by_2'])) { $update_col = "approved_by_2"; $time_col = "approved_at_2"; }
         elseif (empty($pr['approved_by_3'])) { $update_col = "approved_by_3"; $time_col = "approved_at_3"; }

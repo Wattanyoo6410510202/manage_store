@@ -14,7 +14,7 @@ $sup_id = intval($_GET['sup_id'] ?? 0);
 $expense_cat_id = intval($_GET['expense_cat_id'] ?? 0);
 $user_role = $_SESSION['role'] ?? '';
 
-if ($sup_id <= 0 && $action !== 'get_stores_by_expense_cat' && !($user_role === 'procure' && $action === 'get_expense_cats')) {
+if ($sup_id <= 0 && $action !== 'get_stores_by_expense_cat' && $action !== 'get_users_by_sup' && !($user_role === 'procure' && $action === 'get_expense_cats')) {
     echo json_encode([]);
     exit;
 }
@@ -43,6 +43,12 @@ if ($action == 'get_expense_cats') {
             FROM budget_types b WHERE b.sup_id = $sup_id AND b.status = 'approved' $role_filter";
 } elseif ($action == 'get_objectives') {
     $sql = "SELECT id, name FROM pr_objectives WHERE sup_id = $sup_id $role_filter";
+} elseif ($action == 'get_users_by_sup') {
+    if ($sup_id > 0) {
+        $sql = "SELECT id, name, phone FROM users WHERE sup_id = $sup_id ORDER BY name ASC";
+    } else {
+        $sql = "SELECT id, name, phone FROM users ORDER BY name ASC";
+    }
 }
 
 if (!empty($sql)) {

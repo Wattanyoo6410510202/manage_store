@@ -169,25 +169,11 @@ if ($user_role_for_count === 'procure') {
     $pending_sql .= " AND p.approved_by_2 IS NULL";
 } elseif ($user_role_for_count === 'mgr2') {
     $pending_sql .= " AND p.approved_by_3 IS NULL";
-} elseif (strpos($user_role_for_count, 'gm') === 0) {
-    // GM ของแผนกต่างๆ นับ Level 0 ของแผนกตัวเอง
-    $dept_map = [
-        'gmhok' => 'hok', 'gmhr' => 'hr', 'gmshotel' => 'staff_shotel',
-        'gmmanonta' => 'staff_manonta', 'gmnijuni' => 'staff_nijuni'
-    ];
-    // แผนกที่มีหลาย role ย่อยภายใต้ GM คนเดียวกัน
-    $dept_group_map = [
-        'gmshotel' => ['staff_shotel', 'maid_shotel', 'tech_shotel', 'cater_shotel'],
-    ];
-    $target_dept = $dept_map[$user_role_for_count] ?? '';
-    $dept_group = $dept_group_map[$user_role_for_count] ?? [];
-    if ($target_dept) {
-        if (!empty($dept_group)) {
-            $roles_list = "'" . implode("','", $dept_group) . "'";
-            $pending_sql .= " AND u.role IN ($roles_list) AND p.approved_by_0 IS NULL";
-        } else {
-            $pending_sql .= " AND u.role = '$target_dept' AND p.approved_by_0 IS NULL";
-        }
+} elseif (strpos($user_role_for_count, 'gm') === 0 && $user_role_for_count !== 'gmacc') {
+    // GM นับ Level 0 ของ PR ที่ supplier_id ตรงกับ sup_id ตัวเอง
+    $user_sup_id = $_SESSION['sup_id'] ?? 0;
+    if ($user_sup_id > 0) {
+        $pending_sql .= " AND p.supplier_id = $user_sup_id AND p.approved_by_0 IS NULL";
     } else {
         $pending_sql .= " AND 1=0";
     }

@@ -885,6 +885,9 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                 logoIcon.classList.remove('hidden');
             }
 
+            // รีเซ็ตช่อง "ผู้ต้องการ / แผนก" กลับเป็นค่าเดิมของผู้ Login (ใช้ sup_id ของ session)
+            resetRequestedByDropdown(<?= intval($_SESSION['sup_id'] ?? 0) ?>);
+
             // เพิ่มการล้างค่า Dropdown ทั้ง 3 ตัวที่เพิ่มใหม่
             resetRelatedDropdowns();
             return;
@@ -914,6 +917,9 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                 }
             }
 
+            // ดึง user ทั้งหมดตาม sup_id ของผู้ขายที่เลือก มาใส่ใน dropdown "ผู้ต้องการ / แผนก"
+            fetchUsersBySup(data.id);
+
             // *** ส่วนที่เพิ่มใหม่: ดึงข้อมูลงบประมาณ/ผังบัญชี ตามบริษัทที่เลือก (data.id) ***
             fetchRelatedData(data.id);
 
@@ -926,6 +932,105 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
 
     // ข้อมูลร้านค้าทั้งหมดสำหรับใช้ใน JS
     const ALL_STORES = <?= json_encode($stores) ?>;
+
+    // ฟังก์ชันดึง user ตาม sup_id แล้วใส่ใน dropdown "ผู้ต้องการ / แผนก"
+    function fetchUsersBySup(supId) {
+        const requestedByContainer = document.querySelector('.col-span-1')?.querySelector('label[for="requested_by"]')?.parentElement 
+            || document.querySelectorAll('.col-span-1')[0];
+        // หา parent div ของ requested_by
+        const selects = document.querySelectorAll('select[name="requested_by"], input[name="requested_by"]');
+        const requestedByEl = selects[0];
+        if (!requestedByEl) return;
+
+        const parent = requestedByEl.closest('.col-span-1');
+        if (!parent) return;
+
+        // แสดงสถานะกำลังโหลด
+        if (requestedByEl.tagName === 'SELECT') {
+            requestedByEl.innerHTML = '<option value="">กำลังโหลด...</option>';
+        } else {
+            requestedByEl.value = 'กำลังโหลด...';
+        }
+
+        fetch(`get_pr_support_data.php?action=get_users_by_sup&sup_id=${supId}`)
+            .then(res => res.json())
+            .then(users => {
+                if (!users || users.length === 0) {
+                    // ถ้าไม่มี user ใน sup_id นี้ ให้ใส่ช่อง text แทน
+                    const newInput = document.createElement('input');
+                    newInput.type = 'text';
+                    newInput.name = 'requested_by';
+                    newInput.placeholder = 'ชื่อผู้ขอซื้อ / แผนก';
+                    newInput.className = 'w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500';
+                    parent.replaceChild(newInput, requestedByEl);
+                } else {
+                    // ถ้าเป็น input อยู่ ให้เปลี่ยนเป็น select
+                    let select = requestedByEl;
+                    if (requestedByEl.tagName !== 'SELECT') {
+                        select = document.createElement('select');
+                        select.name = 'requested_by';
+                        select.onchange = function() { updateContactTel(this); };
+                        select.className = 'w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500';
+                        parent.replaceChild(select, requestedByEl);
+                    }
+                    let html = '';
+                    users.forEach((user, index) => {
+                        const selected = index === 0 ? 'selected' : '';
+                        html += `<option value="${user.name}" data-phone="${user.phone || ''}" ${selected}>${user.name}</option>`;
+                    });
+                    select.innerHTML = html;
+                    updateContactTel(select);
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching users by sup_id:', err);
+            });
+    }
+
+    // ฟังก์ชันรีเซ็ต dropdown "ผู้ต้องการ / แผนก" กลับเป็น user ของ sup_id ที่ระบุ
+    function resetRequestedByDropdown(supId) {
+        if (supId > 0) {
+            fetchUsersBySup(supId);
+        } else {
+            // ถ้าไม่มี sup_id ให้ดึง user ทั้งหมด
+            fetch(`get_pr_support_data.php?action=get_users_by_sup&sup_id=0`)
+                .then(res => res.json())
+                .then(users => {
+                    const selects = document.querySelectorAll('select[name="requested_by"], input[name="requested_by"]');
+                    const el = selects[0];
+                    if (!el) return;
+                    const parent = el.closest('.col-span-1');
+                    if (!parent) return;
+
+                    if (users.length === 0) {
+                        if (el.tagName !== 'INPUT') {
+                            const newInput = document.createElement('input');
+                            newInput.type = 'text';
+                            newInput.name = 'requested_by';
+                            newInput.value = '<?= addslashes($_SESSION['user_name'] ?? '') ?>';
+                            newInput.className = 'w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500';
+                            parent.replaceChild(newInput, el);
+                        }
+                    } else {
+                        let select = el;
+                        if (el.tagName !== 'SELECT') {
+                            select = document.createElement('select');
+                            select.name = 'requested_by';
+                            select.onchange = function() { updateContactTel(this); };
+                            select.className = 'w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500';
+                            parent.replaceChild(select, el);
+                        }
+                        let html = '';
+                        users.forEach((user, index) => {
+                            const isSelected = ('<?= addslashes($_SESSION['user_name'] ?? '') ?>' === user.name) ? 'selected' : (index === 0 ? 'selected' : '');
+                            html += `<option value="${user.name}" data-phone="${user.phone || ''}" ${isSelected}>${user.name}</option>`;
+                        });
+                        select.innerHTML = html;
+                        updateContactTel(select);
+                    }
+                });
+        }
+    }
 
     // ฟังก์ชันดึงข้อมูลจาก API ตาม id บริษัท
     function fetchRelatedData(sup_id) {

@@ -10,6 +10,7 @@ $sql = "SELECT
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
             u_creator.name AS creator_real_name, 
             u_creator.role AS creator_role,
+            u_creator.sup_id AS creator_sup_id,
             u_app0.name as approver_0_name,
             u2.name as approver_name,
             u_app1.name as approver_1_name,
@@ -42,9 +43,10 @@ $user_role_sup = $_SESSION['role'] ?? '';
 $sup_id = $_SESSION['sup_id'] ?? 0;
 $auto_filter_supplier = '';
 
-$is_head_locked = ((strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc') || $user_role_sup === 'hok');
+$is_gm_role = (strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc');
 
-if ($is_head_locked && !empty($sup_id) && $sup_id > 0) {
+// GM ล็อค dropdown เหลือแค่บริษัทตัวเอง
+if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
     $supplier_sql = "SELECT id, company_name FROM suppliers WHERE id = $sup_id ORDER BY company_name ASC";
     $sup_name_query = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id LIMIT 1");
     if ($sup_row = mysqli_fetch_assoc($sup_name_query)) {
@@ -66,7 +68,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                 <div class="relative col-span-2 md:col-span-1 md:min-w-[180px]">
                     <label class="text-[10px] md:text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">หน่วยงาน/บริษัท</label>
                     <select id="filterSupplier" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
-                        <?php if (!$is_head_locked || empty($auto_filter_supplier)): ?>
+                        <?php if (!$is_gm_role || empty($auto_filter_supplier)): ?>
                             <option value="">ทั้งหมด (Show All)</option>
                         <?php endif; ?>
                         <?php foreach ($suppliers as $s): ?>
@@ -97,7 +99,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                     <select id="filterStatus" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
                         <option value="">ทั้งหมด</option>
                         <option value="รอ" selected>รอเบิก</option>
-                        <option value="อนุมัติ">เบิกแล้ว</option>
+                        <option value="เบิกแล้ว">เบิกแล้ว</option>
                     </select>
                 </div>
                 <div id="bulkActions" class="hidden p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in col-span-1 justify-between md:justify-start">
@@ -267,8 +269,10 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         <?php
                                         $canApproveDesktop = false;
                                         if ($row['status'] === 'pending') {
-                                            $deptMap = [ 'hok' => 'gmhok', 'hr' => 'gmhr', 'staff_shotel' => 'gmshotel', 'maid_shotel' => 'gmshotel', 'tech_shotel' => 'gmshotel', 'cater_shotel' => 'gmshotel', 'staff_manonta' => 'gmmanonta', 'staff_nijuni' => 'gmnijuni', 'acc' => 'gmacc' ];
-                                            $targetRole = $deptMap[$row['creator_role'] ?? ''] ?? '';
+                                            $prSupplierId = intval($row['supplier_id'] ?? 0);
+                                            $approverSupId = intval($sup_id ?? 0);
+                                            $isGM = (strpos($user_role_sup, 'gm') === 0);
+                                            $isMatch = ($prSupplierId > 0 && $approverSupId > 0 && $prSupplierId === $approverSupId);
                                             if (!empty($row['approved_by_0'])) {
                                                 if ($user_role_sup === 'procure' && empty($row['approved_by'])) $canApproveDesktop = true;
                                                 elseif ($user_role_sup === 'gmacc' && empty($row['approved_by_1'])) $canApproveDesktop = true;
@@ -276,7 +280,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                                 elseif ($user_role_sup === 'mgr2' && empty($row['approved_by_3'])) $canApproveDesktop = true;
                                                 elseif (in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
                                             } else {
-                                                if ($user_role_sup === $targetRole || in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
+                                                if (($isGM && $isMatch) || in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
                                             }
                                         }
                                         ?>
@@ -308,6 +312,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
     const PR_DATA = <?= json_encode($pr_list, JSON_UNESCAPED_UNICODE) ?>;
     const USER_ID = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
     const USER_ROLE = <?= json_encode($_SESSION['role'] ?? '') ?>;
+    const USER_SUP_ID = <?= intval($_SESSION['sup_id'] ?? 0) ?>;
     const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
     
     let prTable;
@@ -328,10 +333,9 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             "drawCallback": function () { updateBulkUI(); }
         });
 
-        // Initial Filter
+        // Initial Filter - show pending, auto-filter by supplier for GM
         prTable.column(8).search('รอ').draw();
         if (AUTO_FILTER_SUPPLIER) {
-            $('#filterSupplier').val(AUTO_FILTER_SUPPLIER);
             prTable.column(3).search(AUTO_FILTER_SUPPLIER).draw();
         }
 
@@ -381,7 +385,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             const textMatch = (item.doc_no.toLowerCase().includes(search) || (item.first_item_desc || '').toLowerCase().includes(search) || (item.supplier_name || '').toLowerCase().includes(search));
             if (!textMatch) return false;
             if (supplier && item.supplier_name !== supplier) return false;
-            const mappedStatus = (item.status === 'pending' ? 'รอ' : 'อนุมัติ');
+            const mappedStatus = (item.status === 'pending' ? 'รอเบิก' : 'เบิกแล้ว');
             if (statusVal && mappedStatus !== statusVal) return false;
             if (min || max) {
                 const dateVal = item.created_at.split(' ')[0];
@@ -420,10 +424,11 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             const alreadyApproved = (row.approved_by_0 == USER_ID || row.approved_by == USER_ID || row.approved_by_1 == USER_ID || row.approved_by_2 == USER_ID || row.approved_by_3 == USER_ID);
             
             if (row.status === 'pending' && !alreadyApproved) {
-                const deptMap = { 'hok': 'gmhok', 'hr': 'gmhr', 'staff_shotel': 'gmshotel', 'maid_shotel': 'gmshotel', 'tech_shotel': 'gmshotel', 'cater_shotel': 'gmshotel', 'staff_manonta': 'gmmanonta', 'staff_nijuni': 'gmnijuni', 'acc': 'gmacc' };
-                const targetRole = deptMap[row.creator_role] || '';
+                const isGM = USER_ROLE.startsWith('gm');
+                const prSupplierId = parseInt(row.supplier_id) || 0;
+                const isMatch = (prSupplierId > 0 && USER_SUP_ID > 0 && prSupplierId === USER_SUP_ID);
                 if (!row.approved_by_0) {
-                    if (USER_ROLE === targetRole || (USER_ID == row.created_by && Object.values(deptMap).includes(USER_ROLE))) canApprove = true;
+                    if ((isGM && isMatch) || ['admin', 'gmhok'].includes(USER_ROLE)) canApprove = true;
                 } else if (USER_ROLE === 'procure' && !row.approved_by) canApprove = true;
                 else if (USER_ROLE === 'gmacc' && !row.approved_by_1) canApprove = true;
                 else if (USER_ROLE === 'mgr' && !row.approved_by_2) canApprove = true;
