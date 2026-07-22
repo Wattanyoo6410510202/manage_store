@@ -526,3 +526,20 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
         </div>
     </form>
 </div>
+<script>
+    function updateFilePreview(type) {
+        const fileInput = document.getElementById('attachment' + (type === 'main' ? '' : '_' + type));
+        const placeholder = document.getElementById('placeholder-' + type);
+        const info = document.getElementById('info-' + type);
+        const nameDisplay = document.getElementById('name-' + type);
+        const container = document.getElementById('container-' + type);
+
+        if (fileInput.files && fileInput.files[0]) {
+            placeholder.classList.add('hidden');
+            info.classList.remove('hidden');
+            nameDisplay.innerText = fileInput.files[0].name;
+            container.classList.replace('border-slate-200', 'border-indigo-300');
+            container.classList.add('bg-indigo-50/30');
+        }
+    }
+</script>

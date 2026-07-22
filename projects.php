@@ -101,19 +101,19 @@ $result = mysqli_query($conn, $sql);
                         <?php if ($row['attachment_path']):
                             $ext = strtolower(pathinfo($row['attachment_path'], PATHINFO_EXTENSION));
                             ?>
-                            <a href="uploads/projects/<?= $row['attachment_path'] ?>" target="_blank"
+                            <a href="uploads/projects/<?= $row['project_no'] ?>/<?= $row['attachment_path'] ?>" target="_blank"
                                 class="block group/preview">
 
                                 <div
                                     class=" overflow-hidden relative flex items-center justify-center p-2 transition-all duration-300 ">
 
                                     <?php if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])): ?>
-                                        <img src="uploads/projects/<?= $row['attachment_path'] ?>"
+                                        <img src="uploads/projects/<?= $row['project_no'] ?>/<?= $row['attachment_path'] ?>"
                                             class="w-full h-full object-contain transition-transform duration-500 "
                                             alt="Image Preview">
 
                                     <?php elseif ($ext === 'pdf'): ?>
-                                        <iframe src="uploads/projects/<?= $row['attachment_path'] ?>#toolbar=0&navpanes=0&view=Fit"
+                                        <iframe src="uploads/projects/<?= $row['project_no'] ?>/<?= $row['attachment_path'] ?>#toolbar=0&navpanes=0&view=Fit"
                                             class="w-full h-full border-0 pointer-events-none" frameborder="0">
                                         </iframe>
                                         <div class="absolute inset-0 z-10"></div>
@@ -224,14 +224,14 @@ $result = mysqli_query($conn, $sql);
                                     <div class="mt-2 pt-1 border-t border-slate-200 space-y-1">
                                         <?php if ($row['attachment_contract']): ?>
                                             <div class="truncate text-[9px]">
-                                                <a href="uploads/projects/<?= $row['attachment_contract'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                                <a href="uploads/projects/<?= $row['project_no'] ?>/<?= $row['attachment_contract'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                                                     <i class="fas fa-file-contract"></i> <?= htmlspecialchars($row['attachment_contract']) ?>
                                                 </a>
                                             </div>
                                         <?php endif; ?>
                                         <?php if ($row['attachment_boq']): ?>
                                             <div class="truncate text-[9px]">
-                                                <a href="uploads/projects/<?= $row['attachment_boq'] ?>" target="_blank" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                                                <a href="uploads/projects/<?= $row['project_no'] ?>/<?= $row['attachment_boq'] ?>" target="_blank" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
                                                     <i class="fas fa-file-excel"></i> <?= htmlspecialchars($row['attachment_boq']) ?>
                                                 </a>
                                             </div>
