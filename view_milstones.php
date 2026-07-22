@@ -494,7 +494,7 @@ if ($num_rows <= 5) {
                             <img src="<?= $prepared_sig ?>?v=<?= time() ?>" style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
                     </div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง / ร้านค้า</p>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ลูกค้า</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
                         (
                         <?= $_SESSION['user_name'] ?? '................................' ?>)
