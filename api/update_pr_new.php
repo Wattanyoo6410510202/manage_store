@@ -10,6 +10,13 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pr_id             = (int)$_POST['pr_id'];
     $supplier_id       = (int)$_POST['supplier_id'];
+
+    // ถ้า user มี sup_id ให้บังคับใช้ sup_id ของตัวเอง (ป้องกันเลือก supplier ผิด)
+    $user_sup_id = (int)($_SESSION['sup_id'] ?? 0);
+    if ($user_sup_id > 0 && $supplier_id !== $user_sup_id) {
+        $supplier_id = $user_sup_id;
+    }
+
 $store_id          = (int)($_POST['store_id'] ?? 0);
 if ($store_id === 0) $store_id = null;
     $customer_id       = (int)($_POST['customer_id'] ?? 0);

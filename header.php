@@ -40,7 +40,12 @@ $permissions = [
     'mgr' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     'mgr2' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     
-    'fin' => ['dashboard', 'compare']
+    'fin' => ['dashboard', 'compare'],
+
+    // 8. ฝ่ายขาย/การตลาด
+    'gm_sale' => ['dashboard', 'compare'],
+    'sale' => ['dashboard', 'compare'],
+    'marketing' => ['dashboard', 'compare']
 ];
 
 // ฟังก์ชันเช็คสิทธิ์สำหรับใช้ใน Side Bar และปุ่มต่างๆ
@@ -170,10 +175,10 @@ if ($user_role_for_count === 'procure') {
 } elseif ($user_role_for_count === 'mgr2') {
     $pending_sql .= " AND p.approved_by_3 IS NULL";
 } elseif (strpos($user_role_for_count, 'gm') === 0 && $user_role_for_count !== 'gmacc') {
-    // GM นับ Level 0 ของ PR ที่ supplier_id ตรงกับ sup_id ตัวเอง
+    // GM นับ Level 0 ของ PR ที่ผู้สร้างมี sup_id ตรงกับตัวเอง
     $user_sup_id = $_SESSION['sup_id'] ?? 0;
     if ($user_sup_id > 0) {
-        $pending_sql .= " AND p.supplier_id = $user_sup_id AND p.approved_by_0 IS NULL";
+        $pending_sql .= " AND u.sup_id = $user_sup_id AND p.approved_by_0 IS NULL";
     } else {
         $pending_sql .= " AND 1=0";
     }
@@ -338,7 +343,7 @@ if (!empty($_SESSION['sup_id'])) {
                     </div>
                 </div>
 
-                <?php if (strpos($user_role, 'staff') !== 0 && !in_array($user_role, ['acc', 'maid_shotel', 'tech_shotel', 'cater_shotel'])): ?>
+                <?php if (strpos($user_role, 'staff') !== 0 && !in_array($user_role, ['acc', 'maid_shotel', 'tech_shotel', 'cater_shotel', 'sale', 'marketing'])): ?>
                 <a href="pending_approval.php"
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>

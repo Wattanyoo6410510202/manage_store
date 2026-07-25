@@ -3,6 +3,21 @@ require_once 'config.php';
 include 'header.php';
 include('assets/alert.php');
 
+$user_role_sup = $_SESSION['role'] ?? '';
+$sup_id = $_SESSION['sup_id'] ?? 0;
+$auto_filter_supplier = '';
+
+$is_gm_role = (strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc');
+
+// กรอง SQL ตาม role: gm_sale เห็นเฉพาะ PR ที่ลูกน้องตัวเองสร้าง (sup_id เดียวกัน)
+$where_extra = '';
+if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
+    $where_extra = " AND u_creator.sup_id = $sup_id";
+} elseif ($is_gm_role && empty($sup_id)) {
+    // gm_sale ไม่มี sup_id ไม่เห็นอะไรเลย
+    $where_extra = " AND 1=0";
+}
+
 $sql = "SELECT 
             p.*, 
             s.company_name as supplier_name,
@@ -30,7 +45,7 @@ $sql = "SELECT
         LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
-        WHERE p.deleted_at IS NULL AND p.is_internal = 1
+        WHERE p.deleted_at IS NULL AND p.is_internal = 1 $where_extra
         ORDER BY p.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
@@ -39,13 +54,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $pr_list[] = $row;
 }
 
-$user_role_sup = $_SESSION['role'] ?? '';
-$sup_id = $_SESSION['sup_id'] ?? 0;
-$auto_filter_supplier = '';
-
-$is_gm_role = (strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc');
-
-// GM ล็อค dropdown เหลือแค่บริษัทตัวเอง
+// Supplier dropdown (admin/procure เห็นทั้งหมด, gm เห็นเฉพาะตัวเอง)
 if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
     $supplier_sql = "SELECT id, company_name FROM suppliers WHERE id = $sup_id ORDER BY company_name ASC";
     $sup_name_query = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id LIMIT 1");
@@ -333,11 +342,8 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             "drawCallback": function () { updateBulkUI(); }
         });
 
-        // Initial Filter - show pending, auto-filter by supplier for GM
+        // Initial Filter - show pending
         prTable.column(8).search('รอ').draw();
-        if (AUTO_FILTER_SUPPLIER) {
-            prTable.column(3).search(AUTO_FILTER_SUPPLIER).draw();
-        }
 
         // Sync Desktop Filters
         $('#filterSupplier').on('change', function () { 

@@ -66,6 +66,9 @@ include('assets/alert.php');
                             <option value="staff_shotel">Staff SHotel</option>
                             <option value="staff_manonta">Staff Manonta</option>
                             <option value="staff_nijuni">Staff Nijuni</option>
+                            <option value="gm_sale">GM Sale (ผู้จัดการฝ่ายขาย)</option>
+                            <option value="sale">Sale (พนักงานขาย)</option>
+                            <option value="marketing">Marketing (พนักงานการตลาด)</option>
                         </select>
                     </div>
 
@@ -161,6 +164,9 @@ include('assets/alert.php');
                                         'gmhok' => 'bg-rose-100 text-rose-600',       // GM HOK (สีชมพูเข้ม/แดง) - ให้ดูเด่นระดับผู้บริหาร
                                         'hok' => 'bg-emerald-100 text-emerald-600', // HOK (สีเขียวมรกต) - แยกออกมาให้ดูเป็นฝ่ายปฏิบัติการพิเศษ
                                         'viewer' => 'bg-slate-100 text-slate-500',     // ผู้ชม (สีเทา) - เหมือนเดิม (เน้นเรียบๆ เพราะแค่อ่านอย่างเดียว)
+                                        'gm_sale' => 'bg-orange-100 text-orange-600',  // GM Sale (สีส้ม)
+                                        'sale' => 'bg-sky-100 text-sky-600',           // Sale (สีฟ้าอ่อน)
+                                        'marketing' => 'bg-violet-100 text-violet-600', // Marketing (สีม่วงอ่อน)
                                     ];
 
                                     // ดึง Class ตาม Role ถ้าไม่มีในรายการให้ใช้สีเทามาตรฐาน
