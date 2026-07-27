@@ -309,20 +309,23 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                     <div class="col-span-1">
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ผู้ต้องการ /
                             แผนก</label>
-                        <?php if (!empty($colleagues)): ?>
-                            <select name="requested_by" onchange="updateContactTel(this)"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
-                                <?php foreach ($colleagues as $col): ?>
-                                    <option value="<?= htmlspecialchars($col['name']) ?>" data-phone="<?= htmlspecialchars($col['phone'] ?? '') ?>"
-                                        <?= (isset($_SESSION['user_name']) && $_SESSION['user_name'] == $col['name']) ? 'selected' : '' ?>>
+                        <?php
+                        $current_user_name = $_SESSION['user_name'] ?? '';
+                        $safe_user_name = htmlspecialchars($current_user_name);
+                        ?>
+                        <select name="requested_by" onchange="updateContactTel(this)"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <?php if ($current_user_name): ?>
+                                <option value="<?= $safe_user_name ?>" selected><?= $safe_user_name ?></option>
+                            <?php endif; ?>
+                            <?php foreach ($colleagues as $col): ?>
+                                <?php if (trim($col['name']) !== trim($current_user_name)): ?>
+                                    <option value="<?= htmlspecialchars($col['name']) ?>" data-phone="<?= htmlspecialchars($col['phone'] ?? '') ?>">
                                         <?= htmlspecialchars($col['name']) ?>
                                     </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <input type="text" name="requested_by" value="<?= htmlspecialchars($_SESSION['user_name'] ?? '') ?>" placeholder="ชื่อผู้ขอซื้อ / แผนก"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
-                        <?php endif; ?>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-span-1">
                         <label
@@ -937,7 +940,6 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
     function fetchUsersBySup(supId) {
         const requestedByContainer = document.querySelector('.col-span-1')?.querySelector('label[for="requested_by"]')?.parentElement 
             || document.querySelectorAll('.col-span-1')[0];
-        // หา parent div ของ requested_by
         const selects = document.querySelectorAll('select[name="requested_by"], input[name="requested_by"]');
         const requestedByEl = selects[0];
         if (!requestedByEl) return;
@@ -945,7 +947,8 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
         const parent = requestedByEl.closest('.col-span-1');
         if (!parent) return;
 
-        // แสดงสถานะกำลังโหลด
+        const myName = <?= json_encode($_SESSION['user_name'] ?? '') ?>;
+
         if (requestedByEl.tagName === 'SELECT') {
             requestedByEl.innerHTML = '<option value="">กำลังโหลด...</option>';
         } else {
@@ -956,15 +959,14 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
             .then(res => res.json())
             .then(users => {
                 if (!users || users.length === 0) {
-                    // ถ้าไม่มี user ใน sup_id นี้ ให้ใส่ช่อง text แทน
                     const newInput = document.createElement('input');
                     newInput.type = 'text';
                     newInput.name = 'requested_by';
+                    newInput.value = myName;
                     newInput.placeholder = 'ชื่อผู้ขอซื้อ / แผนก';
                     newInput.className = 'w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500';
                     parent.replaceChild(newInput, requestedByEl);
                 } else {
-                    // ถ้าเป็น input อยู่ ให้เปลี่ยนเป็น select
                     let select = requestedByEl;
                     if (requestedByEl.tagName !== 'SELECT') {
                         select = document.createElement('select');
@@ -974,10 +976,17 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                         parent.replaceChild(select, requestedByEl);
                     }
                     let html = '';
-                    users.forEach((user, index) => {
-                        const selected = index === 0 ? 'selected' : '';
-                        html += `<option value="${user.name}" data-phone="${user.phone || ''}" ${selected}>${user.name}</option>`;
+                    let foundSelf = false;
+                    users.forEach((user) => {
+                        if (user.name.trim() === myName.trim()) foundSelf = true;
                     });
+                    users.forEach((user) => {
+                        const isSelected = (myName.trim() === user.name.trim()) ? 'selected' : ((!foundSelf && user === users[0]) ? 'selected' : '');
+                        html += `<option value="${user.name}" data-phone="${user.phone || ''}" ${isSelected}>${user.name}</option>`;
+                    });
+                    if (!foundSelf && myName) {
+                        html = `<option value="${myName}" data-phone="" selected>${myName}</option>` + html;
+                    }
                     select.innerHTML = html;
                     updateContactTel(select);
                 }
