@@ -1340,7 +1340,11 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
         }
     }
 
-    document.addEventListener('DOMContentLoaded', restrictDueDate);
+    document.addEventListener('DOMContentLoaded', function() {
+        restrictDueDate();
+        const reqSelect = document.querySelector('select[name="requested_by"]');
+        if (reqSelect) updateContactTel(reqSelect);
+    });
 </script>
 <script src="assets/js/demo-data.js"></script>
 <?php include 'footer.php'; ?>
