@@ -297,12 +297,42 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">การชำระเงิน</label>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">วิธีการชำระเงิน</label>
+                        <select name="payment_method" id="payment_method" onchange="togglePaymentFields()"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <option value="">-- เลือกวิธีชำระ --</option>
+                            <?php
+                            $pm_res = mysqli_query($conn, "SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC");
+                            while ($pm = mysqli_fetch_assoc($pm_res)):
+                            ?>
+                            <option value="<?= $pm['id'] ?>" data-type="<?= $pm['type'] ?>">
+                                <?= htmlspecialchars($pm['name']) ?>
+                            </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div id="installment_field" class="hidden">
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">จำนวนงวด</label>
+                        <select name="installment_period" onchange="generateInstallmentSchedule()"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <option value="">-- เลือกจำนวนงวด --</option>
+                            <option value="2">2 งวด</option>
+                            <option value="3">3 งวด</option>
+                            <option value="4">4 งวด</option>
+                            <option value="6">6 งวด</option>
+                            <option value="8">8 งวด</option>
+                            <option value="10">10 งวด</option>
+                            <option value="12">12 งวด</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ระยะเวลาชำระ</label>
                         <select name="payment_term"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             <option value="cash">เงินสด / โอนจ่าย</option>
                             <option value="30">เครดิต 30 วัน</option>
                             <option value="60">เครดิต 60 วัน</option>
+                            <option value="90">เครดิต 90 วัน</option>
                         </select>
                     </div>
 
@@ -355,6 +385,32 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             <option value="3">3% </option>
                             <option value="5">5% </option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- ===== กำหนดการผ่อนชำระ ===== -->
+                <div id="installment_schedule_section" class="hidden bg-white rounded-3xl border border-slate-200 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                        <span class="text-xs font-black text-slate-700 uppercase tracking-widest">
+                            <i class="fas fa-calendar-alt text-indigo-500 mr-2"></i> กำหนดการผ่อนชำระ
+                        </span>
+                        <span class="text-[10px] text-slate-400 ml-2">(แก้ไขวันที่/ยอดได้)</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="installmentTable">
+                                <thead class="bg-slate-100 text-[10px] uppercase text-slate-600 font-black">
+                                    <tr>
+                                        <th class="px-4 py-2.5 text-center w-16">งวดที่</th>
+                                        <th class="px-4 py-2.5 text-center">วันครบกำหนด</th>
+                                        <th class="px-4 py-2.5 text-right">ยอดชำระ</th>
+                                        <th class="px-4 py-2.5 text-center w-24">สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="installmentBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                        <p id="installment_total_note" class="text-[11px] text-slate-400 mt-2 text-right hidden"></p>
                     </div>
                 </div>
 
@@ -490,7 +546,7 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         </div>
 
         <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden mt-4 p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="relative">
                     <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">ไฟล์แนบ 1</label>
                     <div class="flex items-center gap-2">
@@ -512,6 +568,21 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                             class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
                         <button type="button" onclick="clearFile('file2')"
+                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">แนบสลิปชำระเงิน</label>
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="payment_slip" id="payment_slip"
+                            accept="image/*,.pdf"
+                            class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-emerald-500 transition-all 
+file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-emerald-50 file:text-emerald-600">
+                        <button type="button" onclick="clearFile('payment_slip')"
                             class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1275,6 +1346,81 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
         }
     });
 
+    function togglePaymentFields() {
+        const sel = document.getElementById('payment_method');
+        const installField = document.getElementById('installment_field');
+        const scheduleSection = document.getElementById('installment_schedule_section');
+        if (!sel) return;
+        const opt = sel.options[sel.selectedIndex];
+        const type = opt ? opt.getAttribute('data-type') : '';
+        if (type === 'installment') {
+            installField.classList.remove('hidden');
+            generateInstallmentSchedule();
+        } else {
+            installField.classList.add('hidden');
+            if (scheduleSection) scheduleSection.classList.add('hidden');
+        }
+    }
+
+    function generateInstallmentSchedule() {
+        const period = parseInt(document.querySelector('[name="installment_period"]').value) || 0;
+        const grandTotalText = document.getElementById('grandtotal_display').innerText.replace(/,/g, '');
+        const grandTotal = parseFloat(grandTotalText) || 0;
+        const body = document.getElementById('installmentBody');
+        const section = document.getElementById('installment_schedule_section');
+        const note = document.getElementById('installment_total_note');
+
+        if (period <= 0) {
+            if (section) section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        const perAmount = grandTotal > 0 ? Math.floor((grandTotal / period) * 100) / 100 : 0;
+        let remaining = grandTotal > 0 ? grandTotal : 0;
+
+        body.innerHTML = '';
+        for (let i = 1; i <= period; i++) {
+            const amount = grandTotal > 0 ? ((i === period) ? Math.round(remaining * 100) / 100 : perAmount) : 0;
+            remaining -= amount;
+
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30 * i);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-4 py-2.5 text-center font-bold text-slate-700">${i}</td>
+                <td class="px-4 py-2.5 text-center">
+                    <input type="date" name="installment_due_date[]" value="${dueDate.toISOString().split('T')[0]}"
+                        class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none focus:border-indigo-500">
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                    <input type="number" name="installment_amount[]" value="${amount.toFixed(2)}" step="0.01"
+                        onchange="updateInstallmentTotal()"
+                        class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-right text-sm font-bold outline-none focus:border-indigo-500">
+                </td>
+                <td class="px-4 py-2.5 text-center">
+                    <span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full"> pending</span>
+                    <input type="hidden" name="installment_status[]" value="pending">
+                </td>
+            `;
+            body.appendChild(tr);
+        }
+
+        note.classList.remove('hidden');
+        note.innerText = 'ยอดรวม: ' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2}) + ' บาท';
+    }
+
+    function updateInstallmentTotal() {
+        const inputs = document.querySelectorAll('[name="installment_amount[]"]');
+        let total = 0;
+        inputs.forEach(inp => { total += parseFloat(inp.value) || 0; });
+        const note = document.getElementById('installment_total_note');
+        if (note) {
+            note.innerText = 'รวมทุกรวด: ' + total.toLocaleString(undefined, {minimumFractionDigits: 2}) + ' บาท';
+        }
+    }
+
     function clearFile(id) {
         const fileInput = document.getElementById(id);
         fileInput.value = ''; // ล้างค่าใน Input
@@ -1353,6 +1499,31 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
         restrictDueDate();
         const reqSelect = document.querySelector('select[name="requested_by"]');
         if (reqSelect) updateContactTel(reqSelect);
+
+        const installPeriod = document.querySelector('[name="installment_period"]');
+        if (installPeriod) {
+            installPeriod.addEventListener('change', function() {
+                const sel = document.getElementById('payment_method');
+                const opt = sel ? sel.options[sel.selectedIndex] : null;
+                if (opt && opt.getAttribute('data-type') === 'installment') {
+                    generateInstallmentSchedule();
+                }
+            });
+        }
+
+        const origCalc = window.calculateTotal;
+        if (typeof origCalc === 'function') {
+            window._origCalculateTotal = origCalc;
+            window.calculateTotal = function() {
+                window._origCalculateTotal();
+                const sel = document.getElementById('payment_method');
+                const opt = sel ? sel.options[sel.selectedIndex] : null;
+                if (opt && opt.getAttribute('data-type') === 'installment') {
+                    const installPeriod = parseInt(document.querySelector('[name="installment_period"]')?.value || 0);
+                    if (installPeriod > 0) generateInstallmentSchedule();
+                }
+            };
+        }
     });
 </script>
 <script src="assets/js/demo-data.js"></script>

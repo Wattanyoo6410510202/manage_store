@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: Thu, 01 Jan 1970 00:00:00 GMT");
 require_once 'config.php';
 include 'header.php';
 
@@ -59,6 +62,15 @@ $stores_query = mysqli_query($conn, "SELECT id, store_name FROM stores ORDER BY 
 $stores = [];
 while ($st = mysqli_fetch_assoc($stores_query)) {
     $stores[] = $st;
+}
+
+// 8. ดึงกำหนดการผ่อนชำระ (ถ้ามี)
+$installments = [];
+if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0) {
+    $ins_res = mysqli_query($conn, "SELECT * FROM installment_schedule WHERE pr_id = '$pr_id' ORDER BY installment_no ASC");
+    while ($ins = mysqli_fetch_assoc($ins_res)) {
+        $installments[] = $ins;
+    }
 }
 ?>
 
@@ -127,11 +139,38 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                         <input type="text" name="reference_no" value="<?= htmlspecialchars($pr_data['reference_no']) ?>" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">การชำระเงิน</label>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">วิธีการชำระเงิน</label>
+                        <select name="payment_method" id="payment_method" onchange="togglePaymentFields()"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <option value="">-- เลือกวิธีชำระ --</option>
+                            <?php
+                            $pm_res = mysqli_query($conn, "SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC");
+                            while ($pm = mysqli_fetch_assoc($pm_res)):
+                            ?>
+                            <option value="<?= $pm['id'] ?>" data-type="<?= $pm['type'] ?>"
+                                <?= $pr_data['payment_method'] == $pm['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($pm['name']) ?>
+                            </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div id="installment_field" class="<?= $pr_data['installment_period'] ? '' : 'hidden' ?>">
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">จำนวนงวด</label>
+                        <select name="installment_period" onchange="generateInstallmentSchedule()"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+                            <option value="">-- เลือกจำนวนงวด --</option>
+                            <?php foreach ([2,3,4,6,8,10,12] as $n): ?>
+                            <option value="<?= $n ?>" <?= $pr_data['installment_period'] == $n ? 'selected' : '' ?>><?= $n ?> งวด</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ระยะเวลาชำระ</label>
                         <select name="payment_term" class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
                             <option value="cash" <?= $pr_data['payment_term'] == 'cash' ? 'selected' : '' ?>>เงินสด / โอนจ่าย</option>
                             <option value="30" <?= $pr_data['payment_term'] == '30' ? 'selected' : '' ?>>เครดิต 30 วัน</option>
                             <option value="60" <?= $pr_data['payment_term'] == '60' ? 'selected' : '' ?>>เครดิต 60 วัน</option>
+                            <option value="90" <?= $pr_data['payment_term'] == '90' ? 'selected' : '' ?>>เครดิต 90 วัน</option>
                         </select>
                     </div>
                     <div class="col-span-1">
@@ -172,6 +211,93 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             <option value="3" <?= $pr_data['wht_percent'] == 3 ? 'selected' : '' ?>>3% </option>
                             <option value="5" <?= $pr_data['wht_percent'] == 5 ? 'selected' : '' ?>>5% </option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- ===== กำหนดการผ่อนชำระ (แก้ไข) ===== -->
+                <div id="installment_schedule_section" class="<?= empty($installments) ? 'hidden' : '' ?> bg-white rounded-3xl border border-slate-200 overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                        <span class="text-xs font-black text-slate-700 uppercase tracking-widest">
+                            <i class="fas fa-calendar-alt text-indigo-500 mr-2"></i> กำหนดการผ่อนชำระ
+                        </span>
+                        <span class="text-[10px] text-slate-400 ml-2">(แก้ไขวันที่/ยอดได้)</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="installmentTable">
+                                <thead class="bg-slate-100 text-[10px] uppercase text-slate-600 font-black">
+                                    <tr>
+                                        <th class="px-4 py-2.5 text-center">งวดที่</th>
+                                        <th class="px-4 py-2.5 text-center">วันครบกำหนด</th>
+                                        <th class="px-4 py-2.5 text-right">ยอดชำระ</th>
+                                        <th class="px-4 py-2.5 text-right">ชำระแล้ว</th>
+                                        <th class="px-4 py-2.5 text-center">สถานะ</th>
+                                        <th class="px-4 py-2.5 text-center">วันที่จ่าย</th>
+                                        <th class="px-4 py-2.5 text-center">สลิป</th>
+                                        <th class="px-4 py-2.5 text-center"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="installmentBody" class="divide-y divide-slate-100">
+                                    <?php foreach ($installments as $ins): 
+                                        $ins_status_color = match($ins['status']) {
+                                            'paid' => '#10b981',
+                                            'partial' => '#f59e0b',
+                                            'overdue' => '#ef4444',
+                                            default => '#94a3b8'
+                                        };
+                                        $ins_status_label = match($ins['status']) {
+                                            'paid' => 'ชำระแล้ว',
+                                            'partial' => 'บางส่วน',
+                                            'overdue' => 'เกินกำหนด',
+                                            default => 'pending'
+                                        };
+                                    ?>
+                                    <tr>
+                                        <td class="px-4 py-2.5 text-center font-bold text-slate-700"><?= $ins['installment_no'] ?></td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <input type="date" name="installment_due_date[]" value="<?= $ins['due_date'] ?>"
+                                                class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none focus:border-indigo-500">
+                                        </td>
+                                        <td class="px-4 py-2.5 text-right">
+                                            <input type="number" name="installment_amount[]" value="<?= $ins['amount'] ?>" step="0.01"
+                                                onchange="updateInstallmentTotal()"
+                                                class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-right text-sm font-bold outline-none focus:border-indigo-500">
+                                        </td>
+                                        <td class="px-4 py-2.5 text-right" style="color: #10b981; font-weight: 600;"><?= number_format($ins['paid_amount'], 2) ?></td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <span style="display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; background: <?= $ins_status_color ?>15; color: <?= $ins_status_color ?>; border: 1px solid <?= $ins_status_color ?>30;">
+                                                <?= $ins_status_label ?>
+                                            </span>
+                                            <input type="hidden" name="installment_status[]" value="<?= $ins['status'] ?>">
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center" style="font-size: 11px; color: #64748b;">
+                                            <?= !empty($ins['paid_at']) ? date('d/m/Y', strtotime($ins['paid_at'])) : '' ?>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <?php if (!empty($ins['payment_slip'])): ?>
+                                            <a href="uploads/payments/<?= htmlspecialchars($ins['payment_slip']) ?>" target="_blank" style="color: #2563eb; font-size: 18px;" title="ดูสลิป">
+                                                <i class="fas fa-receipt"></i>
+                                            </a>
+                                            <?php else: ?>
+                                            <span style="color: #cbd5e1;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <?php if ($ins['status'] === 'pending' || $ins['status'] === 'overdue'): ?>
+                                            <button type="button" onclick='showPayModal(<?= json_encode(['id' => $ins['id'], 'no' => $ins['installment_no'], 'amount' => $ins['amount'], 'due_date' => $ins['due_date']]) ?>)'
+                                                style="background: #6366f1; color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; cursor: pointer;">
+                                                ชำระเงิน
+                                            </button>
+                                            <?php elseif ($ins['status'] === 'paid'): ?>
+                                            <span style="color: #10b981; font-size: 11px; font-weight: 600;"><i class="fas fa-check-circle"></i> จ่ายแล้ว</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="installment_total_note" class="text-[11px] text-slate-400 mt-2 text-right <?= empty($installments) ? 'hidden' : '' ?>"></p>
                     </div>
                 </div>
 
@@ -278,6 +404,25 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                     </div>
                 </div>
                 <?php endfor; ?>
+                <div class="relative">
+                    <label class="text-[12px] font-black text-slate-800 uppercase block mb-1 ml-1">แนบสลิปชำระเงิน</label>
+                    <div class="flex items-center gap-2" id="file_wrapper_slip">
+                        <?php if (!empty($pr_data['payment_slip'])): ?>
+                            <div id="existing_file_slip" class="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 w-full">
+                                <a href="uploads/payments/<?= htmlspecialchars($pr_data['payment_slip']) ?>" target="_blank" class="text-emerald-700 text-[11px] font-bold truncate hover:underline flex-grow">
+                                    <i class="fas fa-receipt mr-1"></i> <?= htmlspecialchars($pr_data['payment_slip']) ?>
+                                </a>
+                                <button type="button" onclick="removeExistingSlip()" class="text-red-500 hover:text-red-700 shrink-0">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <input type="hidden" name="delete_payment_slip" value="0" id="delete_payment_slip">
+                            </div>
+                            <input type="file" name="payment_slip" id="input_file_slip" class="hidden w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-emerald-50 file:text-emerald-600" accept="image/*,.pdf">
+                        <?php else: ?>
+                            <input type="file" name="payment_slip" id="input_file_slip" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-emerald-50 file:text-emerald-600" accept="image/*,.pdf">
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -550,6 +695,87 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         textarea.style.height = (textarea.scrollHeight) + 'px';
     }
     
+    function togglePaymentFields() {
+        const sel = document.getElementById('payment_method');
+        const installField = document.getElementById('installment_field');
+        const scheduleSection = document.getElementById('installment_schedule_section');
+        if (!sel) return;
+        const opt = sel.options[sel.selectedIndex];
+        const type = opt ? opt.getAttribute('data-type') : '';
+        if (type === 'installment') {
+            installField.classList.remove('hidden');
+            // ถ้ายังไม่มี schedule ให้ auto-generate
+            const body = document.getElementById('installmentBody');
+            if (body && body.children.length === 0) {
+                generateInstallmentSchedule();
+            } else if (scheduleSection) {
+                scheduleSection.classList.remove('hidden');
+            }
+        } else {
+            installField.classList.add('hidden');
+            if (scheduleSection) scheduleSection.classList.add('hidden');
+        }
+    }
+
+    function generateInstallmentSchedule() {
+        const period = parseInt(document.querySelector('[name="installment_period"]').value) || 0;
+        const grandTotalText = document.getElementById('grandtotal_display').innerText.replace(/,/g, '');
+        const grandTotal = parseFloat(grandTotalText) || 0;
+        const body = document.getElementById('installmentBody');
+        const section = document.getElementById('installment_schedule_section');
+        const note = document.getElementById('installment_total_note');
+
+        if (period <= 0) {
+            if (section) section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        const perAmount = grandTotal > 0 ? Math.floor((grandTotal / period) * 100) / 100 : 0;
+        let remaining = grandTotal > 0 ? grandTotal : 0;
+
+        body.innerHTML = '';
+        for (let i = 1; i <= period; i++) {
+            const amount = grandTotal > 0 ? ((i === period) ? Math.round(remaining * 100) / 100 : perAmount) : 0;
+            remaining -= amount;
+
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30 * i);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-4 py-2.5 text-center font-bold text-slate-700">${i}</td>
+                <td class="px-4 py-2.5 text-center">
+                    <input type="date" name="installment_due_date[]" value="${dueDate.toISOString().split('T')[0]}"
+                        class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none focus:border-indigo-500">
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                    <input type="number" name="installment_amount[]" value="${amount.toFixed(2)}" step="0.01"
+                        onchange="updateInstallmentTotal()"
+                        class="w-full bg-transparent border border-slate-200 rounded-lg px-2 py-1 text-right text-sm font-bold outline-none focus:border-indigo-500">
+                </td>
+                <td class="px-4 py-2.5 text-center">
+                    <span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full">pending</span>
+                    <input type="hidden" name="installment_status[]" value="pending">
+                </td>
+            `;
+            body.appendChild(tr);
+        }
+
+        note.classList.remove('hidden');
+        note.innerText = 'ยอดรวม: ' + grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2}) + ' บาท';
+    }
+
+    function updateInstallmentTotal() {
+        const inputs = document.querySelectorAll('[name="installment_amount[]"]');
+        let total = 0;
+        inputs.forEach(inp => { total += parseFloat(inp.value) || 0; });
+        const note = document.getElementById('installment_total_note');
+        if (note) {
+            note.innerText = 'รวมทุกรวด: ' + total.toLocaleString(undefined, {minimumFractionDigits: 2}) + ' บาท';
+        }
+    }
+
     function clearFile(id) { document.getElementById(id).value = ''; }
     
     function removeExistingFile(index) {
@@ -564,6 +790,15 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         
         // ตั้งค่าตัวแปรเพื่อบอก API ให้ลบไฟล์
         document.getElementById('delete_file_' + index).value = '1';
+    }
+
+    function removeExistingSlip() {
+        document.getElementById('existing_file_slip').style.display = 'none';
+        const inputFile = document.getElementById('input_file_slip');
+        if (inputFile) {
+            inputFile.classList.remove('hidden');
+        }
+        document.getElementById('delete_payment_slip').value = '1';
     }
 
     // Event Delegation สำหรับ unit auto-detect
@@ -624,6 +859,117 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
         }
         calculateTotal();
         document.querySelectorAll('textarea[name="item_desc[]"]').forEach(el => { autoResize(el); });
+
+        const installPeriod = document.querySelector('[name="installment_period"]');
+        if (installPeriod) {
+            installPeriod.addEventListener('change', function() {
+                const sel = document.getElementById('payment_method');
+                const opt = sel ? sel.options[sel.selectedIndex] : null;
+                if (opt && opt.getAttribute('data-type') === 'installment') {
+                    generateInstallmentSchedule();
+                }
+            });
+        }
+
+        const origCalc = window.calculateTotal;
+        if (typeof origCalc === 'function') {
+            window._origCalculateTotal = origCalc;
+            window.calculateTotal = function() {
+                window._origCalculateTotal();
+                const sel = document.getElementById('payment_method');
+                const opt = sel ? sel.options[sel.selectedIndex] : null;
+                if (opt && opt.getAttribute('data-type') === 'installment') {
+                    const installPeriod = parseInt(document.querySelector('[name="installment_period"]')?.value || 0);
+                    if (installPeriod > 0) generateInstallmentSchedule();
+                }
+            };
+        }
     });
 </script>
+
+<!-- Pay Modal (no <form> to prevent accidental submission of the main form) -->
+<div id="payModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <span class="text-sm font-black text-slate-700 uppercase tracking-wider">
+                <i class="fas fa-credit-card text-indigo-500 mr-2"></i>ชำระเงิน <span id="payModalInstallmentNo"></span>
+            </span>
+            <button type="button" onclick="closePayModal()" class="text-slate-300 hover:text-slate-600 transition-colors text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="pay_installment_id">
+            <div class="bg-slate-50 rounded-2xl p-4 space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-slate-500">ยอดชำระ</span><span id="payModalAmount" class="font-bold text-slate-800"></span></div>
+                <div class="flex justify-between"><span class="text-slate-500">ครบกำหนด</span><span id="payModalDueDate" class="font-bold text-slate-800"></span></div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">วันที่ชำระ</label>
+                <input type="date" id="pay_date" required
+                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">สลิปการชำระเงิน (ถ้ามี)</label>
+                <input type="file" id="pay_slip" accept="image/*,.pdf"
+                    class="w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100">
+            </div>
+            <button type="button" onclick="submitPay()"
+                class="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-black rounded-xl transition-colors"
+                id="pay_submit_btn">
+                ยืนยันการชำระเงิน
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentInstallment = null;
+
+    function showPayModal(ins) {
+        currentInstallment = ins;
+        document.getElementById('payModalInstallmentNo').textContent = 'งวดที่ ' + ins.no;
+        document.getElementById('payModalAmount').textContent = parseFloat(ins.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('payModalDueDate').textContent = ins.due_date;
+        document.getElementById('pay_installment_id').value = ins.id;
+        document.getElementById('payModal').classList.remove('hidden');
+    }
+
+    function closePayModal() {
+        document.getElementById('payModal').classList.add('hidden');
+        currentInstallment = null;
+    }
+
+    async function submitPay() {
+        const id = document.getElementById('pay_installment_id').value;
+        const date = document.getElementById('pay_date').value;
+        const slip = document.getElementById('pay_slip').files[0];
+
+        if (!date) { alert('กรุณาเลือกวันที่ชำระ'); return; }
+
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('paid_at', date);
+        if (slip) formData.append('payment_slip', slip);
+
+        const btn = document.getElementById('pay_submit_btn');
+        btn.disabled = true;
+        btn.textContent = 'กำลังบันทึก...';
+        try {
+            const res = await fetch('api/pay_installment.php', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('บันทึกการชำระเงินเรียบร้อย');
+                location.reload();
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + (data.message || 'ไม่ทราบสาเหตุ'));
+                btn.disabled = false;
+                btn.textContent = 'ยืนยันการชำระเงิน';
+            }
+        } catch (err) {
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+            btn.disabled = false;
+            btn.textContent = 'ยืนยันการชำระเงิน';
+        }
+    }
+</script>
+
 <?php include 'footer.php'; ?>

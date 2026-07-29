@@ -145,7 +145,7 @@ if ($current_page == 'pending_budget.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
 // อื่นๆ คือ cat_system
@@ -366,6 +366,11 @@ if (!empty($_SESSION['sup_id'])) {
                     class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'procurement.php') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
                     <i class="fas fa-truck-loading w-5 <?php echo ($current_page == 'procurement.php') ? 'text-white' : 'text-amber-400'; ?>"></i>
                     <span class="font-medium">จัดซื้อ</span>
+                </a>
+                <a href="procurement_dashboard.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'procurement_dashboard.php') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-chart-line w-5 <?php echo ($current_page == 'procurement_dashboard.php') ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                    <span class="font-medium">Dashboard</span>
                 </a>
                 <?php endif; ?>
             <?php endif; ?>

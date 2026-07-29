@@ -18,7 +18,9 @@ $doc_date    = $_POST['doc_date'] ?? date('Y-m-d');
 $due_date    = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
 $priority    = $_POST['priority'] ?? 'ปานกลาง';
 $reference_no = $_POST['reference_no'] ?? '';
-$payment_term = $_POST['payment_term'] ?? '';
+$payment_term     = $_POST['payment_term'] ?? '';
+$payment_method   = $_POST['payment_method'] ?? '';
+$installment_period = !empty($_POST['installment_period']) ? (int)$_POST['installment_period'] : 0;
 $requested_by = $_POST['requested_by'] ?? '';
 $contact_tel  = $_POST['contact_tel'] ?? '';
 $notes        = $_POST['notes'] ?? '';
@@ -47,8 +49,20 @@ function uploadPRFile($file_key) {
     }
     return null;
 }
+
+function uploadPaymentSlip() {
+    if (isset($_FILES['payment_slip']) && $_FILES['payment_slip']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = '../uploads/payments/';
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+        $ext = pathinfo($_FILES['payment_slip']['name'], PATHINFO_EXTENSION);
+        $new_name = 'SLIP_' . date('Ymd_His') . '_' . uniqid() . '.' . $ext;
+        if (move_uploaded_file($_FILES['payment_slip']['tmp_name'], $upload_dir . $new_name)) return $new_name;
+    }
+    return null;
+}
 $attachment_1 = uploadPRFile('attachment_1');
 $attachment_2 = uploadPRFile('attachment_2');
+$payment_slip = uploadPaymentSlip() ?? '';
 
 // ถ้า store_id = 0 ให้เก็บเป็น NULL
 if ($store_id === 0) $store_id = null;
@@ -74,22 +88,23 @@ try {
     $temp_no = "TEMP-" . time();
     $notes_to_save = trim($notes);
 
-    // SQL สำหรับ Insert (ใส่ค่าว่างสำหรับ budget_limit_type ไปก่อนเพื่อกัน error)
+    // SQL สำหรับ Insert
     $sql = "INSERT INTO pr SET 
         doc_no = ?, doc_date = ?, due_date = ?, priority = ?, supplier_id = ?, store_id = ?, customer_id = ?, 
         expense_cat_id = ?, budget_type_id = ?, objective_id = ?, budget_amount = ?, 
         expectation = ?, practice_method = ?, budget_details = ?, is_internal = ?, reference_no = ?, 
-        payment_term = ?, requested_by = ?, contact_tel = ?, notes = ?, subtotal = ?, 
+        payment_term = ?, payment_method = ?, installment_period = ?, payment_slip = ?,
+        requested_by = ?, contact_tel = ?, notes = ?, subtotal = ?, 
         vat = ?, grand_total = ?, vat_percent = ?, wht_percent = ?, wht_amount = ?, 
-        total_after_wht = ?, created_by = ?, attachment_1 = ?, attachment_2 = ?, status = ?";
+        total_after_wht = ?, created_by = ?, attachment_1 = ?, attachment_2 = ?, status = ?, received_status = 'pending'";
         
     $stmt = $conn->prepare($sql);
-    // Bind 31 ตัว (เพิ่ม store_id)
-    $stmt->bind_param("ssssiiiiiidsssissssddddddisssss", 
+    $stmt->bind_param("ssssiiiiiidsssisssissssdddddddisss", 
         $temp_no, $doc_date, $due_date, $priority, $supplier_id, $store_id, $customer_id, 
         $expense_cat_id, $budget_type_id, $objective_id, $budget_amount, 
         $expectation, $practice_method, $budget_details, $is_internal, $reference_no, 
-        $payment_term, $requested_by, $contact_tel, $notes_to_save, $total_subtotal, 
+        $payment_term, $payment_method, $installment_period, $payment_slip,
+        $requested_by, $contact_tel, $notes_to_save, $total_subtotal, 
         $total_vat, $grand_total, $vat_percent, $wht_percent, $total_wht, 
         $total_after_wht, $user_id, $attachment_1, $attachment_2, $status
     );
@@ -115,6 +130,20 @@ try {
         $stmt_item->bind_param("isdsddd", $pr_id, $desc, $q, $u, $p, $d, $t);
         $stmt_item->execute();
     }
+    // --- บันทึกกำหนดการผ่อนชำระ ---
+    if ($installment_period > 0) {
+        $dueDates = $_POST['installment_due_date'] ?? [];
+        $amounts  = $_POST['installment_amount'] ?? [];
+        $stmt_ins = $conn->prepare("INSERT INTO installment_schedule (pr_id, installment_no, due_date, amount, status) VALUES (?, ?, ?, ?, 'pending')");
+        for ($i = 0; $i < $installment_period; $i++) {
+            $no = $i + 1;
+            $dd = $dueDates[$i] ?? date('Y-m-d', strtotime("+30 days"));
+            $am = floatval($amounts[$i] ?? 0);
+            $stmt_ins->bind_param("iisd", $pr_id, $no, $dd, $am);
+            $stmt_ins->execute();
+        }
+    }
+
     mysqli_commit($conn);
     
     // --- LINE NOTIFICATION ---

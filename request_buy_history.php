@@ -126,13 +126,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <th>รายละเอียด</th>
                             <th class="text-center">ไฟล์แนบ</th>
                             <th class="text-right">ยอดรวม</th>
-                            <th>สถานะ</th>
-                            <th>วันที่</th>
-                            <th>หัวหน้างาน</th>
-                            <th>จัดซื้อ</th>
-                            <th>SUP</th>
-                            <th>CEO</th>
-                            <th class="text-center w-24">ดำเนินการ</th>
+            <th>สถานะ</th>
+            <th>รับของ</th>
+            <th>วันที่</th>
+            <th>หัวหน้างาน</th>
+            <th>จัดซื้อ</th>
+            <th>SUP</th>
+            <th>CEO</th>
+            <th class="text-center w-24">ดำเนินการ</th>
                         </tr>
                     </thead>
                     <tbody class="text-slate-600">
@@ -217,6 +218,24 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <span class="text-[12px] font-bold uppercase tracking-wide"><?= $style['label'] ?></span>
                                     </div>
                                 </td>
+                                <td>
+                                    <?php
+                                    $rs = $row['received_status'] ?? 'pending';
+                                    $r_config = [
+                                        'pending' => ['bg' => 'bg-slate-50', 'text' => 'text-slate-400', 'border' => 'border-slate-100', 'dot' => 'bg-slate-300', 'label' => 'รอรับ'],
+                                        'received' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'รับแล้ว'],
+                                        'partial' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รับบางส่วน'],
+                                    ];
+                                    $r_style = $r_config[$rs] ?? $r_config['pending'];
+                                    ?>
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $r_style['bg'] ?> <?= $r_style['border'] ?> <?= $r_style['text'] ?>">
+                                        <span class="w-1.5 h-1.5 rounded-full <?= $r_style['dot'] ?>"></span>
+                                        <span class="text-[10px] font-bold uppercase tracking-wide"><?= $r_style['label'] ?></span>
+                                    </div>
+                                    <?php if (!empty($row['received_at'])): ?>
+                                        <div class="text-[8px] text-slate-400 mt-0.5"><?= date('d/m/y', strtotime($row['received_at'])) ?></div>
+                                    <?php endif; ?>
+                                </td>
                                 <td data-order="<?= $row['created_at'] ?>">
                                     <div class="flex flex-col">
                                         <span class="text-[14px] font-bold text-slate-700 mt-0.5 flex items-center gap-1"><i class="fas fa-calendar-alt text-[9px]"></i><?= date('d/m/y', strtotime($row['created_at'])) ?></span>
@@ -251,12 +270,18 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <a href="view_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-eye text-xs"></i></a>
                                         <?php
                                         $can_edit = !is_viewer() && (empty($row['approved_by_0']) || $_SESSION['role'] === 'admin' || strpos($_SESSION['role'] ?? '', 'procure') === 0);
+                                        $can_receive = ($row['status'] === 'approved' && $row['received_status'] !== 'received');
                                         ?>
                                         <?php if ($can_edit): ?>
                                             <?php if ($row['status'] === 'pending'): ?>
                                                 <a href="edit_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-edit text-xs"></i></a>
                                             <?php endif; ?>
                                             <button onclick="deletePR(<?= $row['id'] ?>)" class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-trash text-xs"></i></button>
+                                        <?php endif; ?>
+                                        <?php if ($can_receive): ?>
+                                            <button onclick="receivePR(<?= $row['id'] ?>)" class="w-8 h-8 flex items-center justify-center bg-emerald-500 text-white rounded-lg border border-emerald-500 shadow-sm hover:bg-emerald-600 transition-all" title="รับของแล้ว">
+                                                <i class="fas fa-check-double text-xs"></i>
+                                            </button>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -293,8 +318,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
             "order": [[8, "desc"]],
             "columnDefs": [
-                { "orderable": false, "targets": [0, 5, 9, 10, 11, 12, 13] },
-                { "type": "html", "targets": [7, 9, 10, 11, 12] }
+                { "orderable": false, "targets": [0, 5, 6, 9, 11, 12, 13, 14, 15] },
+                { "type": "html", "targets": [7, 9, 11, 12, 13, 14] }
             ],
             "drawCallback": function () { updateBulkUI(); }
         });
@@ -322,7 +347,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             let min = $('#minDate').val();
             let max = $('#maxDate').val();
-            let dateStr = data[8] || "";
+            let dateStr = data[10] || "";
             if (dateStr === "") return true;
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
             if (!match) return true;
@@ -385,6 +410,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             };
             const s_style = s_config[status] || s_config['pending'];
 
+            const rs = row.received_status || 'pending';
+            const r_config = {
+                'pending': { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-100', dot: 'bg-slate-300', label: 'รอรับ' },
+                'received': { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', dot: 'bg-emerald-400', label: 'รับแล้ว' },
+                'partial': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', dot: 'bg-amber-400', label: 'รับบางส่วน' },
+            };
+            const r_style = r_config[rs] || r_config['pending'];
+
             html += `
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in" data-mobile-id="${row.id}">
                 <div class="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
@@ -392,9 +425,15 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <input type="checkbox" class="pr-checkbox w-5 h-5 rounded border-slate-300 text-indigo-600" value="${row.id}">
                         <span class="font-black text-slate-800">${row.doc_no}</span>
                     </div>
-                    <div class="status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${s_style.bg} ${s_style.border} ${s_style.text} shadow-sm">
-                        <span class="w-1.5 h-1.5 rounded-full ${s_style.dot} animate-pulse"></span>
-                        <span class="text-[10px] font-black uppercase tracking-widest">${s_style.label}</span>
+                    <div class="flex items-center gap-2">
+                        <div class="status-badge inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${r_style.bg} ${r_style.border} ${r_style.text} shadow-sm">
+                            <span class="w-1.5 h-1.5 rounded-full ${r_style.dot}"></span>
+                            <span class="text-[8px] font-bold uppercase tracking-widest">${r_style.label}</span>
+                        </div>
+                        <div class="status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${s_style.bg} ${s_style.border} ${s_style.text} shadow-sm">
+                            <span class="w-1.5 h-1.5 rounded-full ${s_style.dot} animate-pulse"></span>
+                            <span class="text-[10px] font-black uppercase tracking-widest">${s_style.label}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="p-4 space-y-4">
@@ -443,6 +482,9 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     </div>
                     <div class="flex gap-2">
                         <a href="view_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200"><i class="fas fa-eye text-xs"></i></a>
+                        ${row.status === 'approved' && row.received_status !== 'received' ? `
+                            <button onclick="receivePR(${row.id})" class="w-9 h-9 flex items-center justify-center bg-emerald-500 text-white rounded-xl border border-emerald-500 shadow-sm hover:bg-emerald-600 transition-all"><i class="fas fa-check-double text-xs"></i></button>
+                        ` : ''}
                         ${!IS_VIEWER && (!row.approved_by_0 || USER_ROLE === 'admin' || USER_ROLE === 'procure') ? `
                             ${row.status === 'pending' ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm"><i class="fas fa-edit text-xs"></i></a>` : ''}
                             <button onclick="deletePR(${row.id})" class="w-9 h-9 flex items-center justify-center bg-white text-red-500 rounded-xl border border-red-100 shadow-sm"><i class="fas fa-trash text-xs"></i></button>
@@ -544,6 +586,37 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
         prTable.column(8).search('');
         prTable.draw();
         renderMobileCards();
+    }
+
+    function receivePR(id) {
+        Swal.fire({
+            title: 'ยืนยันรับของ?',
+            text: 'คุณต้องการยืนยันว่าได้รับสินค้าครบถ้วนแล้วใช่หรือไม่?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'รับของแล้ว',
+            cancelButtonText: 'ยกเลิก',
+            reverseButtons: true,
+            heightAuto: false,
+            showDenyButton: true,
+            denyButtonText: 'รับบางส่วน',
+            denyButtonColor: '#f59e0b'
+        }).then((result) => {
+            let action = '';
+            if (result.isConfirmed) action = 'received';
+            else if (result.isDenied) action = 'partial';
+            else return;
+
+            fetch(`api/receive_pr.php?id=${id}&action=${action}`).then(res => res.json()).then(res => {
+                if (res.status === 'success') {
+                    renderAlert('success', res.message);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    renderAlert('error', res.message);
+                }
+            });
+        });
     }
 
     function viewAttachment(url) { window.open(url, '_blank'); }

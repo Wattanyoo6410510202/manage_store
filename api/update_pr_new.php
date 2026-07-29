@@ -24,6 +24,8 @@ if ($store_id === 0) $store_id = null;
     $priority          = $_POST['priority'] ?? 'ปานกลาง';
     $reference_no      = $_POST['reference_no'] ?? '';
     $payment_term      = $_POST['payment_term'] ?? '';
+    $payment_method    = $_POST['payment_method'] ?? '';
+    $installment_period = !empty($_POST['installment_period']) ? (int)$_POST['installment_period'] : 0;
     $requested_by      = $_POST['requested_by'] ?? '';
     $contact_tel       = $_POST['contact_tel'] ?? '';
     $notes             = $_POST['notes'] ?? '';
@@ -86,6 +88,28 @@ if ($store_id === 0) $store_id = null;
         $attachment_2 = $new_file2;
     }
 
+    // Payment slip handling
+    function uploadPaymentSlip() {
+        if (isset($_FILES['payment_slip']) && $_FILES['payment_slip']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = '../uploads/payments/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+            $ext = pathinfo($_FILES['payment_slip']['name'], PATHINFO_EXTENSION);
+            $new_name = 'SLIP_' . date('Ymd_His') . '_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($_FILES['payment_slip']['tmp_name'], $upload_dir . $new_name)) return $new_name;
+        }
+        return null;
+    }
+    $payment_slip = $old_data['payment_slip'] ?? '';
+    if (isset($_POST['delete_payment_slip']) && $_POST['delete_payment_slip'] == '1') {
+        if ($payment_slip) @unlink('../uploads/payments/' . $payment_slip);
+        $payment_slip = '';
+    }
+    $new_slip = uploadPaymentSlip();
+    if ($new_slip) {
+        if ($old_data['payment_slip']) @unlink('../uploads/payments/' . $old_data['payment_slip']);
+        $payment_slip = $new_slip;
+    }
+
     mysqli_begin_transaction($conn);
     try {
         $new_subtotal = 0;
@@ -99,7 +123,8 @@ if ($store_id === 0) $store_id = null;
 
         $sql_main = "UPDATE pr SET 
                         supplier_id = ?, store_id = ?, customer_id = ?, is_internal = ?, due_date = ?, 
-                        priority = ?, reference_no = ?, payment_term = ?, requested_by = ?, contact_tel = ?, 
+                        priority = ?, reference_no = ?, payment_term = ?, payment_method = ?, installment_period = ?, payment_slip = ?,
+                        requested_by = ?, contact_tel = ?, 
                         notes = ?, expense_cat_id = ?, budget_type_id = ?, objective_id = ?, 
                         budget_limit_type = ?, budget_amount = ?, budget_details = ?, 
                         expectation = ?, practice_method = ?, subtotal = ?, vat = ?, 
@@ -109,8 +134,9 @@ if ($store_id === 0) $store_id = null;
         
         $stmt = $conn->prepare($sql_main);
         $stmt->bind_param(
-            "iiiisssssssiiisdssssddddsssi",
+            "iiiisssssisssiiisdssssddddddssi",
             $supplier_id, $store_id, $customer_id, $is_internal, $due_date, $priority, $reference_no, $payment_term,
+            $payment_method, $installment_period, $payment_slip,
             $requested_by, $contact_tel, $notes, $expense_cat_id, $budget_type_id, $objective_id,
             $budget_limit_type, $budget_amount, $budget_details, $expectation, $practice_method,
             $new_subtotal, $new_vat, $vat_percent, $wht_percent, $new_wht_amount, $net_grand_total,
@@ -127,6 +153,23 @@ if ($store_id === 0) $store_id = null;
             $disc = floatval($item_discounts[$key] ?? 0); $total = ($q * $p) - $disc;
             $stmt_item->bind_param("isdsddd", $pr_id, $desc, $q, $u, $p, $disc, $total);
             $stmt_item->execute();
+        }
+
+        // --- บันทึกกำหนดการผ่อนชำระ ---
+        mysqli_query($conn, "DELETE FROM installment_schedule WHERE pr_id = $pr_id");
+        if ($installment_period > 0) {
+            $dueDates = $_POST['installment_due_date'] ?? [];
+            $amounts  = $_POST['installment_amount'] ?? [];
+            $statuses = $_POST['installment_status'] ?? [];
+            $stmt_ins = $conn->prepare("INSERT INTO installment_schedule (pr_id, installment_no, due_date, amount, status) VALUES (?, ?, ?, ?, ?)");
+            for ($i = 0; $i < $installment_period; $i++) {
+                $no = $i + 1;
+                $dd = $dueDates[$i] ?? date('Y-m-d', strtotime("+30 days"));
+                $am = floatval($amounts[$i] ?? 0);
+                $st = $statuses[$i] ?? 'pending';
+                $stmt_ins->bind_param("iisds", $pr_id, $no, $dd, $am, $st);
+                $stmt_ins->execute();
+            }
         }
 
         mysqli_commit($conn);
