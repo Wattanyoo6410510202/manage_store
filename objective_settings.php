@@ -123,7 +123,8 @@ include('header.php');
                         'gmshotel' => 'GM SHotel', 'gmmanonta' => 'GM Manonta',
                         'gmnijuni' => 'GM Nijuni', 'hok' => 'HOK',
                         'maid_shotel' => 'แม่บ้าน SHotel', 'tech_shotel' => 'ช่าง SHotel', 'cater_shotel' => 'จัดเลี้ยง SHotel',
-                        'staff_shotel' => 'Staff SHotel', 'staff_manonta' => 'Staff Manonta', 'staff_nijuni' => 'Staff Nijuni'
+                        'staff_shotel' => 'Staff SHotel', 'staff_manonta' => 'Staff Manonta', 'staff_nijuni' => 'Staff Nijuni',
+                        'gm_sale' => 'GM Sale', 'sale' => 'Sale', 'marketing' => 'Marketing'
                     ];
                     foreach($roles_list as $val => $label): ?>
                         <label class="flex items-center gap-2 cursor-pointer">
