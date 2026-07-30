@@ -33,7 +33,7 @@ $sql = "SELECT
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
         LEFT JOIN po ON po.reference_no = p.doc_no AND po.deleted_at IS NULL
         WHERE p.deleted_at IS NULL AND p.created_by = '{$_SESSION['user_id']}' AND p.is_internal = 1
-        ORDER BY FIELD(p.status, 'approved', 'pending') ASC, p.created_at DESC";
+        ORDER BY FIELD(p.status, 'pending', 'approved') ASC, p.created_at DESC";
 
 $result = mysqli_query($conn, $sql);
 $pr_list = [];
@@ -106,12 +106,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 <div class="relative col-span-1">
                     <label
                         class="text-[10px] md:text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะ</label>
-                    <select id="filterStatus"
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
-                        <option value="">ทั้งหมด</option>
-                        <option value="รอ">รอเบิก</option>
-                        <option value="อนุมัติ">เบิกแล้ว</option>
-                    </select>
+                        <select id="filterStatus"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                            <option value="">ทั้งหมด</option>
+                            <option value="รอเบิก">รอเบิก</option>
+                            <option value="เบิกแล้ว">เบิกแล้ว</option>
+                        </select>
                 </div>
                 <div id="bulkActions"
                     class="hidden p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in col-span-1 justify-between md:justify-start">
@@ -244,7 +244,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-order="<?= $row['status'] === 'approved' ? '2' : '1' ?>">
                                     <?php
                                     $status = $row['status'] ?: 'pending';
                                     $config = [
@@ -405,7 +405,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             "pageLength": 10,
             "dom": '<"flex flex-col md:flex-row justify-between items-center gap-3 mb-4"lf>rt<"flex flex-col md:flex-row justify-between items-center gap-3 mt-4"ip>',
             "language": { "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/th.json" },
-            "order": [[8, "desc"]],
+            "order": [[8, "asc"]],
             "columnDefs": [
                 { "orderable": false, "targets": [0, 5, 6, 9, 11, 12, 13, 14, 15] },
                 { "type": "html", "targets": [7, 9, 11, 12, 13, 14] }
@@ -464,7 +464,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             const textMatch = (item.doc_no.toLowerCase().includes(search) || (item.first_item_desc || '').toLowerCase().includes(search) || (item.supplier_name || '').toLowerCase().includes(search));
             if (!textMatch) return false;
             if (supplier && item.supplier_name !== supplier) return false;
-            const mappedStatus = (item.status === 'pending' ? 'รอ' : 'อนุมัติ');
+            const mappedStatus = (item.status === 'pending' ? 'รอเบิก' : 'เบิกแล้ว');
             if (statusVal && mappedStatus !== statusVal) return false;
             if (min || max) {
                 const dateVal = item.created_at.split(' ')[0];
@@ -472,6 +472,11 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 if (max && dateVal > max) return false;
             }
             return true;
+        });
+
+        filtered.sort((a, b) => {
+            const order = { pending: 1, approved: 2 };
+            return (order[a.status] || 1) - (order[b.status] || 1);
         });
 
         if (filtered.length === 0) {
