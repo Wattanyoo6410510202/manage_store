@@ -88,15 +88,6 @@ if ($data['budget_type_id']) {
     $budget_info = mysqli_fetch_assoc($bt_res);
 }
 
-// กำหนดการผ่อนชำระ
-$installments = [];
-if (!empty($data['installment_period']) && $data['installment_period'] > 0) {
-    $ins_res = mysqli_query($conn, "SELECT * FROM installment_schedule WHERE pr_id = '$id' ORDER BY installment_no ASC");
-    while ($ins = mysqli_fetch_assoc($ins_res)) {
-        $installments[] = $ins;
-    }
-}
-
 // จัดการรายการที่จะนำมาแสดงในส่วนท้ายเอกสาร
 $display_list = [];
 $display_list[] = ['label' => 'ผู้จัดทำ', 'name' => $data['creator_name'], 'sig' => $data['creator_signature'], 'date' => $data['created_at'], 'is_empty' => false];
@@ -306,7 +297,7 @@ function ReadNumber($number) {
                 <span style="color: #64748b;">เลขที่อ้างอิง</span> <span style="color: #0f172a; font-weight: bold;"><?= $data['reference_no'] ?></span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;">
-                <span style="color: #64748b;">วิธีการชำระ</span> <span style="font-weight: bold; color: #0f172a;"><?= htmlspecialchars($data['payment_method_name'] ?? '-') ?><?= $data['installment_period'] ? ' (' . $data['installment_period'] . ' งวด)' : '' ?></span>
+                <span style="color: #64748b;">วิธีการชำระ</span> <span style="font-weight: bold; color: #0f172a;"><?= htmlspecialchars($data['payment_method_name'] ?? '-') ?></span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0;">
                 <span style="color: #64748b;">รับของ</span>
@@ -366,84 +357,6 @@ function ReadNumber($number) {
             </tbody>
         </table>
     </div>
-
-    <?php if (!empty($installments)): ?>
-    <div class="item-section" style="margin-top: 6px;">
-        <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 2px solid #e2e8f0;">
-            <span style="font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">
-                <i class="fas fa-calendar-alt" style="color: #6366f1; margin-right: 6px;"></i> กำหนดการผ่อนชำระ (<?= count($installments) ?> งวด)
-            </span>
-        </div>
-        <table class="table-items">
-            <thead>
-                <tr>
-                    <th width="8%" align="center">งวดที่</th>
-                    <th width="20%" align="center">วันครบกำหนด</th>
-                    <th width="15%" align="right">ยอดชำระ</th>
-                    <th width="12%" align="right">ชำระแล้ว</th>
-                    <th width="15%" align="center">สถานะ</th>
-                    <th width="10%" align="center">วันที่จ่าย</th>
-                    <th width="10%" align="center">สลิป</th>
-                    <th width="10%" align="center"></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($installments as $ins): 
-                    $ins_status_color = match($ins['status']) {
-                        'paid' => '#10b981',
-                        'partial' => '#f59e0b',
-                        'overdue' => '#ef4444',
-                        default => '#94a3b8'
-                    };
-                    $ins_status_label = match($ins['status']) {
-                        'paid' => 'ชำระแล้ว',
-                        'partial' => 'บางส่วน',
-                        'overdue' => 'เกินกำหนด',
-                        default => 'pending'
-                    };
-                    $ins_remaining = floatval($ins['amount']) - floatval($ins['paid_amount']);
-                ?>
-                <tr>
-                    <td align="center" style="font-weight: 700; color: #334155;"><?= $ins['installment_no'] ?></td>
-                    <td align="center"><?= date('d/m/Y', strtotime($ins['due_date'])) ?></td>
-                    <td align="right" style="font-weight: 600;"><?= number_format($ins['amount'], 2) ?></td>
-                    <td align="right" style="color: #10b981;"><?= number_format($ins['paid_amount'], 2) ?></td>
-                    <td align="center">
-                        <span style="display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; background: <?= $ins_status_color ?>15; color: <?= $ins_status_color ?>; border: 1px solid <?= $ins_status_color ?>30;">
-                            <?= $ins_status_label ?>
-                        </span>
-                        <?php if ($ins_remaining > 0 && $ins['status'] !== 'pending'): ?>
-                        <br><span style="font-size: 9px; color: #ef4444;">คงค้าง <?= number_format($ins_remaining, 2) ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td align="center" style="font-size: 11px; color: #64748b;">
-                        <?= !empty($ins['paid_at']) ? date('d/m/Y', strtotime($ins['paid_at'])) : ($ins['status'] === 'paid' || $ins['status'] === 'partial' ? '—' : '') ?>
-                    </td>
-                    <td align="center">
-                        <?php if (!empty($ins['payment_slip'])): ?>
-                        <a href="uploads/payments/<?= htmlspecialchars($ins['payment_slip']) ?>" target="_blank" style="color: #2563eb; font-size: 18px;" title="ดูสลิป">
-                            <i class="fas fa-receipt"></i>
-                        </a>
-                        <?php else: ?>
-                        <span style="color: #cbd5e1;">—</span>
-                        <?php endif; ?>
-                    </td>
-                    <td align="center">
-                        <?php if ($ins['status'] === 'pending' || $ins['status'] === 'overdue'): ?>
-                        <button onclick='showPayModal(<?= json_encode(['id' => $ins['id'], 'no' => $ins['installment_no'], 'amount' => $ins['amount'], 'due_date' => $ins['due_date']]) ?>)'
-                            style="background: #6366f1; color: white; border: none; padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; cursor: pointer;">
-                            ชำระเงิน
-                        </button>
-                        <?php elseif ($ins['status'] === 'paid'): ?>
-                        <span style="color: #10b981; font-size: 11px; font-weight: 600;"><i class="fas fa-check-circle"></i> จ่ายแล้ว</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-    <?php endif; ?>
 
     <!-- Footer Summary & Signatures -->
     <div class="doc-footer" style="margin-top: 10px;">
@@ -542,94 +455,6 @@ function ReadNumber($number) {
         document.body.removeChild(fileDownload);
     }
 
-    let payModalData = null;
-    function showPayModal(data) {
-        payModalData = data;
-        document.getElementById('pay_installment_no').innerText = 'งวดที่ ' + data.no;
-        document.getElementById('pay_amount').innerText = parseFloat(data.amount).toLocaleString(undefined, {minimumFractionDigits: 2}) + ' บาท';
-        document.getElementById('pay_due_date').innerText = data.due_date;
-        document.getElementById('pay_installment_id').value = data.id;
-        document.getElementById('pay_date').valueAsDate = new Date();
-        document.getElementById('pay_slip').value = '';
-        document.getElementById('pay_modal').classList.remove('hidden');
-    }
-
-    function closePayModal() {
-        document.getElementById('pay_modal').classList.add('hidden');
-    }
-
-    function submitPay() {
-        const id = document.getElementById('pay_installment_id').value;
-        const date = document.getElementById('pay_date').value;
-        const slip = document.getElementById('pay_slip').files[0];
-
-        if (!date) { alert('กรุณาเลือกวันที่ชำระ'); return; }
-
-        const formData = new FormData();
-        formData.append('id', id);
-        formData.append('paid_at', date);
-        if (slip) formData.append('payment_slip', slip);
-
-        document.getElementById('pay_submit_btn').disabled = true;
-        document.getElementById('pay_submit_btn').innerText = 'กำลังบันทึก...';
-
-        fetch('api/pay_installment.php', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success') {
-                    Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
-                } else {
-                    Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: res.message });
-                    document.getElementById('pay_submit_btn').disabled = false;
-                    document.getElementById('pay_submit_btn').innerText = 'บันทึกการชำระ';
-                }
-            })
-            .catch(err => {
-                Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'เกิดข้อผิดพลาด: ' + err.message });
-                document.getElementById('pay_submit_btn').disabled = false;
-                document.getElementById('pay_submit_btn').innerText = 'บันทึกการชำระ';
-            });
-    }
 </script>
-
-<!-- Modal จ่ายเงินค่างวด -->
-<div id="pay_modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <div style="background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="font-size: 16px; font-weight: 800; color: #0f172a;" id="pay_installment_no">งวดที่</h3>
-            <button onclick="closePayModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8;">&times;</button>
-        </div>
-
-        <div style="background: #f8fafc; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-                <span style="color: #64748b;">ยอดชำระ</span>
-                <span id="pay_amount" style="font-weight: 700; color: #6366f1; font-size: 16px;"></span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                <span style="color: #64748b;">วันครบกำหนด</span>
-                <span id="pay_due_date" style="font-weight: 600; color: #0f172a;"></span>
-            </div>
-        </div>
-
-        <input type="hidden" id="pay_installment_id">
-
-        <div style="margin-bottom: 14px;">
-            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">วันที่ชำระ</label>
-            <input type="date" id="pay_date"
-                style="width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-weight: 600; outline: none;">
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">แนบสลิป (ไม่บังคับ)</label>
-            <input type="file" id="pay_slip" accept="image/*,.pdf"
-                style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px;">
-        </div>
-
-        <button id="pay_submit_btn" onclick="submitPay()"
-            style="width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;">
-            บันทึกการชำระ
-        </button>
-    </div>
-</div>
 
 <?php include('footer.php'); ?>

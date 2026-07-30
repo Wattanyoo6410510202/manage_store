@@ -139,14 +139,25 @@ $budget_query = mysqli_query($conn, "SELECT bt.id, bt.name, bt.budget_amount, st
   ORDER BY spent DESC LIMIT 10");
 
 /* ── 6. Top 10 Purchases Today ────────────────────────────── */
-$top10 = mysqli_query($conn, "SELECT s.company_name,
+$top10 = mysqli_query($conn, "SELECT p.id, s.company_name,
   (SELECT item_desc FROM pr_items WHERE pr_id = p.id ORDER BY id ASC LIMIT 1) as item_desc,
-  p.grand_total, st.store_name
+  p.grand_total, st.store_name, p.status, p.received_status
   FROM pr p
   LEFT JOIN suppliers s ON p.supplier_id = s.id
   LEFT JOIN stores st ON p.store_id = st.id
   WHERE $date_where_p AND p.deleted_at IS NULL$sup_p_pr
   ORDER BY p.grand_total DESC LIMIT 10");
+
+// Items pending receive
+$pending_receive = mysqli_query($conn, "SELECT p.id, p.doc_no, s.company_name,
+  (SELECT item_desc FROM pr_items WHERE pr_id = p.id ORDER BY id ASC LIMIT 1) as item_desc,
+  p.grand_total, st.store_name, p.created_at,
+  DATEDIFF(CURDATE(), p.created_at) as wait_days
+  FROM pr p
+  LEFT JOIN suppliers s ON p.supplier_id = s.id
+  LEFT JOIN stores st ON p.store_id = st.id
+  WHERE p.status = 'approved' AND p.received_status = 'pending' AND p.deleted_at IS NULL$sup_p_pr
+  ORDER BY p.created_at ASC LIMIT 20");
 
 /* ── 7. Pending Approval ──────────────────────────────────── */
 $pending_approvals = mysqli_query($conn, "SELECT p.id, p.doc_no, p.grand_total,
@@ -556,18 +567,33 @@ function fm($n) { return number_format($n ?? 0, 2); }
       <div class="dash-section-body">
         <div class="overflow-x-auto">
           <table class="dash-table">
-            <thead><tr><th>#</th><th>Supplier</th><th>รายการ</th><th class="text-right">มูลค่า</th><th>แผนก</th></tr></thead>
+            <thead><tr><th>#</th><th>Supplier</th><th>รายการ</th><th class="text-right">มูลค่า</th><th>แผนก</th><th class="text-center">รับของ</th></tr></thead>
             <tbody>
-              <?php $i = 1; $has_top = false; mysqli_data_seek($top10, 0); while ($r = mysqli_fetch_assoc($top10)): $has_top = true; ?>
+              <?php $i = 1; $has_top = false; mysqli_data_seek($top10, 0); while ($r = mysqli_fetch_assoc($top10)): $has_top = true;
+                $can_recv = ($r['status'] === 'approved' && $r['received_status'] !== 'received');
+              ?>
               <tr>
                 <td class="text-slate-400"><?= $i++ ?></td>
                 <td class="font-bold"><?= htmlspecialchars($r['company_name'] ?? '-') ?></td>
                 <td><?= htmlspecialchars(mb_substr($r['item_desc'] ?? '-', 0, 50)) ?></td>
                 <td class="text-right font-mono"><?= fm($r['grand_total']) ?></td>
                 <td><?= htmlspecialchars($r['store_name'] ?? '-') ?></td>
+                <td class="text-center">
+                  <?php if ($can_recv): ?>
+                  <button onclick="receivePR(<?= $r['id'] ?>)" class="w-8 h-8 inline-flex items-center justify-center bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all" title="รับของแล้ว">
+                    <i class="fas fa-check-double text-xs"></i>
+                  </button>
+                  <?php elseif ($r['received_status'] === 'received'): ?>
+                  <span class="text-emerald-600 text-xs font-bold"><i class="fas fa-check-circle"></i> รับแล้ว</span>
+                  <?php elseif ($r['received_status'] === 'partial'): ?>
+                  <span class="text-amber-600 text-xs font-bold"><i class="fas fa-minus-circle"></i> บางส่วน</span>
+                  <?php else: ?>
+                  <span class="text-slate-400 text-xs">-</span>
+                  <?php endif; ?>
+                </td>
               </tr>
               <?php endwhile; if (!$has_top): ?>
-              <tr><td colspan="5" class="text-center text-slate-400 py-4">ไม่มีรายการซื้อวันนี้</td></tr>
+              <tr><td colspan="6" class="text-center text-slate-400 py-4">ไม่มีรายการซื้อวันนี้</td></tr>
               <?php endif; ?>
             </tbody>
           </table>
@@ -599,11 +625,50 @@ function fm($n) { return number_format($n ?? 0, 2); }
     </div>
   </div>
 
-  <!-- ═══ 7. Pending Approval ═══ -->
+  <!-- ═══ 7. Pending Receive ═══ -->
+  <div class="dash-section">
+    <div class="dash-section-header">
+      <i class="fas fa-boxes text-emerald-500 text-lg"></i>
+      <h3>7. รายการรอรับของ</h3>
+      <span class="desc">PR ที่อนุมัติแล้วและยังไม่ได้รับสินค้า</span>
+    </div>
+    <div class="dash-section-body">
+      <div class="overflow-x-auto">
+        <table class="dash-table">
+          <thead><tr><th>เอกสาร</th><th>Supplier</th><th>รายการ</th><th class="text-right">มูลค่า</th><th>แผนก</th><th class="text-center">รอ</th><th class="text-center">รับของ</th></tr></thead>
+          <tbody>
+            <?php $has_pr = false; while ($r = mysqli_fetch_assoc($pending_receive)): $has_pr = true; ?>
+            <tr>
+              <td><a href="view_pr_new.php?id=<?= $r['id'] ?>" class="text-indigo-600 hover:underline font-bold"><?= htmlspecialchars($r['doc_no']) ?></a></td>
+              <td class="font-bold"><?= htmlspecialchars($r['company_name'] ?? '-') ?></td>
+              <td><?= htmlspecialchars(mb_substr($r['item_desc'] ?? '-', 0, 50)) ?></td>
+              <td class="text-right font-mono"><?= fm($r['grand_total']) ?></td>
+              <td><?= htmlspecialchars($r['store_name'] ?? '-') ?></td>
+              <td class="text-center">
+                <span class="<?= $r['wait_days'] > 7 ? 'text-red-600' : ($r['wait_days'] > 3 ? 'text-amber-600' : 'text-slate-500') ?> font-bold text-xs">
+                  <?= $r['wait_days'] ?> วัน
+                </span>
+              </td>
+              <td class="text-center">
+                <button onclick="receivePR(<?= $r['id'] ?>)" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition-all" title="รับของ">
+                  <i class="fas fa-check-double mr-1"></i> รับของ
+                </button>
+              </td>
+            </tr>
+            <?php endwhile; if (!$has_pr): ?>
+            <tr><td colspan="7" class="text-center text-emerald-600 py-4"><i class="fas fa-check-circle mr-1"></i> ไม่มีรายการรอรับของ</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 8. Pending Approval ═══ -->
   <div class="dash-section">
     <div class="dash-section-header">
       <i class="fas fa-clock text-amber-500 text-lg"></i>
-      <h3>7. Pending Approval</h3>
+      <h3>8. Pending Approval</h3>
       <span class="desc">เอกสารรอการอนุมัติ เรียงตามวันที่ค้างนานที่สุด</span>
     </div>
     <div class="dash-section-body">
@@ -894,6 +959,37 @@ new Chart(document.getElementById('expCatChart'), {
   }
 });
 <?php endif; ?>
+
+function receivePR(id) {
+    Swal.fire({
+        title: 'ยืนยันรับของ?',
+        text: 'คุณต้องการยืนยันว่าได้รับสินค้าครบถ้วนแล้วใช่หรือไม่?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'รับของแล้ว',
+        cancelButtonText: 'ยกเลิก',
+        reverseButtons: true,
+        heightAuto: false,
+        showDenyButton: true,
+        denyButtonText: 'รับบางส่วน',
+        denyButtonColor: '#f59e0b'
+    }).then((result) => {
+        let action = '';
+        if (result.isConfirmed) action = 'received';
+        else if (result.isDenied) action = 'partial';
+        else return;
+
+        fetch(`api/receive_pr.php?id=${id}&action=${action}`).then(res => res.json()).then(res => {
+            if (res.status === 'success') {
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, timer: 1500, showConfirmButton: false })
+                    .then(() => location.reload());
+            } else {
+                Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: res.message });
+            }
+        });
+    });
+}
 </script>
 
 <?php include('footer.php'); ?>
