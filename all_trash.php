@@ -4,16 +4,16 @@ include 'header.php';
 include('assets/alert.php');
 
 // เพิ่ม UNION ส่วนที่ 4 เข้าไปครับ
-$sql = "(SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'pr' COLLATE utf8mb4_general_ci as type 
+$sql = "(SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'pr' as type 
           FROM pr t LEFT JOIN users u ON t.deleted_by = u.id WHERE t.deleted_at IS NOT NULL)
         UNION 
-        (SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'quotations' COLLATE utf8mb4_general_ci as type 
+        (SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'quotations' as type 
           FROM quotations t LEFT JOIN users u ON t.deleted_by = u.id WHERE t.deleted_at IS NOT NULL)
         UNION 
-        (SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'po' COLLATE utf8mb4_general_ci as type 
+        (SELECT t.id, t.doc_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'po' as type 
           FROM po t LEFT JOIN users u ON t.deleted_by = u.id WHERE t.deleted_at IS NOT NULL)
         UNION 
-        (SELECT t.id, t.invoice_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'invoices' COLLATE utf8mb4_general_ci as type 
+        (SELECT t.id, t.invoice_no COLLATE utf8mb4_general_ci as doc_no, t.created_at, t.deleted_at, t.deleted_by, u.name as deleted_by_name, 'invoices' as type 
           FROM invoices t LEFT JOIN users u ON t.deleted_by = u.id WHERE t.deleted_at IS NOT NULL)
         ORDER BY deleted_at DESC";
 

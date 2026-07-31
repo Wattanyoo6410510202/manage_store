@@ -20,6 +20,7 @@ if (!isset($_SESSION['user_id'])) {
 $pr_id = (int)($_POST['id'] ?? 0);
 $user_id = $_SESSION['user_id'];
 $reason = trim($_POST['reason'] ?? '');
+$allow_resubmit = isset($_POST['allow_resubmit']) ? (int)$_POST['allow_resubmit'] : 0;
 $user_role = $_SESSION['role'] ?? '';
 
 if ($pr_id <= 0) {
@@ -53,9 +54,9 @@ if ($pr['status'] === 'rejected') {
     send_json('error', 'ใบขอซื้อนี้ถูกปฏิเสธไปแล้ว');
 }
 
-$sql = "UPDATE pr SET status = 'rejected', reject_reason = ?, rejected_by = ?, rejected_at = NOW() WHERE id = ?";
+$sql = "UPDATE pr SET status = 'rejected', reject_reason = ?, rejected_by = ?, rejected_at = NOW(), allow_resubmit = ? WHERE id = ?";
 $stmt_update = $conn->prepare($sql);
-$stmt_update->bind_param("sii", $reason, $user_id, $pr_id);
+$stmt_update->bind_param("siii", $reason, $user_id, $allow_resubmit, $pr_id);
 
 if ($stmt_update->execute()) {
     // --- LINE NOTIFY แจ้งผู้สร้าง PR ว่าถูกปฏิเสธ ---
@@ -67,6 +68,11 @@ if ($stmt_update->execute()) {
             $msg .= "เลขที่: " . $pr['doc_no'] . "\n";
             $msg .= "ปฏิเสธโดย: $rejector_name\n";
             $msg .= "เหตุผล: $reason\n";
+            if ($allow_resubmit) {
+                $msg .= "คุณได้รับอนุญาตให้แก้ไขใบขอซื้อนี้และยื่นใหม่ได้\n";
+            } else {
+                $msg .= "ไม่ได้รับอนุญาตให้ยื่นใบขอซื้อใหม่\n";
+            }
             $msg .= "เปิดดู: " . getPRUrl($pr_id) . "\n";
             $msg .= "กรุณาติดต่อผู้ปฏิเสธเพื่อขอรายละเอียดเพิ่มเติม";
             notifyUserLine($pr['created_by'], $msg);

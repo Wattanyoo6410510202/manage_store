@@ -78,6 +78,18 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
     <input type="hidden" name="pr_id" value="<?= $pr_id ?>">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($pr_data['customer_id']) ?>">
 
+    <?php if (!empty($pr_data['reject_reason'])): ?>
+    <div class="mb-4">
+        <div class="bg-red-50 border border-red-200 border-l-4 border-l-red-500 rounded-xl p-4 flex items-start gap-3">
+            <i class="fas fa-times-circle text-red-500 mt-0.5"></i>
+            <div>
+                <div class="text-[11px] font-black text-red-600 uppercase tracking-widest mb-0.5">เหตุผลที่ปฏิเสธ</div>
+                <p class="text-sm text-red-700 font-medium"><?= htmlspecialchars($pr_data['reject_reason']) ?></p>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="bg-slate-50 ">
         <div class="container-fluid p-0">
             <div class="lg:col-span-1 mb-6">

@@ -219,13 +219,12 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                 </td>
                                 <td>
                                     <?php
-                                    $status = $row['status'] ?: 'pending';
+                                    $status = ($row['status'] === 'approved') ? 'approved' : 'pending';
                                     $config = [
                                         'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอเบิก'],
                                         'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'เบิกแล้ว'],
-                                        'rejected' => ['bg' => 'bg-red-50', 'text' => 'text-red-600', 'border' => 'border-red-100', 'dot' => 'bg-red-400', 'label' => 'ปฏิเสธ'],
                                     ];
-                                    $style = $config[$status] ?? $config['pending'];
+                                    $style = $config[$status];
                                     ?>
                                     <div class="status-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
                                         <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> <?= ($status === 'pending') ? 'animate-pulse' : '' ?>"></span>
@@ -243,14 +242,16 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                 <td class="text-center">
                                     <?php if (!empty($row['approved_by_0'])): ?>
                                         <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
-                                    <?php elseif ($row['status'] === 'rejected'): ?>
+                                    <?php elseif (!empty($row['reject_reason'])): ?>
                                         <span class="text-red-500 text-[10px] font-bold"><i class="fas fa-times-circle"></i> ปฏิเสธ</span>
                                     <?php else: ?>
                                         <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รอ</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <?php if (!empty($row['approver_0_name'])): ?>
+                                    <?php if (!empty($row['reject_reason'])): ?>
+                                        <i class="fas fa-times text-red-500"></i>
+                                    <?php elseif (!empty($row['approver_0_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                     <?php else: echo '-'; endif; ?>
                                 </td>
@@ -277,7 +278,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         <?php endif; ?>
                                         <?php
                                         $canApproveDesktop = false;
-                                        if ($row['status'] === 'pending') {
+                                        if ($row['status'] === 'pending' || $row['allow_resubmit'] == 3) {
                                             $prSupplierId = intval($row['supplier_id'] ?? 0);
                                             $approverSupId = intval($sup_id ?? 0);
                                             $isGM = (strpos($user_role_sup, 'gm') === 0);
@@ -429,7 +430,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             let canApprove = false;
             const alreadyApproved = (row.approved_by_0 == USER_ID || row.approved_by == USER_ID || row.approved_by_1 == USER_ID || row.approved_by_2 == USER_ID || row.approved_by_3 == USER_ID);
             
-            if (row.status === 'pending' && !alreadyApproved) {
+            if ((row.status === 'pending' || row.allow_resubmit == 3) && !alreadyApproved) {
                 const isGM = USER_ROLE.startsWith('gm');
                 const prSupplierId = parseInt(row.supplier_id) || 0;
                 const isMatch = (prSupplierId > 0 && USER_SUP_ID > 0 && prSupplierId === USER_SUP_ID);
@@ -487,7 +488,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                     <div class="flex items-center gap-4">
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">หัวหน้า</span>
-                            ${row.approver_0_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
+                            ${row.reject_reason ? '<i class="fas fa-times-circle text-red-500 text-xs"></i>' : (row.approver_0_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>')}
                          </div>
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">จัดซื้อ</span>
@@ -554,28 +555,39 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
     function rejectPR(id, prNo) {
         Swal.fire({
             title: 'ปฏิเสธใบขอซื้อ?',
-            text: `ใบขอซื้อเลขที่ ${prNo}`,
-            input: 'textarea',
-            inputPlaceholder: 'ระบุเหตุผลในการปฏิเสธ...',
-            inputAttributes: {
-                'aria-label': 'ระบุเหตุผลในการปฏิเสธ'
-            },
+            html: `
+                <div class="text-left">
+                    <p class="mb-2 text-sm text-slate-600">ใบขอซื้อเลขที่ <strong>${prNo}</strong></p>
+                    <textarea id="swal-reject-reason" class="swal2-textarea" placeholder="ระบุเหตุผลในการปฏิเสธ..." aria-label="ระบุเหตุผลในการปฏิเสธ"></textarea>
+                    <label class="mt-3 flex items-center gap-2 cursor-pointer select-none justify-center">
+                        <input type="checkbox" id="swal-allow-resubmit" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-sm font-medium text-slate-700">อนุญาตให้ resubmit (ยื่นใบขอซื้อใหม่ได้)</span>
+                    </label>
+                </div>
+            `,
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'ยืนยันปฏิเสธ',
             cancelButtonText: 'ยกเลิก',
             reverseButtons: true,
             heightAuto: false,
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'กรุณาระบุเหตุผลในการปฏิเสธ!'
+            preConfirm: () => {
+                const reason = document.getElementById('swal-reject-reason').value.trim();
+                if (!reason) {
+                    Swal.showValidationMessage('กรุณาระบุเหตุผลในการปฏิเสธ!');
+                    return false;
                 }
+                return {
+                    reason: reason,
+                    allow_resubmit: document.getElementById('swal-allow-resubmit').checked ? 1 : 0
+                };
             }
         }).then((result) => {
             if (result.isConfirmed) {
                 const fd = new FormData();
                 fd.append('id', id);
-                fd.append('reason', result.value);
+                fd.append('reason', result.value.reason);
+                fd.append('allow_resubmit', result.value.allow_resubmit);
                 
                 fetch('api/reject_pr.php', {
                     method: 'POST',

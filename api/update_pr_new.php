@@ -129,7 +129,7 @@ if ($store_id === 0) $store_id = null;
                         budget_limit_type = ?, budget_amount = ?, budget_details = ?, 
                         expectation = ?, practice_method = ?, subtotal = ?, vat = ?, 
                         vat_percent = ?, wht_percent = ?, wht_amount = ?, grand_total = ?, 
-                        attachment_1 = ?, attachment_2 = ?, updated_at = NOW() 
+                        attachment_1 = ?, attachment_2 = ?, updated_at = NOW(), allow_resubmit = 3 
                     WHERE id = ?";
         
         $stmt = $conn->prepare($sql_main);

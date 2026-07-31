@@ -5,6 +5,7 @@ include('assets/alert.php');
 
 $sql = "SELECT 
             p.*, 
+            p.reject_reason as reject_reason,
             s.company_name as supplier_name,
             st.store_name as store_name,
             IF(p.is_internal = 1, u1.name, c.customer_name) AS display_requester,
@@ -204,6 +205,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         title="<?= htmlspecialchars($row['first_item_desc'] ?? '') ?>">
                                         <?= htmlspecialchars($row['first_item_desc'] ?: 'ไม่มีรายละเอียดสินค้า') ?>
                                     </div>
+                                    <?php if (!empty($row['reject_reason'])): ?>
+                                        <div class="mt-1.5 p-2 bg-red-50 border border-red-100 rounded-lg max-w-[250px]">
+                                            <span
+                                                class="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1"><i
+                                                    class="fas fa-times-circle text-[8px]"></i>เหตุผลที่ปฏิเสธ</span>
+                                            <p class="text-[11px] text-red-700 mt-0.5 leading-snug"><?= htmlspecialchars($row['reject_reason']) ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if (!empty($row['attachment_1']) || !empty($row['attachment_2'])): ?>
@@ -302,7 +311,14 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    <?php if (!empty($row['approver_0_name'])): ?>
+                                    <?php if (!empty($row['reject_reason'])): ?>
+                                        <i class="fas fa-times text-red-500"></i>
+                                        <?php if (!empty($row['approved_at_0'])): ?>
+                                            <div class="text-[8px] text-slate-400 font-mono">
+                                                <?= date('d/m/y', strtotime($row['approved_at_0'])) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php elseif (!empty($row['approver_0_name'])): ?>
                                         <i class="fas fa-check text-emerald-500"></i>
                                         <div class="text-[8px] text-slate-400 font-mono">
                                             <?= date('d/m/y', strtotime($row['approved_at_0'])) ?>
@@ -362,7 +378,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                                 class="fas fa-eye text-xs"></i></a>
 
                                         <?php if ($can_edit): ?>
-                                            <?php if ($row['status'] === 'pending'): ?>
+                                            <?php if ($row['status'] === 'pending' || (!empty($row['reject_reason']) && $row['allow_resubmit'] == 1)): ?>
                                                 <a href="edit_pr_new.php?id=<?= $row['id'] ?>"
                                                     class="w-8 h-8 flex items-center justify-center bg-white text-slate-800 rounded-lg border border-slate-200 shadow-sm"><i
                                                         class="fas fa-edit text-xs"></i></a>
@@ -464,7 +480,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
             const textMatch = (item.doc_no.toLowerCase().includes(search) || (item.first_item_desc || '').toLowerCase().includes(search) || (item.supplier_name || '').toLowerCase().includes(search));
             if (!textMatch) return false;
             if (supplier && item.supplier_name !== supplier) return false;
-            const mappedStatus = (item.status === 'pending' ? 'รอเบิก' : 'เบิกแล้ว');
+            const status = item.status || 'pending';
+            const mappedStatus = (status === 'pending' ? 'รอเบิก' : 'เบิกแล้ว');
             if (statusVal && mappedStatus !== statusVal) return false;
             if (min || max) {
                 const dateVal = item.created_at.split(' ')[0];
@@ -542,6 +559,12 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <span class="text-[9px] text-slate-400 uppercase font-black tracking-widest block mb-1">รายละเอียด</span>
                         <p class="text-xs text-slate-600 leading-relaxed line-clamp-2">${row.first_item_desc || 'ไม่มีรายละเอียดสินค้า'}</p>
                     </div>
+                    ${row.reject_reason ? `
+                        <div class="p-3 rounded-xl border border-red-100 bg-red-50">
+                            <span class="text-[9px] text-red-500 uppercase font-black tracking-widest block mb-1"><i class="fas fa-times-circle mr-1"></i>เหตุผลที่ปฏิเสธ</span>
+                            <p class="text-xs text-red-700 leading-relaxed">${row.reject_reason}</p>
+                        </div>
+                    ` : ''}
                     <div class="flex justify-between items-end">
                         <div class="flex flex-col gap-1">
                             <div class="flex items-center gap-1.5 text-slate-400">
@@ -559,7 +582,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     <div class="flex items-center gap-4">
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">หัวหน้า</span>
-                            ${row.approver_0_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>'}
+                            ${row.reject_reason ? '<i class="fas fa-times-circle text-red-500 text-xs"></i>' : (row.approver_0_name ? '<i class="fas fa-check-circle text-emerald-500 text-xs"></i>' : '<i class="far fa-circle text-slate-300 text-xs"></i>')}
                          </div>
                          <div class="flex flex-col items-center gap-1">
                             <span class="text-[7px] text-slate-400 font-black uppercase">จัดซื้อ</span>
@@ -583,7 +606,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <a href="view_receiving.php?pr_id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-500 text-white rounded-xl border border-indigo-500 shadow-sm hover:bg-indigo-600 transition-all"><i class="fas fa-print text-xs"></i></a>
                         ` : ''}
                         ${!IS_VIEWER && (!row.approved_by_0 || USER_ROLE === 'admin' || USER_ROLE === 'procure') ? `
-                            ${row.status === 'pending' ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm"><i class="fas fa-edit text-xs"></i></a>` : ''}
+                            ${(row.status === 'pending' || (row.reject_reason && row.allow_resubmit == 1)) ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm"><i class="fas fa-edit text-xs"></i></a>` : ''}
                             <button onclick="deletePR(${row.id})" class="w-9 h-9 flex items-center justify-center bg-white text-red-500 rounded-xl border border-red-100 shadow-sm"><i class="fas fa-trash text-xs"></i></button>
                         ` : ''}
                     </div>

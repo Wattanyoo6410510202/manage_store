@@ -63,7 +63,7 @@ if ($pr['status'] === 'approved') {
     send_json('error', 'ใบขอซื้อนี้ได้รับอนุมัติครบถ้วนแล้ว');
 }
 
-if ($pr['status'] === 'rejected') {
+if ($pr['status'] === 'rejected' && $pr['allow_resubmit'] != 3) {
     send_json('error', 'ใบขอซื้อนี้ถูกปฏิเสธไปแล้ว');
 }
 
@@ -130,6 +130,9 @@ if (!$update_col) {
 $sql_update = "UPDATE pr SET $update_col = ?, updated_at = NOW() ";
 if ($time_col) {
     $sql_update .= ", $time_col = NOW() ";
+}
+if ($update_col === 'approved_by_0' && $pr['allow_resubmit'] == 3) {
+    $sql_update .= ", reject_reason = NULL, rejected_by = NULL, rejected_at = NULL, allow_resubmit = 0 ";
 }
 $sql_update .= " WHERE id = ?";
 
