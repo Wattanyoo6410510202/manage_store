@@ -12,6 +12,12 @@ if (!isset($_SESSION['user'])) {
 
 $user_role = $_SESSION['role'] ?? 'viewer'; // ดึงค่าจาก Session
 
+if (!isset($conn)) {
+    require_once __DIR__ . '/config.php';
+}
+require_once __DIR__ . '/inspection_workflow.php';
+$inspection_only_access = inspection_user_has_assignment($conn, (int)($_SESSION['user_id'] ?? 0));
+
 $permissions = [
     // 1. Admin: ทำได้ทุกอย่างในระบบ
     'admin' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'setup', 'trash'],
@@ -51,14 +57,17 @@ $permissions = [
 // ฟังก์ชันเช็คสิทธิ์สำหรับใช้ใน Side Bar และปุ่มต่างๆ
 function can($module)
 {
-    global $user_role, $permissions;
+    global $user_role, $permissions, $inspection_only_access;
+    if ($module === 'projects' && !empty($inspection_only_access)) {
+        return true;
+    }
     return in_array($module, $permissions[$user_role] ?? []);
 }
 
 // ฟังก์ชันช่วยเช็คว่าเป็น Viewer หรือไม่ (เพื่อซ่อนปุ่ม)
 function is_viewer() {
-    global $user_role;
-    return $user_role === 'viewer';
+    global $user_role, $inspection_only_access;
+    return $user_role === 'viewer' || !empty($inspection_only_access);
 }
 // ==========================================
 // ==========================================
@@ -102,6 +111,23 @@ $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_his
 
 // 4. กลุ่ม "ก่อสร้าง"
 $is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php']);
+
+// An assigned inspector may browse only the project list and the project that
+// contains their assigned checklist. All project administration routes remain
+// blocked even though the user can reach the inspection workspace.
+if ($inspection_only_access && $is_construction_group) {
+    $inspection_project_id = (int)($_GET['id'] ?? 0);
+    $inspection_milestone_ids = preg_split('/\D+/', (string)($_GET['ids'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+    $inspection_route_allowed = $current_page === 'projects.php'
+        || ($current_page === 'detail_project.php'
+            && inspection_user_assigned_to_project($conn, $inspection_project_id, (int)($_SESSION['user_id'] ?? 0)))
+        || ($current_page === 'view_milstones.php'
+            && inspection_user_assigned_to_milestones($conn, $inspection_milestone_ids, (int)($_SESSION['user_id'] ?? 0)));
+    if (!$inspection_route_allowed) {
+        echo "<script>window.location.href='e_service.php';</script>";
+        exit;
+    }
+}
 
 // 5. กลุ่ม "ตั้งค่า"
 $is_setup_active = in_array($current_page, ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
@@ -437,16 +463,19 @@ if (!empty($_SESSION['sup_id'])) {
             <?php if ($active_cat == 'construction'): ?>
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">Construction</p>
                 <?php if (can('projects')): ?>
+                    <?php if (empty($inspection_only_access)): ?>
                      <a href="big_projects.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo in_array($current_page, ['big_projects.php', 'add_big_project.php', 'detail_big_project.php']) ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-diagram-project w-5 <?php echo in_array($current_page, ['big_projects.php', 'add_big_project.php', 'detail_big_project.php']) ? 'text-white' : 'text-indigo-400'; ?>"></i>
                         <span class="font-medium">โปรเจคใหญ่</span>
                     </a>
+                    <?php endif; ?>
                     <a href="projects.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'projects.php' || $current_page == 'add_project.php' || $current_page == 'edit_project.php' || $current_page == 'detail_project.php' || $current_page == 'view_milstones.php' || $current_page == 'add_milestone.php' || $current_page == 'edit_milestone.php') ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-tasks w-5 text-indigo-400"></i>
                         <span class="font-medium">จัดการงวดงาน</span>
                     </a>
+                    <?php if (empty($inspection_only_access)): ?>
                     <a href="upcoming_payments.php"
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'upcoming_payments.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-credit-card w-5 <?php echo $current_page == 'upcoming_payments.php' ? 'text-white' : 'text-indigo-400'; ?>"></i>
@@ -458,6 +487,7 @@ if (!empty($_SESSION['sup_id'])) {
                         <span class="font-medium">Timeline โครงการ</span>
                     </a>
                    
+                    <?php endif; ?>
                 <?php endif; ?>
             <?php endif; ?>
 

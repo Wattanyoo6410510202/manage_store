@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once '../project_no.php';
 if (session_status() === PHP_SESSION_NONE)
     if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -8,7 +9,15 @@ if (session_status() === PHP_SESSION_NONE)
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าพื้นฐานจาก Form (ดักจับ SQL Injection)
     $project_name = mysqli_real_escape_string($conn, $_POST['project_name']);
-    $project_no = mysqli_real_escape_string($conn, $_POST['project_no']);
+    $project_no_input = trim((string)($_POST['project_no'] ?? ''));
+    if ($project_no_input === '') {
+        $project_no_input = generate_unique_project_no($conn);
+    } elseif (project_no_exists($conn, $project_no_input)) {
+        http_response_code(409);
+        echo 'เลขที่โครงการนี้มีอยู่แล้ว กรุณาใช้เลขที่โครงการอื่น';
+        exit;
+    }
+    $project_no = mysqli_real_escape_string($conn, $project_no_input);
     $customer_id = mysqli_real_escape_string($conn, $_POST['customer_id']);
     $contract_value = floatval($_POST['contract_value']);
     $start_date = $_POST['start_date'];
@@ -24,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
     $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
+    $contract_no = mysqli_real_escape_string($conn, $_POST['contract_no'] ?? '');
+    $contract_date = !empty($_POST['contract_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['contract_date']) . "'" : "NULL";
+    $work_location = mysqli_real_escape_string($conn, $_POST['work_location'] ?? '');
+    $payment_days_after_acceptance = max(0, intval($_POST['payment_days_after_acceptance'] ?? 30));
     $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : "NULL";
 
     // --- 2. ส่วนที่คำนวณ VAT (0=ใน, 1=นอก) และ WHT ---
@@ -76,11 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // ----------------------------------------------
 
     // 4. สร้างเลขที่โครงการอัตโนมัติ (ขยับขึ้นมาเพื่อให้ได้เลขก่อนอัปโหลดไฟล์)
-    if (empty($project_no)) {
-        $year = (date('Y') + 543) % 100;
-        $project_no = "PJ-" . $year . "-" . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-    }
-
     // 3. จัดการไฟล์แนบ (แยกเป็นโฟลเดอร์ตามเลขที่โครงการ)
     $target_dir = "../uploads/projects/" . $project_no . "/";
     if (!file_exists($target_dir)) mkdir($target_dir, 0777, true);
@@ -107,14 +115,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 net_contract_value, has_vat, start_date, end_date, attachment_path, 
                 attachment_contract, attachment_boq,
                 retention_percent, supplier_id, 
-                wht_percent, check_work_url, project_remarks, created_by, created_at, project_status
+                wht_percent, check_work_url, project_remarks, created_by, created_at, project_status,
+                contract_no, contract_date, work_location, payment_days_after_acceptance
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
                 '$net_contract_value', $has_vat, '$start_date', '$end_date', '$attachment_name', 
                 '$attachment_contract', '$attachment_boq',
                 '$retention_percent', $supplier_id,
-                '$wht_percent', '$check_work_url', '$project_remarks', $created_by, NOW(), 'on_hold'
+                '$wht_percent', '$check_work_url', '$project_remarks', $created_by, NOW(), 'on_hold',
+                '$contract_no', $contract_date, '$work_location', '$payment_days_after_acceptance'
             )";
 
     if (mysqli_query($conn, $sql)) {
@@ -149,7 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         header("Location: ../projects.php");
         exit();
     } else {
-        echo "Error: " . mysqli_error($conn);
+        $insertError = mysqli_error($conn);
+        if (mysqli_errno($conn) === 1062) {
+            http_response_code(409);
+            echo 'เลขที่โครงการนี้มีอยู่แล้ว กรุณาใช้เลขที่โครงการอื่น';
+        } else {
+            http_response_code(500);
+            echo 'ไม่สามารถบันทึกโครงการได้: ' . $insertError;
+        }
     }
 }
 ?>

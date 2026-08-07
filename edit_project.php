@@ -234,6 +234,16 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                                 value="<?= $pj['contract_value'] ?>" oninput="calculateNetValue()"
                                 class="w-full border border-slate-200 rounded-xl p-2.5 outline-none font-bold text-indigo-600 bg-indigo-50/30">
                         </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">เลขที่สัญญาจ้าง</label>
+                            <input type="text" name="contract_no" value="<?= htmlspecialchars($pj['contract_no'] ?? '') ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">วันที่ทำสัญญา</label>
+                            <input type="date" name="contract_date" value="<?= htmlspecialchars($pj['contract_date'] ?? '') ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                        </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">วันที่เริ่ม</label>
@@ -251,6 +261,17 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                             <input type="url" name="check_work_url" value="<?= htmlspecialchars($pj['check_work_url'] ?? '') ?>"
                                 class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"
                                 placeholder="https://example.com/check-work">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">สถานที่ส่งมอบ/ปฏิบัติงาน</label>
+                            <input type="text" name="work_location" value="<?= htmlspecialchars($pj['work_location'] ?? '') ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">กำหนดจ่ายหลังตรวจรับ (วัน)</label>
+                            <input type="number" min="0" name="payment_days_after_acceptance"
+                                value="<?= (int)($pj['payment_days_after_acceptance'] ?? 30) ?>"
+                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
                         </div>
                     </div>
                 </div>

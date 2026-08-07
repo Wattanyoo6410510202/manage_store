@@ -19,7 +19,7 @@ $collected_sql = mysqli_query($conn, "
         SUM(vat_amount) as total_vat, 
         SUM(wht_amount) as total_wht,
         SUM(other_deduction_amount) as total_other,
-        SUM(net_amount) as total_net
+        SUM(COALESCE(paid_amount, net_amount)) as total_net
     FROM project_milestones 
     WHERE project_id = $id AND status = 'paid'
 ");
@@ -43,7 +43,16 @@ $docs = mysqli_query($conn, "SELECT * FROM project_documents WHERE project_id = 
 
 // 4. ดึงงวดงาน (เรียงตามวันที่ล่าสุดขึ้นก่อน) พร้อมข้อมูลการตรวจรับ
 $milestones_sql = "
-    SELECT m.*, i.id as inspection_id, i.result_status
+    SELECT m.*, i.id as inspection_id, i.result_status,
+        (SELECT c.id FROM inspection_checklists c
+            WHERE c.milestone_id = m.id AND c.status = 'active'
+            ORDER BY c.id DESC LIMIT 1) AS dynamic_checklist_id,
+        (SELECT r.id FROM inspection_rounds r
+            WHERE r.milestone_id = m.id
+            ORDER BY r.round_no DESC, r.id DESC LIMIT 1) AS dynamic_round_id,
+        (SELECT r.status FROM inspection_rounds r
+            WHERE r.milestone_id = m.id
+            ORDER BY r.round_no DESC, r.id DESC LIMIT 1) AS dynamic_status
     FROM project_milestones m
     LEFT JOIN milestone_inspections i ON m.id = i.milestone_id
     WHERE m.project_id = $id 
@@ -236,14 +245,14 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                     class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">
                                     <i class="fas fa-print mr-1"></i> พิมพ์ที่เลือก
                                 </button>
-                                <?php if (!is_viewer()): ?>
+                                <?php if (!is_viewer() && empty($inspection_only_access)): ?>
                                 <button onclick="bulkDelete()"
                                     class="text-xs font-bold text-white bg-rose-500 px-4 py-2 rounded-xl hover:bg-rose-600 transition-all">
                                     <i class="fas fa-trash-alt mr-1"></i> ลบที่เลือก
                                 </button>
                                 <?php endif; ?>
                             </div>
-                            <?php if (!is_viewer()): ?>
+                            <?php if (!is_viewer() && empty($inspection_only_access)): ?>
                             <button onclick="location.href='add_milestone.php?project_id=<?= $id ?>'"
                                 class="flex-1 sm:flex-none text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all">
                                 <i class="fas fa-plus mr-1"></i> เพิ่มงวดเบิก
@@ -313,6 +322,12 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                                 class="text-[12px] font-black px-2 py-1 rounded-full uppercase <?= $m['status'] == 'paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600' ?>">
                                                 <?= $m['status'] == 'paid' ? 'ชำระเงินแล้ว' : 'ค้างชำระ' ?>
                                             </span>
+                                            <?php if ($m['status'] == 'paid' && !empty($m['paid_at'])): ?>
+                                                <p class="mt-1 text-[10px] font-bold text-slate-400">
+                                                    โอน <?= date('d/m/Y', strtotime($m['paid_at'])) ?>
+                                                    <?php if ($m['paid_amount'] !== null): ?> · <?= number_format((float)$m['paid_amount'], 2) ?> บาท<?php endif; ?>
+                                                </p>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="px-4 py-4 text-right">
                                             <p
@@ -322,19 +337,25 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                         </td>
                                         <td class="px-4 py-4 text-center">
                                             <div class="flex items-center justify-center gap-2">
-                                                <?php if (!is_viewer()): ?>
+                                                <?php if (!is_viewer() && empty($inspection_only_access)): ?>
                                                 <button onclick="editMilestone(<?= $m['id'] ?>)"
                                                     class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
                                                     title="แก้ไขข้อมูล">
-                                                    <i class="fas fa-edit"></i>
+                                                <i class="fas fa-edit"></i>
                                                 </button>
                                                 <?php if ($m['status'] == 'pending'): ?>
-
-                                                    <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
-                                                        class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
-                                                        title="ยืนยันชำระเงิน">
-                                                        <i class="fas fa-check-circle"></i>
-                                                    </button>
+                                                    <?php $inspectionPassed = (!empty($m['dynamic_round_id']) && ($m['dynamic_status'] ?? '') === 'completed') || (empty($m['dynamic_round_id']) && ($m['result_status'] ?? '') === 'pass'); ?>
+                                                    <?php if ($inspectionPassed): ?>
+                                                        <button onclick="updatePaymentStatus(<?= $m['id'] ?>, 'paid')"
+                                                            class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all"
+                                                            title="ยืนยันชำระเงิน">
+                                                            <i class="fas fa-check-circle"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="text-[11px] font-bold text-slate-400 px-2 py-1.5" title="ต้องตรวจรับและอนุมัติครบก่อนจึงบันทึกการโอนได้">
+                                                            <i class="fas fa-lock mr-1"></i>รอตรวจรับ
+                                                        </span>
+                                                    <?php endif; ?>
 
                                                     <button onclick="deleteMilestone(<?= $m['id'] ?>)"
                                                         class="text-[12px] bg-rose-500 text-white px-4 py-1.5 rounded-lg hover:bg-rose-600 shadow-sm transition-all"
@@ -357,7 +378,16 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                                     </div>
 
                                                 <?php endif; ?>
-                                                <?php if ($m['inspection_id']): ?>
+                                                <?php if (!empty($m['dynamic_round_id'])): ?>
+                                                    <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
+                                                        class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                        title="ตรวจ Checklist ก่อนดูเอกสาร">
+                                                        <i class="fas fa-clipboard-check"></i> ตรวจ
+                                                        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] uppercase">
+                                                            <?= $m['dynamic_status'] === 'completed' ? 'เสร็จสิ้น' : ($m['dynamic_status'] === 'correction_required' ? 'แก้งาน' : 'กำลังตรวจ') ?>
+                                                        </span>
+                                                    </a>
+                                                <?php elseif ($m['inspection_id']): ?>
                                                     <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
                                                         class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
                                                         title="ดูผลการตรวจรับงาน">
@@ -374,8 +404,14 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php else: ?>
-                                                    <span class="text-slate-400 text-xs italic">View Only</span>
-                                                    <?php if ($m['inspection_id']): ?>
+                                                    <?php if (empty($inspection_only_access)): ?><span class="text-slate-400 text-xs italic">View Only</span><?php endif; ?>
+                                                    <?php if (!empty($m['dynamic_round_id'])): ?>
+                                                        <a href="add_inspection.php?project_id=<?= $id ?>&milestone_id=<?= $m['id'] ?>"
+                                                            class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
+                                                            title="ตรวจ Checklist ก่อนดูเอกสาร">
+                                                            <i class="fas fa-clipboard-check"></i>
+                                                        </a>
+                                                    <?php elseif ($m['inspection_id']): ?>
                                                         <a href="view_inspection.php?id=<?= $m['inspection_id'] ?>"
                                                             class="text-[12px] font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 shadow-sm transition-all flex items-center gap-1"
                                                             title="ดูผลการตรวจรับงาน">

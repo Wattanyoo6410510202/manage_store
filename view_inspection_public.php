@@ -3,9 +3,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once 'config.php';
+require_once 'inspection_workflow.php';
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 $milestone_id = isset($_GET['milestone_id']) ? intval($_GET['milestone_id']) : 0;
+
+// New contract-based inspections use the authenticated workflow so that
+// assigned inspectors, procurement, MD and GMACC follow the same audit trail.
+if ($project_id > 0 && $milestone_id > 0) {
+    $legacyInspection = inspection_fetch_one($conn, "SELECT id FROM milestone_inspections WHERE milestone_id = ? LIMIT 1", 'i', [$milestone_id]);
+    $dynamicChecklist = inspection_fetch_one($conn, "SELECT id FROM inspection_checklists WHERE milestone_id = ? AND status = 'active' LIMIT 1", 'i', [$milestone_id]);
+    if (!$legacyInspection && $dynamicChecklist) {
+        header("Location: add_inspection.php?project_id={$project_id}&milestone_id={$milestone_id}");
+        exit;
+    }
+}
 
 // จัดการการ Logout
 if (isset($_GET['logout'])) {

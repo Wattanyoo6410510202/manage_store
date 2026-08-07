@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 include('header.php');
+require_once 'inspection_workflow.php';
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 $milestone_id = isset($_GET['milestone_id']) ? intval($_GET['milestone_id']) : 0;
@@ -27,6 +28,15 @@ $existing_inspection = mysqli_fetch_assoc($check_res);
 
 $mode = $existing_inspection ? 'edit' : 'add';
 $data = $existing_inspection ?: [];
+
+// New inspections use the contract-based dynamic workflow. Existing legacy
+// rows keep the original form below so historical records remain editable/viewable.
+if (!$existing_inspection) {
+    $dynamic_context = inspection_load_context($conn, $project_id, $milestone_id);
+    include 'inspection_dynamic_form.php';
+    include 'footer.php';
+    exit;
+}
 ?>
 
 <div class="max-w-4xl mx-auto pb-20">

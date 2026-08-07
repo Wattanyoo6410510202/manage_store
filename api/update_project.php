@@ -41,6 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $project_remarks = mysqli_real_escape_string($conn, $_POST['project_remarks']);
     $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
     $supplier_id = mysqli_real_escape_string($conn, $_POST['supplier_id']);
+    $contract_no = mysqli_real_escape_string($conn, $_POST['contract_no'] ?? '');
+    $contract_date = !empty($_POST['contract_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['contract_date']) . "'" : "NULL";
+    $work_location = mysqli_real_escape_string($conn, $_POST['work_location'] ?? '');
+    $payment_days_after_acceptance = max(0, intval($_POST['payment_days_after_acceptance'] ?? 30));
 
     // 1. รับค่าพื้นฐาน
     $project_id = mysqli_real_escape_string($conn, $_POST['project_id']);
@@ -93,6 +97,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     project_remarks = '$project_remarks',
                     supplier_id = '$supplier_id',
                     check_work_url = '$check_work_url',
+                    contract_no = '$contract_no',
+                    contract_date = $contract_date,
+                    work_location = '$work_location',
+                    payment_days_after_acceptance = '$payment_days_after_acceptance',
                     updated_at = NOW()
                     $file_sql
                     $created_by_sql

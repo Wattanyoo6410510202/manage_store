@@ -9,6 +9,22 @@ $sql = "SELECT p.*, created_by,
         -- เพิ่มบรรทัดนี้ครับจาร เพื่อรวบ ID งวดงานทั้งหมด
         (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
         FROM projects p ORDER BY p.id DESC";
+if (!empty($inspection_only_access)) {
+    $inspection_user_id = (int)($_SESSION['user_id'] ?? 0);
+    $sql = "SELECT p.*, created_by,
+            (SELECT SUM(net_amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
+            (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
+            FROM projects p
+            WHERE EXISTS (
+                SELECT 1
+                FROM project_milestones pm
+                INNER JOIN inspection_checklists ic ON ic.milestone_id = pm.id
+                WHERE pm.project_id = p.id
+                  AND ic.status IN ('active', 'draft')
+                  AND (ic.inspector_1_user_id = $inspection_user_id OR ic.inspector_2_user_id = $inspection_user_id)
+            )
+            ORDER BY p.id DESC";
+}
 $result = mysqli_query($conn, $sql);
 ?>
 
@@ -32,7 +48,9 @@ $result = mysqli_query($conn, $sql);
                     $user_query = $conn->query("SELECT id, name FROM users ORDER BY name ASC");
                     while ($u = $user_query->fetch_assoc()):
                         // ถ้าไม่ใช่ admin และไม่ใช่ viewer ให้เลือกตัวเองเป็นค่าเริ่มต้น
-                        $selected = ($u['id'] == $my_id && $_SESSION['role'] !== 'admin' && !is_viewer()) ? 'selected' : '';
+                        // Procurement manages checklists across projects, so do not hide
+                        // every project behind a default "created by me" filter.
+                        $selected = ($u['id'] == $my_id && $_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'procure' && !is_viewer()) ? 'selected' : '';
                         ?>
                         <option value="<?= $u['id'] ?>" <?= $selected ?>>
                             <?= htmlspecialchars($u['name']) ?>
@@ -154,21 +172,21 @@ $result = mysqli_query($conn, $sql);
                             <div class="flex justify-between items-start mb-3">
 
                                 <div class="flex flex-wrap gap-1.5 items-center">
-                                    <?php if ($row['project_status'] == 'active'): ?>
+                                    <?php if (empty($inspection_only_access) && $row['project_status'] == 'active'): ?>
                                         <button onclick="viewProjectDetails(<?= $pj_id ?>)"
                                             class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
                                             เบิกงวด
                                         </button>
                                     <?php endif; ?>
 
-                                    <?php if ($row['project_status'] != 'on_hold'): ?>
+                                    <?php if (empty($inspection_only_access) && $row['project_status'] != 'on_hold'): ?>
                                     <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
                                         class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
                                         ดูงวด
                                     </a>
                                     <?php endif; ?>
 
-                                    <a href="<?= !empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id ?>"
+                                    <a href="<?= !empty($inspection_only_access) ? 'detail_project.php?id=' . $pj_id : (!empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id) ?>"
                                         class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
                                         <i class="fas fa-clipboard-check text-xs"></i> ตรวจงาน
                                     </a>
@@ -187,7 +205,7 @@ $result = mysqli_query($conn, $sql);
                                 </div>
                             </div>
 
-                            <a href="view_approval.php?id=<?= $pj_id ?>" class="block font-bold text-slate-800 text-sm mb-0.5 truncate hover:text-indigo-600 transition-colors" title="<?= $row['project_name'] ?>">
+                            <a href="<?= !empty($inspection_only_access) ? 'detail_project.php?id=' . $pj_id : 'view_approval.php?id=' . $pj_id ?>" class="block font-bold text-slate-800 text-sm mb-0.5 truncate hover:text-indigo-600 transition-colors" title="<?= $row['project_name'] ?>">
                                 <?= $row['project_name'] ?>
                             </a>
                             <p class="text-[12px] text-slate-800 mb-3">
@@ -346,17 +364,17 @@ $result = mysqli_query($conn, $sql);
                         </td>
                         <td class="p-4">
                                 <div class="flex justify-center items-center gap-1.5">
-                                    <button onclick="viewProjectDetails(<?= $pj_id ?>)"
+                                    <?php if (empty($inspection_only_access)): ?><button onclick="viewProjectDetails(<?= $pj_id ?>)"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="เบิกงวด">
                                         <i class="fas fa-file-invoice-dollar text-xs"></i>
-                                    </button>
+                                    </button><?php endif; ?>
 
-                                <a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
+                                <?php if (empty($inspection_only_access)): ?><a href="view_milstones.php?ids=<?= $row['all_milestone_ids'] ?>&type=summary"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="ดูงวด">
                                     <i class="fas fa-eye text-xs"></i>
-                                </a>
+                                </a><?php endif; ?>
 
-                                <a href="<?= !empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id ?>"
+                                <a href="<?= !empty($inspection_only_access) ? 'detail_project.php?id=' . $pj_id : (!empty($row['check_work_url']) ? htmlspecialchars($row['check_work_url']) : 'detail_project.php?id=' . $pj_id) ?>"
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="ตรวจงาน">
                                     <i class="fas fa-clipboard-check text-xs"></i>
                                 </a>

@@ -1,5 +1,29 @@
 <?php
 require_once 'config.php';
+
+$dynamic_round_id = isset($_GET['round_id']) ? intval($_GET['round_id']) : 0;
+$dynamicHistoryView = isset($_GET['history']) && (string)$_GET['history'] === '1';
+if ($dynamic_round_id > 0) {
+    require_once 'inspection_workflow.php';
+    $dynamicRoundGate = inspection_fetch_one($conn, "SELECT * FROM inspection_rounds WHERE id = ? LIMIT 1", 'i', [$dynamic_round_id]);
+    if (!$dynamicRoundGate) {
+        http_response_code(404);
+        exit('ไม่พบรอบตรวจรับงาน');
+    }
+    $dynamicGateContext = inspection_load_context($conn, (int)$dynamicRoundGate['project_id'], (int)$dynamicRoundGate['milestone_id']);
+    $dynamicGateResults = inspection_fetch_all($conn, "SELECT * FROM inspection_round_results WHERE round_id = ? ORDER BY category, item_order, id", 'i', [$dynamic_round_id]);
+    $dynamicGateSummary = inspection_compare_results($dynamicGateResults);
+    $dynamicFinalDocument = inspection_fetch_one($conn, "SELECT id FROM inspection_documents WHERE round_id = ? AND status = 'final' ORDER BY id DESC LIMIT 1", 'i', [$dynamic_round_id]);
+    if (empty($dynamicGateResults) || (empty($dynamicGateSummary['passed']) && empty($dynamicFinalDocument) && !$dynamicHistoryView)) {
+        header('Location: add_inspection.php?project_id=' . (int)$dynamicRoundGate['project_id'] . '&milestone_id=' . (int)$dynamicRoundGate['milestone_id'] . '&document_locked=1');
+        exit;
+    }
+    include('header.php');
+    include('inspection_dynamic_view.php');
+    include('footer.php');
+    exit;
+}
+
 include('header.php');
 
 $inspection_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
