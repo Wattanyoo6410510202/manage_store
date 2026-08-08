@@ -8,9 +8,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') die("Method not allowed");
 $customer_id = (int) ($_POST['customer_id'] ?? 0);
 $supplier_id = (int)($_POST['supplier_id'] ?? 0);
 
-// ถ้า user มี sup_id ให้บังคับใช้ sup_id ของตัวเอง (ป้องกันเลือก supplier ผิด)
+// ถ้าไม่เลือกบริษัท ให้ใช้บริษัทของตัวเอง (sup_id) เป็นค่าเริ่มต้น
 $user_sup_id = (int)($_SESSION['sup_id'] ?? 0);
-if ($user_sup_id > 0 && $supplier_id !== $user_sup_id) {
+if ($supplier_id <= 0 && $user_sup_id > 0) {
     $supplier_id = $user_sup_id;
 }
 $store_id    = (int)($_POST['store_id'] ?? 0);

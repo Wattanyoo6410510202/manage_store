@@ -9,10 +9,10 @@ $auto_filter_supplier = '';
 
 $is_gm_role = (strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc');
 
-// กรอง SQL ตาม role: gm_sale เห็นเฉพาะ PR ที่ลูกน้องตัวเองสร้าง (sup_id เดียวกัน)
+// กรอง SQL ตาม role: gm_sale เห็นเฉพาะ PR ที่เป็นของบริษัทตัวเอง (p.supplier_id = sup_id)
 $where_extra = '';
 if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
-    $where_extra = " AND u_creator.sup_id = $sup_id";
+    $where_extra = " AND p.supplier_id = $sup_id";
 } elseif ($is_gm_role && empty($sup_id)) {
     // gm_sale ไม่มี sup_id ไม่เห็นอะไรเลย
     $where_extra = " AND 1=0";

@@ -201,10 +201,10 @@ if ($user_role_for_count === 'procure') {
 } elseif ($user_role_for_count === 'mgr2') {
     $pending_sql .= " AND p.approved_by_3 IS NULL";
 } elseif (strpos($user_role_for_count, 'gm') === 0 && $user_role_for_count !== 'gmacc') {
-    // GM นับ Level 0 ของ PR ที่ผู้สร้างมี sup_id ตรงกับตัวเอง
+    // GM นับ Level 0 ของ PR ที่เป็นของบริษัทตัวเอง (p.supplier_id = sup_id)
     $user_sup_id = $_SESSION['sup_id'] ?? 0;
     if ($user_sup_id > 0) {
-        $pending_sql .= " AND u.sup_id = $user_sup_id AND p.approved_by_0 IS NULL";
+        $pending_sql .= " AND p.supplier_id = $user_sup_id AND p.approved_by_0 IS NULL";
     } else {
         $pending_sql .= " AND 1=0";
     }
