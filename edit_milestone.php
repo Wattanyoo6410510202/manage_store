@@ -103,7 +103,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
                                 <div class="flex items-center gap-2">
@@ -139,33 +139,12 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                             <p class="text-lg font-bold text-rose-500" id="wht_display">0.00 ฿</p>
                         </div>
 
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 transition-all"
-                            id="deduction_card">
-                            <div class="flex justify-between items-center mb-1">
-                                <div
-                                    class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                    <span class="text-[9px] font-bold text-slate-400">หัก</span>
-                                    <input type="number" id="retention_percent" name="retention_percent"
-                                        value="<?= isset($m_data['retention_percent']) ? (float) $m_data['retention_percent'] : 0 ?>"
-                                        oninput="calculateMoney()"
-                                        class="w-8 text-center bg-transparent text-[12px] font-bold text-slate-600 focus:outline-none">
-                                    <span class="text-[9px] font-bold text-slate-400">%</span>
-                                </div>
-                                <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
-                                    <?= (isset($m_data['retention_amount']) && $m_data['retention_amount'] > 0) ? 'checked' : '' ?> class="rounded text-amber-500">
-                            </div>
-
-                            <p class="text-lg font-bold text-amber-600" id="deduction_total_display">0.00 ฿</p>
-
-                            <div class="mt-2">
-                                <input type="text" name="deduction_note" id="deduction_note"
-                                    value="<?= htmlspecialchars($m_data['deduction_note'] ?? '') ?>"
-                                    placeholder="หมายเหตุการหัก..."
-                                    class="w-full text-[12px] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none text-slate-600">
-                            </div>
-                            <label class="text-[9px] font-bold text-slate-400 uppercase mt-1 block">เงินประกัน /
-                                หักอื่นๆ</label>
-                        </div>
+                        <?php
+                        $deductionChecked = isset($m_data['retention_amount']) && (float)$m_data['retention_amount'] > 0;
+                        $retentionPercentValue = (float)($m_data['retention_percent'] ?? 0);
+                        $deductionNoteValue = (string)($m_data['deduction_note'] ?? '');
+                        include 'partials/milestone_deduction_card.php';
+                        ?>
 
                         <div class="p-4 bg-indigo-600 rounded-xl text-white ">
                             <label class="text-[12px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>

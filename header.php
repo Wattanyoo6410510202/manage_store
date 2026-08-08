@@ -66,8 +66,8 @@ function can($module)
 
 // ฟังก์ชันช่วยเช็คว่าเป็น Viewer หรือไม่ (เพื่อซ่อนปุ่ม)
 function is_viewer() {
-    global $user_role, $inspection_only_access;
-    return $user_role === 'viewer' || !empty($inspection_only_access);
+    global $user_role;
+    return $user_role === 'viewer';
 }
 // ==========================================
 // ==========================================

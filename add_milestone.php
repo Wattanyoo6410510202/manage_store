@@ -92,7 +92,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
                         <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div class="flex justify-between items-center mb-1">
                                 <div class="flex items-center gap-2">
@@ -126,37 +126,12 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
                             <p class="text-lg font-bold " id="wht_display">0.00 ฿</p>
                         </div>
 
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 relative overflow-hidden transition-all"
-                            id="deduction_card">
-                            <div class="flex justify-between items-center mb-1">
-
-
-                                <div class="flex gap-2">
-                                    <div
-                                        class="flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                        <span class="text-[9px] font-bold text-slate-400">หัก</span>
-                                        <input type="number" id="retention_percent" name="retention_percent"
-                                            value="<?= $m_data['retention_percent'] ?? 0 ?>" oninput="calculateMoney()"
-                                            class="w-8 text-center bg-transparent text-[12px] font-bold text-slate-600 focus:outline-none"
-                                            placeholder="0">
-                                        <span class="text-[9px] font-bold text-slate-400">%</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="use_deduction" onchange="calculateMoney()"
-                                        class="rounded text-slate-500 w-3 h-3 focus:ring-0 cursor-pointer">
-                                    <label for="use_deduction"
-                                        class="text-[12px] font-bold text-slate-500 uppercase cursor-pointer">เงินประกัน
-                                        / หักอื่นๆ</label>
-                                </div>
-                            </div>
-
-                            <p class="text-lg font-bold text-slate-700" id="deduction_total_display">0.00 ฿</p>
-
-                            <input type="text" id="deduction_note" name="deduction_note"
-                                value="<?= $m_data['deduction_note'] ?? '' ?>" placeholder="เงินประกัน/ หักอื่นๆ"
-                                class="w-full mt-2 bg-transparent border-b border-slate-200 text-[12px] text-slate-500 focus:outline-none placeholder:text-slate-300">
-                        </div>
+                        <?php
+                        $deductionChecked = false;
+                        $retentionPercentValue = 0;
+                        $deductionNoteValue = '';
+                        include 'partials/milestone_deduction_card.php';
+                        ?>
 
                         <div class="p-4 bg-indigo-600 rounded-xl -md text-white">
                             <label class="text-[12px] font-bold opacity-80 uppercase mb-1 block">ยอดจ่ายสุทธิ</label>

@@ -58,33 +58,8 @@ $dynamicDefaultItems = [
     ['category' => 'งานโครงสร้างและสถาปัตย์', 'title' => 'งานแล้วเสร็จตามงวด', 'detail' => '', 'contract_ref' => '', 'acceptance_criteria' => '', 'is_required' => 1],
     ['category' => 'งานโครงสร้างและสถาปัตย์', 'title' => 'งานเป็นไปตามสัญญาจ้าง', 'detail' => '', 'contract_ref' => '', 'acceptance_criteria' => '', 'is_required' => 1],
 ];
-$dynamicUsers = inspection_fetch_all($conn, "SELECT id, name, role FROM users WHERE role <> 'viewer' ORDER BY name, id");
-$dynamicAssignmentDefaults = [
-    'inspector_1_user_id' => 0,
-    'inspector_2_user_id' => 0,
-    'procurement_user_id' => 0,
-    'md_user_id' => 0,
-    'gmacc_user_id' => 0,
-];
-foreach ($dynamicUsers as $dynamicUser) {
-    $dynamicUserName = (string)$dynamicUser['name'];
-    $dynamicUserRole = (string)$dynamicUser['role'];
-    if (!$dynamicAssignmentDefaults['inspector_1_user_id'] && strpos($dynamicUserName, 'แผนกช่าง') !== false) {
-        $dynamicAssignmentDefaults['inspector_1_user_id'] = (int)$dynamicUser['id'];
-    }
-    if (!$dynamicAssignmentDefaults['inspector_2_user_id'] && strpos($dynamicUserName, 'เจนวิทย์') !== false) {
-        $dynamicAssignmentDefaults['inspector_2_user_id'] = (int)$dynamicUser['id'];
-    }
-    if (!$dynamicAssignmentDefaults['procurement_user_id'] && strpos($dynamicUserName, 'แอม') !== false) {
-        $dynamicAssignmentDefaults['procurement_user_id'] = (int)$dynamicUser['id'];
-    }
-    if (!$dynamicAssignmentDefaults['md_user_id'] && strpos($dynamicUserName, 'ปอย') !== false) {
-        $dynamicAssignmentDefaults['md_user_id'] = (int)$dynamicUser['id'];
-    }
-    if (!$dynamicAssignmentDefaults['gmacc_user_id'] && $dynamicUserRole === 'gmacc') {
-        $dynamicAssignmentDefaults['gmacc_user_id'] = (int)$dynamicUser['id'];
-    }
-}
+$dynamicUsers = inspection_fetch_all($conn, "SELECT id, username, name, role FROM users WHERE role <> 'viewer' ORDER BY name, id");
+$dynamicAssignmentDefaults = inspection_default_assignment_values($dynamicUsers);
 $dynamicHistory = inspection_fetch_all(
     $conn,
     "SELECT r.id, r.round_no, r.status, r.inspection_date, r.created_at,
@@ -244,7 +219,7 @@ if ($dynamicChecklist) {
             <div class="sticky bottom-2 z-20 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur-sm md:bottom-3 md:flex-row md:items-center md:justify-between">
                 <span id="checklistDirtyState" class="px-3 text-xs font-bold text-slate-500" aria-live="polite">ยังไม่มีการแก้ไข</span>
                 <div class="flex flex-col gap-2 sm:flex-row md:shrink-0">
-                <button type="submit" class="min-h-12 flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:text-base"><i class="fas fa-save mr-2"></i><?= $dynamicEditMode ? 'บันทึกการแก้ไข Checklist' : 'บันทึก Checklist และเริ่มเตรียมตรวจ' ?></button>
+                <button type="submit" id="checklistSubmitButton" class="min-h-12 flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:text-base"><i class="fas fa-save mr-2"></i><?= $dynamicEditMode ? 'บันทึกการแก้ไข Checklist' : 'บันทึก Checklist และเริ่มเตรียมตรวจ' ?></button>
                 <?php if ($dynamicEditMode): ?><a href="add_inspection.php?project_id=<?= (int)$project_id ?>&milestone_id=<?= (int)$milestone_id ?>" class="flex min-h-12 items-center justify-center rounded-xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-600 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 sm:text-base">ยกเลิก</a><?php endif; ?>
                 </div>
             </div>
@@ -459,10 +434,13 @@ if ($dynamicChecklist) {
     }
 </style>
 
+<script src="assets/js/inspection-checklist-submit.js"></script>
 <script>
 (function () {
     const checklistForm = document.getElementById('dynamicChecklistForm');
     const rows = document.getElementById('checklistRows');
+    const checklistSubmitButton = document.getElementById('checklistSubmitButton');
+    const checklistSubmitTools = window.InspectionChecklistSubmit;
     const roundForm = document.getElementById('dynamicRoundForm');
     const roundId = <?= (int)($dynamicRound['id'] ?? 0) ?>;
     const nextStep = <?= json_encode($dynamicNextStep, JSON_UNESCAPED_UNICODE) ?>;
@@ -601,6 +579,11 @@ if ($dynamicChecklist) {
         checklistForm.addEventListener('change', markChecklistDirty);
         checklistForm.addEventListener('submit', function (event) {
             event.preventDefault();
+            if (checklistSubmitButton && checklistSubmitButton.disabled) return;
+            if (!checklistSubmitTools) {
+                Swal.fire('ไม่สามารถบันทึกได้', 'ระบบบันทึก Checklist โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้าแล้วลองใหม่', 'error');
+                return;
+            }
             const items = [...rows.querySelectorAll('.check-row')].map(row => ({
                 category: row.querySelector('.item-category').value,
                 title: row.querySelector('.item-title').value,
@@ -609,12 +592,40 @@ if ($dynamicChecklist) {
                 acceptance_criteria: row.querySelector('.item-criteria').value,
                 is_required: row.querySelector('.item-required').checked ? 1 : 0
             }));
-            const payload = { project_id: <?= (int)$project_id ?>, milestone_id: <?= (int)$milestone_id ?>, items: JSON.stringify(items) };
-            ['inspector_1_user_id','inspector_2_user_id','procurement_user_id','md_user_id','gmacc_user_id'].forEach(name => payload[name] = checklistForm.querySelector(`[name="${name}"]`).value);
-            $.post('api/inspection_checklist.php?action=save', payload, function (res) {
-                if (res.status === 'success') Swal.fire({ icon: 'success', title: 'บันทึกแล้ว', text: res.message, confirmButtonColor: '#4f46e5' }).then(() => location.reload());
-                else Swal.fire('ไม่สามารถบันทึกได้', res.message, 'error');
-            }, 'json');
+            const assignmentNames = ['inspector_1_user_id','inspector_2_user_id','procurement_user_id','md_user_id','gmacc_user_id'];
+            const assignments = {};
+            assignmentNames.forEach(name => assignments[name] = checklistForm.querySelector(`[name="${name}"]`).value);
+            const validationError = checklistSubmitTools.validateChecklistSubmission(items, assignments);
+            if (validationError) {
+                if (Number.isInteger(validationError.itemIndex)) {
+                    rows.querySelectorAll('.check-row')[validationError.itemIndex]?.querySelector('.item-title')?.focus();
+                } else if (validationError.fieldName) {
+                    checklistForm.querySelector(`[name="${validationError.fieldName}"]`)?.focus();
+                }
+                Swal.fire('ข้อมูลยังไม่ครบ', validationError.message, 'warning');
+                return;
+            }
+
+            const payload = { project_id: <?= (int)$project_id ?>, milestone_id: <?= (int)$milestone_id ?>, items: JSON.stringify(items), ...assignments };
+            let saveSucceeded = false;
+            checklistSubmitTools.setChecklistSubmitting(checklistSubmitButton, true);
+            $.ajax({
+                url: 'api/inspection_checklist.php?action=save',
+                type: 'POST',
+                data: payload,
+                dataType: 'json'
+            }).done(function (res) {
+                if (res.status === 'success') {
+                    saveSucceeded = true;
+                    Swal.fire({ icon: 'success', title: 'บันทึกแล้ว', text: res.message, confirmButtonColor: '#4f46e5' }).then(() => location.reload());
+                    return;
+                }
+                Swal.fire('ไม่สามารถบันทึกได้', res.message || 'ระบบไม่สามารถบันทึก Checklist ได้', 'error');
+            }).fail(function (xhr) {
+                Swal.fire('ไม่สามารถบันทึกได้', checklistSubmitTools.getChecklistRequestError(xhr), 'error');
+            }).always(function () {
+                if (!saveSucceeded) checklistSubmitTools.setChecklistSubmitting(checklistSubmitButton, false);
+            });
         });
     }
     const startButton = document.getElementById('startRoundButton');

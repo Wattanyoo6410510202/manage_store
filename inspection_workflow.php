@@ -19,6 +19,50 @@ if (!function_exists('inspection_current_role')) {
     }
 }
 
+if (!function_exists('inspection_default_assignment_values')) {
+    /**
+     * Resolve new-checklist assignees from stable usernames. Display names may
+     * change, but the selection must remain valid. GMACC stays role-based so
+     * replacing that person requires no code change.
+     */
+    function inspection_default_assignment_values(array $users): array
+    {
+        $defaults = [
+            'inspector_1_user_id' => 0,
+            'inspector_2_user_id' => 0,
+            'procurement_user_id' => 0,
+            'md_user_id' => 0,
+            'gmacc_user_id' => 0,
+        ];
+        $fixedUsernames = [
+            'inspector_1_user_id' => 'eng',
+            'inspector_2_user_id' => 'jane',
+            'procurement_user_id' => 'amn',
+            'md_user_id' => 'poy',
+        ];
+
+        foreach ($users as $user) {
+            $userId = (int)($user['id'] ?? 0);
+            if ($userId <= 0) {
+                continue;
+            }
+
+            $username = strtolower(trim((string)($user['username'] ?? '')));
+            foreach ($fixedUsernames as $field => $defaultUsername) {
+                if ($defaults[$field] === 0 && $username === $defaultUsername) {
+                    $defaults[$field] = $userId;
+                }
+            }
+
+            if ($defaults['gmacc_user_id'] === 0 && strtolower((string)($user['role'] ?? '')) === 'gmacc') {
+                $defaults['gmacc_user_id'] = $userId;
+            }
+        }
+
+        return $defaults;
+    }
+}
+
 if (!function_exists('inspection_status_label')) {
     function inspection_status_label(string $status): string
     {
