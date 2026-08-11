@@ -178,6 +178,17 @@ if (!function_exists('inspection_fetch_all')) {
     }
 }
 
+if (!function_exists('inspection_should_restrict_project_access')) {
+    function inspection_should_restrict_project_access(string $role, array $permissions, bool $hasAssignment): bool
+    {
+        if (!$hasAssignment) {
+            return false;
+        }
+
+        return !in_array('projects', $permissions[$role] ?? [], true);
+    }
+}
+
 if (!function_exists('inspection_user_has_assignment')) {
     /**
      * Inspection access is assignment-based, not role-based. This lets a

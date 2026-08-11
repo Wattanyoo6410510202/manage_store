@@ -1,6 +1,9 @@
 <?php
 // เรียกไฟล์ config ของจาร (ที่มี $conn = mysqli_connect...)
 require_once '../config.php'; 
+require_once '../project_authorization.php';
+
+project_require_management_access();
 
 header('Content-Type: application/json');
 

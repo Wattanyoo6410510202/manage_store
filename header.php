@@ -16,7 +16,8 @@ if (!isset($conn)) {
     require_once __DIR__ . '/config.php';
 }
 require_once __DIR__ . '/inspection_workflow.php';
-$inspection_only_access = inspection_user_has_assignment($conn, (int)($_SESSION['user_id'] ?? 0));
+require_once __DIR__ . '/project_authorization.php';
+$inspection_has_assignment = inspection_user_has_assignment($conn, (int)($_SESSION['user_id'] ?? 0));
 
 $permissions = [
     // 1. Admin: ทำได้ทุกอย่างในระบบ
@@ -54,6 +55,12 @@ $permissions = [
     'marketing' => ['dashboard', 'compare']
 ];
 
+$inspection_only_access = inspection_should_restrict_project_access(
+    $user_role,
+    $permissions,
+    $inspection_has_assignment
+);
+
 // ฟังก์ชันเช็คสิทธิ์สำหรับใช้ใน Side Bar และปุ่มต่างๆ
 function can($module)
 {
@@ -68,6 +75,11 @@ function can($module)
 function is_viewer() {
     global $user_role;
     return $user_role === 'viewer';
+}
+
+function can_manage_projects(): bool {
+    global $user_role;
+    return project_user_can_manage((int)($_SESSION['user_id'] ?? 0), $user_role);
 }
 // ==========================================
 // ==========================================

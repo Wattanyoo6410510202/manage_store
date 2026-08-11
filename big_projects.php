@@ -58,7 +58,7 @@ $result = mysqli_query($conn, $sql);
             </div>
         </div>
 
-        <?php if (!is_viewer()): ?>
+        <?php if (can_manage_projects()): ?>
         <button onclick="location.href='add_big_project.php'"
             class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold shadow-sm">
             <i class="fas fa-plus-circle"></i> สร้างโปรเจคใหญ่
@@ -87,7 +87,7 @@ $result = mysqli_query($conn, $sql);
                             ?>
                         </span>
                         <div class="flex gap-1">
-                            <?php if (!is_viewer()): ?>
+                            <?php if (can_manage_projects()): ?>
                                 <a href="add_big_project.php?id=<?= $bp_id ?>"
                                     class="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all" title="แก้ไข">
                                     <i class="fas fa-edit text-xs"></i>
@@ -214,7 +214,7 @@ $result = mysqli_query($conn, $sql);
                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="ดูรายละเอียด">
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
-                                <?php if (!is_viewer()): ?>
+                                <?php if (can_manage_projects()): ?>
                                     <a href="add_big_project.php?id=<?= $bp_id ?>"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="แก้ไข">
                                         <i class="fas fa-edit text-xs"></i>

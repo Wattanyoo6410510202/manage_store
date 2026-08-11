@@ -68,7 +68,7 @@ $items = mysqli_query($conn, "
             <h2 class="text-2xl font-bold text-slate-800"><?= htmlspecialchars($bp['name']) ?></h2>
         </div>
         <div class="flex gap-2">
-            <?php if (!is_viewer()): ?>
+            <?php if (can_manage_projects()): ?>
                 <a href="add_big_project.php?id=<?= $id ?>"
                     class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold text-[12px] transition-all">
                     <i class="fas fa-edit mr-1"></i> แก้ไข

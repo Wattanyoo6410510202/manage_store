@@ -1,5 +1,9 @@
 <?php
 require_once '../config.php';
+require_once '../project_authorization.php';
+
+project_require_management_access();
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

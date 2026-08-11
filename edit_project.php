@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                         class="font-mono font-bold text-indigo-600"><?= $pj['project_no'] ?></span></p>
             </div>
             <div class="flex gap-3">
-                <?php if (!is_viewer()): ?>
+                <?php if (can_manage_projects()): ?>
                 <button type="submit"
                     class="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold  transition-all">
                     <i class="fas fa-sync-alt mr-2"></i> อัปเดตข้อมูล

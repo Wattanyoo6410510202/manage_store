@@ -35,7 +35,7 @@ $projects = mysqli_query($conn, "SELECT id, project_name, project_no FROM projec
                 <p class="text-slate-500 text-sm">รวมหลายโปรเจคย่อยไว้ในโปรเจคใหญ่เดียวกัน</p>
             </div>
             <div class="flex gap-3">
-                <?php if (!is_viewer()): ?>
+                <?php if (can_manage_projects()): ?>
                 <button type="submit"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl font-bold transition-all">
                     <i class="fas fa-save mr-2"></i> บันทึก

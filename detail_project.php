@@ -245,14 +245,14 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                     class="text-xs font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">
                                     <i class="fas fa-print mr-1"></i> พิมพ์ที่เลือก
                                 </button>
-                                <?php if (!is_viewer() && empty($inspection_only_access)): ?>
+                                <?php if (can_manage_projects()): ?>
                                 <button onclick="bulkDelete()"
                                     class="text-xs font-bold text-white bg-rose-500 px-4 py-2 rounded-xl hover:bg-rose-600 transition-all">
                                     <i class="fas fa-trash-alt mr-1"></i> ลบที่เลือก
                                 </button>
                                 <?php endif; ?>
                             </div>
-                            <?php if (!is_viewer() && empty($inspection_only_access)): ?>
+                            <?php if (can_manage_projects()): ?>
                             <button onclick="location.href='add_milestone.php?project_id=<?= $id ?>'"
                                 class="flex-1 sm:flex-none text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all">
                                 <i class="fas fa-plus mr-1"></i> เพิ่มงวดเบิก
@@ -337,7 +337,7 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                         </td>
                                         <td class="px-4 py-4 text-center">
                                             <div class="flex items-center justify-center gap-2">
-                                                <?php if (!is_viewer() && empty($inspection_only_access)): ?>
+                                                <?php if (can_manage_projects()): ?>
                                                 <button onclick="editMilestone(<?= $m['id'] ?>)"
                                                     class="text-[12px] bg-amber-400 text-white px-3 py-1.5 rounded-lg hover:bg-amber-500 shadow-sm transition-all"
                                                     title="แก้ไขข้อมูล">

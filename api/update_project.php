@@ -2,6 +2,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
+require_once '../project_authorization.php';
+
+project_require_management_access();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 1. รับค่าพื้นฐาน

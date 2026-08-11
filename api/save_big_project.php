@@ -1,8 +1,11 @@
 <?php
 require_once '../config.php';
+require_once '../project_authorization.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+project_require_management_access();
 
 $action = $_GET['action'] ?? '';
 

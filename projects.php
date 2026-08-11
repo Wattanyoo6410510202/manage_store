@@ -50,7 +50,7 @@ $result = mysqli_query($conn, $sql);
                         // ถ้าไม่ใช่ admin และไม่ใช่ viewer ให้เลือกตัวเองเป็นค่าเริ่มต้น
                         // Procurement manages checklists across projects, so do not hide
                         // every project behind a default "created by me" filter.
-                        $selected = ($u['id'] == $my_id && $_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'procure' && !is_viewer()) ? 'selected' : '';
+                        $selected = ($u['id'] == $my_id && $_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'procure' && can_manage_projects()) ? 'selected' : '';
                         ?>
                         <option value="<?= $u['id'] ?>" <?= $selected ?>>
                             <?= htmlspecialchars($u['name']) ?>
@@ -94,7 +94,7 @@ $result = mysqli_query($conn, $sql);
             </div>
         </div>
 
-        <?php if (!is_viewer()): ?>
+        <?php if (can_manage_projects()): ?>
         <button onclick="location.href='add_project.php'"
             class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all text-[12px] font-bold shadow-sm">
             <i class="fas fa-plus-circle"></i> สร้างงานใหม่
@@ -191,7 +191,7 @@ $result = mysqli_query($conn, $sql);
                                         <i class="fas fa-clipboard-check text-xs"></i> ตรวจงาน
                                     </a>
 
-                                    <?php if (!is_viewer()): ?>
+                                    <?php if (can_manage_projects()): ?>
                                         <a href="edit_project.php?id=<?= $pj_id ?>"
                                             class="group flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
                                             แก้ไข
@@ -257,7 +257,7 @@ $result = mysqli_query($conn, $sql);
                                     </div>
 
                                     <!-- Status Buttons Only -->
-                                    <?php if (in_array($user_role, ['admin', 'procure']) && !is_viewer()): ?>
+                                    <?php if (in_array($user_role, ['admin', 'procure']) && can_manage_projects()): ?>
                                         <div class="mt-2 w-full">
                                             <?php if ($row['project_status'] == 'on_hold'): ?>
                                                 <button onclick="changeProjectStatus(<?= $pj_id ?>, 'active', 'ยืนยันการอนุมัติงาน?')"
@@ -379,7 +379,7 @@ $result = mysqli_query($conn, $sql);
                                     <i class="fas fa-clipboard-check text-xs"></i>
                                 </a>
 
-                                <?php if (!is_viewer()): ?>
+                                <?php if (can_manage_projects()): ?>
                                     <a href="edit_project.php?id=<?= $pj_id ?>"
                                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="แก้ไข">
                                         <i class="fas fa-edit text-xs"></i>
