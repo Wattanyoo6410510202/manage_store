@@ -320,25 +320,139 @@ if (!empty($_SESSION['sup_id'])) {
             color: #818cf8 !important;
             background: rgba(79, 70, 229, 0.1);
         }
+
+        @media (min-width: 769px) {
+            #sidebar,
+            #sidebar-nav {
+                transition-duration: 200ms;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            html.sidebar-collapsed-preference #sidebar,
+            #sidebar.sidebar-collapsed {
+                width: 4.5rem;
+            }
+
+            html.sidebar-collapsed-preference #sidebar .sidebar-header,
+            #sidebar.sidebar-collapsed .sidebar-header {
+                padding-left: 1rem;
+                padding-right: 1rem;
+                justify-content: center;
+            }
+
+            html.sidebar-collapsed-preference #sidebar .sidebar-brand-text,
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav > p,
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav a > span:not(.absolute),
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav button span,
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav [id$="-submenu"],
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav [id^="arrow-"],
+            html.sidebar-collapsed-preference #sidebar .sidebar-user-details,
+            html.sidebar-collapsed-preference #sidebar .sidebar-logout-label,
+            #sidebar.sidebar-collapsed .sidebar-brand-text,
+            #sidebar.sidebar-collapsed #sidebar-nav > p,
+            #sidebar.sidebar-collapsed #sidebar-nav a > span:not(.absolute),
+            #sidebar.sidebar-collapsed #sidebar-nav button span,
+            #sidebar.sidebar-collapsed #sidebar-nav [id$="-submenu"],
+            #sidebar.sidebar-collapsed #sidebar-nav [id^="arrow-"],
+            #sidebar.sidebar-collapsed .sidebar-user-details,
+            #sidebar.sidebar-collapsed .sidebar-logout-label {
+                display: none !important;
+            }
+
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav,
+            #sidebar.sidebar-collapsed #sidebar-nav {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav a,
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav button,
+            html.sidebar-collapsed-preference #sidebar #sidebar-nav button > div,
+            #sidebar.sidebar-collapsed #sidebar-nav a,
+            #sidebar.sidebar-collapsed #sidebar-nav button,
+            #sidebar.sidebar-collapsed #sidebar-nav button > div {
+                justify-content: center;
+                gap: 0;
+            }
+
+            html.sidebar-collapsed-preference #sidebar .sidebar-footer,
+            #sidebar.sidebar-collapsed .sidebar-footer {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            html.sidebar-collapsed-preference #sidebar .sidebar-user-summary,
+            #sidebar.sidebar-collapsed .sidebar-user-summary {
+                justify-content: center;
+                padding-left: 0;
+                padding-right: 0;
+            }
+        }
+
+        #sidebar-tooltip {
+            position: fixed;
+            z-index: 110;
+            pointer-events: none;
+            padding: 0.375rem 0.625rem;
+            border-radius: 0.5rem;
+            background: #0f172a;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.25rem;
+            box-shadow: 0 4px 8px rgba(15, 23, 42, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-50%) translateX(-0.25rem);
+            transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+        }
+
+        #sidebar-tooltip.is-visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #sidebar,
+            #sidebar *,
+            #sidebar-tooltip {
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
+    <script>
+        try {
+            if (localStorage.getItem('prosystem.sidebar.collapsed') === 'true') {
+                document.documentElement.classList.add('sidebar-collapsed-preference');
+            }
+        } catch (error) {
+            document.documentElement.classList.remove('sidebar-collapsed-preference');
+        }
+    </script>
 </head>
 
 <body class="bg-slate-100 flex h-screen overflow-hidden">
 
     <div id="sidebar-overlay"
-        class="fixed inset-0 bg-black/50 z-[90] hidden opacity-0 transition-opacity duration-300 md:hidden"
+        class="fixed inset-0 bg-black/50 z-[90] hidden opacity-0 transition-opacity duration-300 min-[769px]:hidden"
         onclick="toggleSidebar()"></div>
 
     <aside id="sidebar"
         class="w-60 bg-slate-900 text-slate-300 flex flex-col shrink-0 h-full shadow-2xl md:shadow-none">
-        <div class="p-6 bg-slate-950 flex items-center justify-between border-b border-slate-800">
+        <div class="sidebar-header relative p-6 bg-slate-950 flex items-center justify-between border-b border-slate-800">
             <div class="flex items-center gap-3">
                 <div class="bg-white p-2 rounded-lg shadow-lg shadow-indigo-500/20">
                     <img src="shopping-cart.png" alt="ไอคอนไง" class="h-6 w-6 text-white" />
                 </div>
-                <span class="text-xl font-extrabold text-white tracking-tight">ProSystem</span>
+                <span class="sidebar-brand-text text-xl font-extrabold text-white tracking-tight">ProSystem</span>
             </div>
-            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white">
+            <button id="sidebar-toggle" type="button" onclick="toggleDesktopSidebar()"
+                class="hidden min-[769px]:flex absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 items-center justify-center rounded-full bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                aria-controls="sidebar" aria-expanded="true" aria-label="ย่อแถบเมนู">
+                <i id="sidebar-toggle-icon" class="fas fa-chevron-left text-[10px]" aria-hidden="true"></i>
+            </button>
+            <button onclick="toggleSidebar()" class="min-[769px]:hidden text-slate-400 hover:text-white">
                 <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
@@ -553,13 +667,13 @@ if (!empty($_SESSION['sup_id'])) {
             <?php endif; ?>
         </nav>
 
-        <div class="p-4 bg-slate-950 border-t border-slate-800">
-            <div class="flex items-center gap-3 mb-4 px-2">
+        <div class="sidebar-footer p-4 bg-slate-950 border-t border-slate-800">
+            <div class="sidebar-user-summary flex items-center gap-3 mb-4 px-2">
                 <div
                     class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-inner uppercase">
                     <?php echo strtoupper(substr($_SESSION['username'] ?? 'U', 0, 1)); ?>
                 </div>
-                <div class="overflow-hidden">
+                <div class="sidebar-user-details overflow-hidden">
                     <p class="text-sm font-bold truncate text-white">
                         <?php echo $_SESSION['username'] ?? 'Administrator'; ?>
                     </p>
@@ -568,21 +682,24 @@ if (!empty($_SESSION['sup_id'])) {
             </div>
             <a href="logout.php"
                 class="flex items-center justify-center gap-2 w-full py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500 hover:text-white transition-all">
-                <i class="fas fa-power-off text-xs"></i> ออกจากระบบ
+                <i class="fas fa-power-off text-xs"></i>
+                <span class="sidebar-logout-label">ออกจากระบบ</span>
             </a>
         </div>
     </aside>
+
+    <div id="sidebar-tooltip" role="tooltip" aria-hidden="true"></div>
 
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 shrink-0">
             <div class="flex items-center gap-2 flex-1 min-w-0">
                 <button onclick="toggleSidebar()"
-                    class="md:hidden w-10 h-10 shrink-0 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg">
+                    class="min-[769px]:hidden w-10 h-10 shrink-0 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 
                 <!-- Mobile Category Dropdown -->
-                <div class="md:hidden flex-1 min-w-0 max-w-[200px]">
+                <div class="min-[769px]:hidden flex-1 min-w-0 max-w-[200px]">
                     <select onchange="window.location.href=this.value" class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs rounded-lg block p-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold outline-none">
                         <option value="e_service.php" <?php echo $active_cat == 'main' ? 'selected' : ''; ?>>🏠 หน้าหลัก</option>
                         
@@ -601,7 +718,7 @@ if (!empty($_SESSION['sup_id'])) {
                 </div>
 
                 <!-- Desktop Category Tabs -->
-                <div class="hidden md:flex h-16 items-center shrink-0">
+                <div class="hidden min-[769px]:flex h-16 items-center shrink-0">
                     <a id="nav-home" href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
