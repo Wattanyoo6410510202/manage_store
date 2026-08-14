@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once '../pr_approval_authorization.php';
 date_default_timezone_set('Asia/Bangkok');
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -7,9 +8,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') die("Method not allowed");
 
 $customer_id = (int) ($_POST['customer_id'] ?? 0);
 $supplier_id = (int)($_POST['supplier_id'] ?? 0);
+$user_id = (int)($_SESSION['user_id'] ?? 0);
 
 // ถ้าไม่เลือกบริษัท ให้ใช้บริษัทของตัวเอง (sup_id) เป็นค่าเริ่มต้น
-$user_sup_id = (int)($_SESSION['sup_id'] ?? 0);
+$creator_database_user = null;
+if ($user_id > 0) {
+    $creator_stmt = $conn->prepare("SELECT role, sup_id FROM users WHERE id = ? LIMIT 1");
+    $creator_stmt->bind_param('i', $user_id);
+    $creator_stmt->execute();
+    $creator_database_user = $creator_stmt->get_result()->fetch_assoc() ?: null;
+    $creator_stmt->close();
+}
+if ($creator_database_user === null) {
+    http_response_code(401);
+    die('Unauthorized access');
+}
+$creator_context = pr_approval_resolve_actor_context($_SESSION, $creator_database_user);
+$user_sup_id = $creator_context['sup_id'];
 if ($supplier_id <= 0 && $user_sup_id > 0) {
     $supplier_id = $user_sup_id;
 }
@@ -27,8 +42,6 @@ $notes        = $_POST['notes'] ?? '';
 $vat_percent  = floatval($_POST['vat_percent'] ?? 7);
 $wht_percent  = floatval($_POST['wht_percent'] ?? 0);
 $is_internal  = ($customer_id === 0) ? 1 : 0;
-$user_id      = $_SESSION['user_id'] ?? 0;
-
 $expense_cat_id    = (int)($_POST['expense_cat_id'] ?? 0);
 $budget_type_id    = (int)($_POST['budget_type_id'] ?? 0);
 $objective_id      = (int)($_POST['objective_id'] ?? 0);
@@ -177,14 +190,15 @@ try {
         $msg .= "เปิดดู: " . getPRUrl($pr_id) . "\n";
         $msg .= "⚠️ กรุณาอนุมัติใบขอซื้อนี้";
 
-        // แจ้ง GM ทุกคนที่ sup_id ตรงกับ supplier_id ของ PR
-        if (!empty($supplier_id)) {
-            notifyGMsBySupId($msg, $supplier_id);
+        // Notify GMs in the requester's team, regardless of the selected supplier.
+        $supervisor_team_id = pr_approval_supervisor_notification_team_id($user_sup_id, $supplier_id);
+        if ($supervisor_team_id > 0) {
+            notifyGMsBySupId($msg, $supervisor_team_id, $creator_context['role']);
         }
 
         // แจ้ง Admin/GMHOK ด้วย (เผื่อกรณีหัวหน้าไม่อยู่)
         $msg_admin = $msg . "\n\n(แจ้ง Admin: มี PR ใหม่รอการดำเนินการ)";
-        notifyRoleGroupLine(['admin', 'gmhok'], $msg_admin, $supplier_id);
+        notifyRoleGroupLine(['admin', 'gmhok'], $msg_admin);
     } catch (Exception $e) { /* Ignore line error */ }
 
     $_SESSION['flash_msg'] = 'add_success';

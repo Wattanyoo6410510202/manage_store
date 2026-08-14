@@ -2,6 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
+require_once '../pr_approval_authorization.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -81,23 +82,28 @@ if (
 $update_col = "";
 $time_col = "";
 
-// --- Dynamic Level 0 (Supervisor) Mapping by pr.supplier_id vs approver.sup_id ---
-$is_gm = (strpos($user_role, 'gm') === 0);
+// --- Dynamic Level 0 (Supervisor) Mapping by requester team vs approver team ---
 
 // ดึง sup_id ของผู้อนุมัติ
 $approver_sup_id = 0;
-$approver_stmt = $conn->prepare("SELECT sup_id FROM users WHERE id = ?");
+$approver_stmt = $conn->prepare("SELECT role, sup_id FROM users WHERE id = ?");
 $approver_stmt->bind_param("i", $user_id);
 $approver_stmt->execute();
 $approver_result = $approver_stmt->get_result()->fetch_assoc();
-$approver_sup_id = intval($approver_result['sup_id'] ?? 0);
+if (!$approver_result) {
+    $approver_stmt->close();
+    send_json('error', 'Unauthorized access');
+}
+$approver_context = pr_approval_resolve_actor_context($_SESSION, $approver_result);
+$approver_sup_id = $approver_context['sup_id'];
+$user_role = $approver_context['role'];
 $approver_stmt->close();
 
-// Check for Level 0 Approval: GM ที่มี sup_id ตรงกับ supplier_id ของ PR หรือ Admin/GMHOK
+// Check for Level 0 Approval: the requester's GM, or Admin/GMHOK as backup.
 if (empty($pr['approved_by_0'])) {
-    $pr_supplier_id = intval($pr['supplier_id'] ?? 0);
-    $is_match = ($pr_supplier_id > 0 && $approver_sup_id > 0 && $pr_supplier_id === $approver_sup_id);
-    if (($is_gm && $is_match) || in_array($user_role, ['admin', 'gmhok'])) {
+    $requester_sup_id = intval($pr['requester_sup_id'] ?? 0);
+    $requester_role = (string)($pr['requester_role'] ?? '');
+    if (pr_approval_can_approve_supervisor_step($user_role, $approver_sup_id, $requester_sup_id, $requester_role)) {
         $update_col = "approved_by_0";
         $time_col = "approved_at_0";
     }

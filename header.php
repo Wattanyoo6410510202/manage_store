@@ -17,6 +17,17 @@ if (!isset($conn)) {
 }
 require_once __DIR__ . '/inspection_workflow.php';
 require_once __DIR__ . '/project_authorization.php';
+require_once __DIR__ . '/pr_approval_authorization.php';
+$approval_actor_database_user = null;
+$approval_actor_user_id = (int)($_SESSION['user_id'] ?? 0);
+if ($approval_actor_user_id > 0) {
+    $approval_actor_stmt = $conn->prepare("SELECT role, sup_id FROM users WHERE id = ? LIMIT 1");
+    $approval_actor_stmt->bind_param('i', $approval_actor_user_id);
+    $approval_actor_stmt->execute();
+    $approval_actor_database_user = $approval_actor_stmt->get_result()->fetch_assoc() ?: null;
+    $approval_actor_stmt->close();
+}
+$approval_actor_context = pr_approval_resolve_actor_context($_SESSION, $approval_actor_database_user);
 $inspection_has_assignment = inspection_user_has_assignment($conn, (int)($_SESSION['user_id'] ?? 0));
 
 $permissions = [
@@ -168,7 +179,9 @@ $is_gm = (strpos($user_role, 'gm') === 0);
 $allowed_roles = ['admin', 'procure', 'mgr', 'mgr2', 'viewer'];
 
 if ($current_page == 'pending_approval.php') {
-    if (strpos($user_role, 'staff') === 0 || $user_role === 'acc' || (!$is_gm && !in_array($user_role, $allowed_roles))) {
+    $approval_page_role = $approval_actor_context['role'];
+    $approval_page_is_gm = (strpos($approval_page_role, 'gm') === 0);
+    if (strpos($approval_page_role, 'staff') === 0 || $approval_page_role === 'acc' || (!$approval_page_is_gm && !in_array($approval_page_role, $allowed_roles))) {
         echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
         exit;
     }
@@ -196,7 +209,7 @@ if (in_array($current_page, $cat_construction)) $active_cat = 'construction';
 // ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role และ User ตัวเอง
 $pending_count = 0;
 require_once 'config.php';
-$user_role_for_count = $_SESSION['role'] ?? '';
+$user_role_for_count = $approval_actor_context['role'];
 $user_id_for_count = $_SESSION['user_id'] ?? 0;
 
 $pending_sql = "SELECT COUNT(p.id) as total FROM pr p 
@@ -212,14 +225,11 @@ if ($user_role_for_count === 'procure') {
     $pending_sql .= " AND p.approved_by_2 IS NULL";
 } elseif ($user_role_for_count === 'mgr2') {
     $pending_sql .= " AND p.approved_by_3 IS NULL";
-} elseif (strpos($user_role_for_count, 'gm') === 0 && $user_role_for_count !== 'gmacc') {
-    // GM นับ Level 0 ของ PR ที่เป็นของบริษัทตัวเอง (p.supplier_id = sup_id)
-    $user_sup_id = $_SESSION['sup_id'] ?? 0;
-    if ($user_sup_id > 0) {
-        $pending_sql .= " AND p.supplier_id = $user_sup_id AND p.approved_by_0 IS NULL";
-    } else {
-        $pending_sql .= " AND 1=0";
-    }
+} elseif (pr_approval_is_team_gm($user_role_for_count)) {
+    // GM counts Level 0 requests created by users in the same team.
+    $user_sup_id = $approval_actor_context['sup_id'];
+    $pending_sql .= pr_approval_creator_scope_sql($user_role_for_count, (int)$user_sup_id, 'u');
+    $pending_sql .= " AND p.approved_by_0 IS NULL";
 } elseif (in_array($user_role_for_count, ['admin', 'gmhok'])) {
     // Admin/GMHOK นับรวมทุกรายการที่ยังไม่จบ (รวมทุกสถานะ Null)
     $pending_sql .= " AND (p.approved_by_0 IS NULL OR p.approved_by IS NULL OR p.approved_by_1 IS NULL OR p.approved_by_2 IS NULL OR p.approved_by_3 IS NULL)";

@@ -2,6 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
+require_once '../pr_approval_authorization.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -31,19 +32,42 @@ if (empty($reason)) {
     send_json('error', 'กรุณาระบุเหตุผลในการปฏิเสธ');
 }
 
-// ตรวจสอบสิทธิ์ (เฉพาะ Mgr, GMACC, Admin หรือผู้ที่มีสิทธิ์อนุมัติ)
-$allowed_roles = ['admin', 'mgr', 'mgr2', 'gmacc', 'gmhok', 'procure'];
-if (!in_array($user_role, $allowed_roles) && strpos($user_role, 'gm') !== 0) {
-    send_json('error', 'คุณไม่มีสิทธิ์ปฏิเสธรายการนี้');
+$actor_stmt = $conn->prepare("SELECT role, sup_id FROM users WHERE id = ? LIMIT 1");
+$actor_stmt->bind_param('i', $user_id);
+$actor_stmt->execute();
+$actor_database_user = $actor_stmt->get_result()->fetch_assoc();
+$actor_stmt->close();
+if (!$actor_database_user) {
+    send_json('error', 'Unauthorized access');
 }
+$actor_context = pr_approval_resolve_actor_context($_SESSION, $actor_database_user);
+$user_role = $actor_context['role'];
+$approver_sup_id = $actor_context['sup_id'];
 
-$stmt = $conn->prepare("SELECT status, created_by, doc_no, grand_total, supplier_id FROM pr WHERE id = ?");
+$stmt = $conn->prepare("
+    SELECT pr.status, pr.created_by, pr.doc_no, pr.grand_total, pr.supplier_id,
+           pr.approved_by_0, u.role AS requester_role, u.sup_id AS requester_sup_id
+    FROM pr
+    LEFT JOIN users u ON u.id = pr.created_by
+    WHERE pr.id = ?
+");
 $stmt->bind_param("i", $pr_id);
 $stmt->execute();
 $pr = $stmt->get_result()->fetch_assoc();
 
 if (!$pr) {
     send_json('error', 'ไม่พบข้อมูลใบขอซื้อ');
+}
+
+$can_reject = pr_approval_can_reject_request(
+    $user_role,
+    $approver_sup_id,
+    (int)($pr['requester_sup_id'] ?? 0),
+    (string)($pr['requester_role'] ?? ''),
+    !empty($pr['approved_by_0'])
+);
+if (!$can_reject) {
+    send_json('error', 'คุณไม่มีสิทธิ์ปฏิเสธรายการนี้');
 }
 
 if ($pr['status'] === 'approved') {

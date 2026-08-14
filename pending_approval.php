@@ -1,22 +1,18 @@
 <?php
 require_once 'config.php';
+require_once 'pr_approval_authorization.php';
 include 'header.php';
 include('assets/alert.php');
 
-$user_role_sup = $_SESSION['role'] ?? '';
-$sup_id = $_SESSION['sup_id'] ?? 0;
+$user_role_sup = $approval_actor_context['role'] ?? ($_SESSION['role'] ?? '');
+$sup_id = $approval_actor_context['sup_id'] ?? ($_SESSION['sup_id'] ?? 0);
 $auto_filter_supplier = '';
 
-$is_gm_role = (strpos($user_role_sup, 'gm') === 0 && $user_role_sup !== 'gmacc');
+$is_gm_role = pr_approval_is_team_gm($user_role_sup);
 
-// กรอง SQL ตาม role: gm_sale เห็นเฉพาะ PR ที่เป็นของบริษัทตัวเอง (p.supplier_id = sup_id)
+// Scope each GM to PRs created by users in the same team (users.sup_id).
 $where_extra = '';
-if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
-    $where_extra = " AND p.supplier_id = $sup_id";
-} elseif ($is_gm_role && empty($sup_id)) {
-    // gm_sale ไม่มี sup_id ไม่เห็นอะไรเลย
-    $where_extra = " AND 1=0";
-}
+$where_extra = pr_approval_creator_scope_sql($user_role_sup, (int)$sup_id, 'u_creator');
 
 $sql = "SELECT 
             p.*, 
@@ -54,19 +50,11 @@ while ($row = mysqli_fetch_assoc($result)) {
     $pr_list[] = $row;
 }
 
-// Supplier dropdown (admin/procure เห็นทั้งหมด, gm เห็นเฉพาะตัวเอง)
-if ($is_gm_role && !empty($sup_id) && $sup_id > 0) {
-    $supplier_sql = "SELECT id, company_name FROM suppliers WHERE id = $sup_id ORDER BY company_name ASC";
-    $sup_name_query = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id LIMIT 1");
-    if ($sup_row = mysqli_fetch_assoc($sup_name_query)) {
-        $auto_filter_supplier = $sup_row['company_name'];
-    }
-} else {
-    $supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
-}
+// The GM team scope is based on the requester. Supplier remains a normal list filter.
+$supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
 $supplier_res = mysqli_query($conn, $supplier_sql);
 $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
-$isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 'procure') === 0);
+$isAdminOrProcure = ($user_role_sup === 'admin' || strpos($user_role_sup, 'procure') === 0);
 ?>
 
 <div class="w-full p-0">
@@ -279,10 +267,14 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                         <?php
                                         $canApproveDesktop = false;
                                         if ($row['status'] === 'pending' || $row['allow_resubmit'] == 3) {
-                                            $prSupplierId = intval($row['supplier_id'] ?? 0);
+                                            $requesterTeamId = intval($row['creator_sup_id'] ?? 0);
                                             $approverSupId = intval($sup_id ?? 0);
-                                            $isGM = (strpos($user_role_sup, 'gm') === 0);
-                                            $isMatch = ($prSupplierId > 0 && $approverSupId > 0 && $prSupplierId === $approverSupId);
+                                            $canSupervise = pr_approval_can_approve_supervisor_step(
+                                                $user_role_sup,
+                                                $approverSupId,
+                                                $requesterTeamId,
+                                                (string)($row['creator_role'] ?? '')
+                                            );
                                             if (!empty($row['approved_by_0'])) {
                                                 if ($user_role_sup === 'procure' && empty($row['approved_by'])) $canApproveDesktop = true;
                                                 elseif ($user_role_sup === 'gmacc' && empty($row['approved_by_1'])) $canApproveDesktop = true;
@@ -290,7 +282,7 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
                                                 elseif ($user_role_sup === 'mgr2' && empty($row['approved_by_3'])) $canApproveDesktop = true;
                                                 elseif (in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
                                             } else {
-                                                if (($isGM && $isMatch) || in_array($user_role_sup, ['admin', 'gmhok'])) $canApproveDesktop = true;
+                                                if ($canSupervise) $canApproveDesktop = true;
                                             }
                                         }
                                         ?>
@@ -321,8 +313,10 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
 <script>
     const PR_DATA = <?= json_encode($pr_list, JSON_UNESCAPED_UNICODE) ?>;
     const USER_ID = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
-    const USER_ROLE = <?= json_encode($_SESSION['role'] ?? '') ?>;
-    const USER_SUP_ID = <?= intval($_SESSION['sup_id'] ?? 0) ?>;
+    const USER_ROLE = <?= json_encode($user_role_sup) ?>;
+    const USER_SUP_ID = <?= intval($sup_id) ?>;
+    const IS_TEAM_GM = <?= json_encode(pr_approval_is_team_gm($user_role_sup)) ?>;
+    const SUBORDINATE_ROLES = <?= json_encode(pr_approval_subordinate_roles($user_role_sup)) ?>;
     const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
     
     let prTable;
@@ -431,11 +425,11 @@ $isAdminOrProcure = ($_SESSION['role'] === 'admin' || strpos($_SESSION['role'], 
             const alreadyApproved = (row.approved_by_0 == USER_ID || row.approved_by == USER_ID || row.approved_by_1 == USER_ID || row.approved_by_2 == USER_ID || row.approved_by_3 == USER_ID);
             
             if ((row.status === 'pending' || row.allow_resubmit == 3) && !alreadyApproved) {
-                const isGM = USER_ROLE.startsWith('gm');
-                const prSupplierId = parseInt(row.supplier_id) || 0;
-                const isMatch = (prSupplierId > 0 && USER_SUP_ID > 0 && prSupplierId === USER_SUP_ID);
+                const requesterTeamId = parseInt(row.creator_sup_id) || 0;
+                const isMatch = (requesterTeamId > 0 && USER_SUP_ID > 0 && requesterTeamId === USER_SUP_ID);
+                const roleMatches = SUBORDINATE_ROLES.includes(row.creator_role || '');
                 if (!row.approved_by_0) {
-                    if ((isGM && isMatch) || ['admin', 'gmhok'].includes(USER_ROLE)) canApprove = true;
+                    if ((IS_TEAM_GM && isMatch && roleMatches) || ['admin', 'gmhok'].includes(USER_ROLE)) canApprove = true;
                 } else if (USER_ROLE === 'procure' && !row.approved_by) canApprove = true;
                 else if (USER_ROLE === 'gmacc' && !row.approved_by_1) canApprove = true;
                 else if (USER_ROLE === 'mgr' && !row.approved_by_2) canApprove = true;
