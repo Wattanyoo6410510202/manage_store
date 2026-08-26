@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once '../pr_approval_authorization.php';
+require_once '../pr_item_validation.php';
 date_default_timezone_set('Asia/Bangkok');
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -51,6 +52,17 @@ $budget_details    = $_POST['budget_details'] ?? '';
 $expectation       = $_POST['expectation'] ?? '';
 $practice_method   = $_POST['practice_method'] ?? '';
 
+$items_qty = (array)($_POST['item_qty'] ?? []);
+$items_price = (array)($_POST['item_price'] ?? []);
+$items_discount = (array)($_POST['item_discount'] ?? []);
+$items_unit = (array)($_POST['item_unit'] ?? []);
+try {
+    $items_desc = pr_validate_item_descriptions((array)($_POST['item_desc'] ?? []));
+} catch (DomainException $exception) {
+    http_response_code(422);
+    die($exception->getMessage());
+}
+
 // จัดการไฟล์
 function uploadPRFile($file_key) {
     if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
@@ -80,17 +92,10 @@ $payment_slip = uploadPaymentSlip() ?? '';
 // ถ้า store_id = 0 ให้เก็บเป็น NULL
 if ($store_id === 0) $store_id = null;
 
-$items_desc = $_POST['item_desc'] ?? [];
-$items_qty = $_POST['item_qty'] ?? [];
-$items_price = $_POST['item_price'] ?? [];
-$items_discount = $_POST['item_discount'] ?? [];
-$items_unit = $_POST['item_unit'] ?? [];
-
 mysqli_begin_transaction($conn);
 try {
     $total_subtotal = 0;
     foreach ($items_desc as $key => $val) {
-        if (trim($val) == "") continue;
         $total_subtotal += (floatval($items_qty[$key]) * floatval($items_price[$key])) - floatval($items_discount[$key] ?? 0);
     }
     $total_vat = $total_subtotal * ($vat_percent / 100);
@@ -134,7 +139,6 @@ try {
 
     $stmt_item = $conn->prepare("INSERT INTO pr_items (pr_id, item_desc, item_qty, item_unit, item_price, item_discount, item_total) VALUES (?, ?, ?, ?, ?, ?, ?)");
     foreach ($items_desc as $key => $desc) {
-        if (trim($desc) == "") continue;
         $q = floatval($items_qty[$key]);
         $u = $items_unit[$key];
         $p = floatval($items_price[$key]);

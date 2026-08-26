@@ -160,7 +160,16 @@ include 'header.php';
                                     <div><span class="font-bold text-slate-400">ผู้รับผิดชอบแก้ไข:</span> <span class="text-slate-700"><?= inspection_h($result['responsible_person'] ?? '-') ?: '-' ?></span></div>
                                     <div><span class="font-bold text-slate-400">กำหนดแก้ไข:</span> <span class="text-slate-700"><?= inspection_h($dateLabel($result['due_date'] ?? null)) ?></span></div>
                                     <?php if (!empty($result['correction_note'])): ?><div class="rounded-lg bg-amber-50 p-2 text-amber-800"><span class="font-bold">หมายเหตุจากรอบก่อน:</span> <?= nl2br(inspection_h($result['correction_note'])) ?></div><?php endif; ?>
-                                    <?php if (!empty($attachmentsByResult[(int)($result['id'] ?? 0)])): ?><div><span class="font-bold text-slate-400">หลักฐาน:</span> <?php foreach ($attachmentsByResult[(int)$result['id']] as $attachment): ?><a class="ml-1 inline-flex items-center gap-1 text-indigo-700 underline" href="uploads/inspections/<?= inspection_h($attachment['stored_name']) ?>" target="_blank" rel="noopener"><i class="fas fa-paperclip" aria-hidden="true"></i><?= inspection_h($attachment['original_name']) ?></a><?php endforeach; ?></div><?php endif; ?>
+                                    <?php if (!empty($attachmentsByResult[(int)($result['id'] ?? 0)])): ?>
+                                        <div>
+                                            <p class="mb-2 font-bold text-slate-500">หลักฐาน <?= count($attachmentsByResult[(int)$result['id']]) ?> ไฟล์</p>
+                                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+                                                <?php foreach ($attachmentsByResult[(int)$result['id']] as $attachment): ?>
+                                                    <?= inspection_render_attachment_preview($attachment) ?>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>

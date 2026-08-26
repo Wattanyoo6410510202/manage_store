@@ -136,6 +136,31 @@ if (!function_exists('inspection_h')) {
     }
 }
 
+if (!function_exists('inspection_render_attachment_preview')) {
+    function inspection_render_attachment_preview(array $attachment): string
+    {
+        $storedName = basename((string)($attachment['stored_name'] ?? ''));
+        $originalName = trim((string)($attachment['original_name'] ?? '')) ?: $storedName;
+        $mimeType = strtolower(trim((string)($attachment['mime_type'] ?? '')));
+        $url = 'uploads/inspections/' . rawurlencode($storedName);
+        $safeUrl = inspection_h($url);
+        $safeName = inspection_h($originalName);
+
+        if (strpos($mimeType, 'image/') === 0) {
+            return '<a href="' . $safeUrl . '" target="_blank" rel="noopener" title="เปิดภาพเต็ม: ' . $safeName . '"'
+                . ' class="group relative block overflow-hidden rounded-xl border border-slate-200 bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">'
+                . '<img src="' . $safeUrl . '" alt="รูปหลักฐาน ' . $safeName . '" loading="lazy" decoding="async"'
+                . ' class="aspect-[4/3] w-full object-cover transition duration-200 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none">'
+                . '<span class="absolute bottom-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/75 text-xs text-white" aria-hidden="true">'
+                . '<i class="fas fa-expand"></i></span></a>';
+        }
+
+        return '<a href="' . $safeUrl . '" target="_blank" rel="noopener"'
+            . ' class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">'
+            . '<i class="fas fa-paperclip" aria-hidden="true"></i><span class="break-all">' . $safeName . '</span></a>';
+    }
+}
+
 if (!function_exists('inspection_fetch_one')) {
     function inspection_fetch_one(mysqli $conn, string $sql, string $types = '', array $params = []): ?array
     {
@@ -189,6 +214,157 @@ if (!function_exists('inspection_should_restrict_project_access')) {
     }
 }
 
+if (!function_exists('inspection_assignment_field_map')) {
+    function inspection_assignment_field_map(): array
+    {
+        return [
+            'inspector_1' => 'inspector_1_user_id',
+            'inspector_2' => 'inspector_2_user_id',
+            'procurement' => 'procurement_user_id',
+            'md' => 'md_user_id',
+            'gmacc' => 'gmacc_user_id',
+        ];
+    }
+}
+
+if (!function_exists('inspection_step_label')) {
+    function inspection_step_label(string $step): string
+    {
+        return [
+            'checklist' => 'รอเริ่มรอบตรวจ',
+            'inspector_1' => 'ผู้ตรวจรับ 1',
+            'inspector_2' => 'ผู้ตรวจรับ 2',
+            'procurement' => 'จัดซื้อ',
+            'md' => 'MD',
+            'gmacc' => 'GMACC',
+            'revision' => 'รอเริ่มรอบแก้ไข',
+            'completed' => 'เสร็จสิ้น',
+        ][$step] ?? $step;
+    }
+}
+
+if (!function_exists('inspection_assignment_steps_for_user')) {
+    function inspection_assignment_steps_for_user(array $checklist, int $userId): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+        $steps = [];
+        foreach (inspection_assignment_field_map() as $step => $field) {
+            if ((int)($checklist[$field] ?? 0) === $userId) {
+                $steps[] = $step;
+            }
+        }
+        return $steps;
+    }
+}
+
+if (!function_exists('inspection_assignment_task_state')) {
+    function inspection_assignment_task_state(array $checklist, ?array $round, int $userId): array
+    {
+        $assignedSteps = inspection_assignment_steps_for_user($checklist, $userId);
+        $currentStep = $round ? inspection_next_step($round, []) : 'checklist';
+        return [
+            'assigned_steps' => $assignedSteps,
+            'assigned_labels' => array_map('inspection_step_label', $assignedSteps),
+            'current_step' => $currentStep,
+            'current_label' => inspection_step_label($currentStep),
+            'actionable' => in_array($currentStep, $assignedSteps, true),
+        ];
+    }
+}
+
+if (!function_exists('inspection_count_actionable_tasks')) {
+    function inspection_count_actionable_tasks(array $tasks): int
+    {
+        return count(array_filter($tasks, static function (array $task): bool {
+            return !empty($task['actionable']);
+        }));
+    }
+}
+
+if (!function_exists('inspection_assigned_tasks')) {
+    function inspection_assigned_tasks(mysqli $conn, int $userId): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+        $rows = inspection_fetch_all(
+            $conn,
+            "SELECT c.*,
+                    c.id AS checklist_id,
+                    m.project_id, m.milestone_name,
+                    p.project_name,
+                    r.id AS round_id, r.status AS round_status, r.round_no, r.inspection_date, r.updated_at AS round_updated_at,
+                    u1.name AS inspector_1_name, u2.name AS inspector_2_name,
+                    up.name AS procurement_name, um.name AS md_name, ug.name AS gmacc_name
+             FROM inspection_checklists c
+             INNER JOIN project_milestones m ON m.id = c.milestone_id
+             INNER JOIN projects p ON p.id = m.project_id
+             LEFT JOIN inspection_rounds r ON r.id = (
+                 SELECT r2.id FROM inspection_rounds r2
+                 WHERE r2.checklist_id = c.id
+                 ORDER BY r2.id DESC LIMIT 1
+             )
+             LEFT JOIN users u1 ON u1.id = c.inspector_1_user_id
+             LEFT JOIN users u2 ON u2.id = c.inspector_2_user_id
+             LEFT JOIN users up ON up.id = c.procurement_user_id
+             LEFT JOIN users um ON um.id = c.md_user_id
+             LEFT JOIN users ug ON ug.id = c.gmacc_user_id
+             WHERE c.status IN ('active', 'draft')
+               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ? OR c.procurement_user_id = ? OR c.md_user_id = ? OR c.gmacc_user_id = ?)
+               AND (r.id IS NULL OR r.status <> 'completed')
+               AND c.id = (
+                   SELECT c2.id FROM inspection_checklists c2
+                   WHERE c2.milestone_id = c.milestone_id AND c2.status IN ('active', 'draft')
+                   ORDER BY FIELD(c2.status, 'active', 'draft'), c2.version DESC, c2.id DESC LIMIT 1
+               )
+             ORDER BY COALESCE(r.updated_at, c.created_at) DESC, c.id DESC",
+            'iiiii',
+            [$userId, $userId, $userId, $userId, $userId]
+        );
+
+        $tasks = [];
+        foreach ($rows as $row) {
+            $round = !empty($row['round_id']) ? ['status' => (string)$row['round_status']] : null;
+            $state = inspection_assignment_task_state($row, $round, $userId);
+            $ownerField = [
+                'checklist' => 'procurement_name',
+                'inspector_1' => 'inspector_1_name',
+                'inspector_2' => 'inspector_2_name',
+                'procurement' => 'procurement_name',
+                'md' => 'md_name',
+                'gmacc' => 'gmacc_name',
+                'revision' => 'procurement_name',
+            ][$state['current_step']] ?? null;
+            $tasks[] = array_merge($row, $state, [
+                'current_owner_name' => $ownerField ? (string)($row[$ownerField] ?? '') : '',
+            ]);
+        }
+        return $tasks;
+    }
+}
+
+if (!function_exists('inspection_pending_assignment_count')) {
+    function inspection_pending_assignment_count(mysqli $conn, int $userId): int
+    {
+        return inspection_count_actionable_tasks(inspection_assigned_tasks($conn, $userId));
+    }
+}
+
+if (!function_exists('inspection_can_access_pending_approval')) {
+    function inspection_can_access_pending_approval(string $role, bool $hasInspectionAssignment): bool
+    {
+        if ($hasInspectionAssignment) {
+            return true;
+        }
+        if (strpos($role, 'staff') === 0 || $role === 'acc') {
+            return false;
+        }
+        return strpos($role, 'gm') === 0 || in_array($role, ['admin', 'procure', 'mgr', 'mgr2', 'viewer'], true);
+    }
+}
+
 if (!function_exists('inspection_user_has_assignment')) {
     /**
      * Inspection access is assignment-based, not role-based. This lets a
@@ -206,10 +382,10 @@ if (!function_exists('inspection_user_has_assignment')) {
             "SELECT c.id
              FROM inspection_checklists c
              WHERE c.status IN ('active', 'draft')
-               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ?)
+               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ? OR c.procurement_user_id = ? OR c.md_user_id = ? OR c.gmacc_user_id = ?)
              LIMIT 1",
-            'ii',
-            [$userId, $userId]
+            'iiiii',
+            [$userId, $userId, $userId, $userId, $userId]
         );
 
         return !empty($row);
@@ -230,10 +406,10 @@ if (!function_exists('inspection_user_assigned_to_project')) {
              INNER JOIN project_milestones m ON m.id = c.milestone_id
              WHERE m.project_id = ?
                AND c.status IN ('active', 'draft')
-               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ?)
+               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ? OR c.procurement_user_id = ? OR c.md_user_id = ? OR c.gmacc_user_id = ?)
              LIMIT 1",
-            'iii',
-            [$projectId, $userId, $userId]
+            'iiiiii',
+            [$projectId, $userId, $userId, $userId, $userId, $userId]
         );
 
         return !empty($row);
@@ -251,15 +427,15 @@ if (!function_exists('inspection_user_assigned_to_milestones')) {
         }
 
         $placeholders = implode(',', array_fill(0, count($milestoneIds), '?'));
-        $types = str_repeat('i', count($milestoneIds)) . 'ii';
-        $params = array_merge($milestoneIds, [$userId, $userId]);
+        $types = str_repeat('i', count($milestoneIds)) . 'iiiii';
+        $params = array_merge($milestoneIds, [$userId, $userId, $userId, $userId, $userId]);
         $row = inspection_fetch_one(
             $conn,
             "SELECT c.id
              FROM inspection_checklists c
              WHERE c.milestone_id IN ($placeholders)
                AND c.status IN ('active', 'draft')
-               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ?)
+               AND (c.inspector_1_user_id = ? OR c.inspector_2_user_id = ? OR c.procurement_user_id = ? OR c.md_user_id = ? OR c.gmacc_user_id = ?)
              LIMIT 1",
             $types,
             $params
@@ -473,6 +649,53 @@ if (!function_exists('inspection_validate_result')) {
             }
         }
         return null;
+    }
+}
+
+if (!function_exists('inspection_validate_result_photo')) {
+    function inspection_validate_result_photo(string $status, int $photoCount): ?string
+    {
+        if (in_array($status, ['pass', 'fail', 'conditional_pass'], true) && $photoCount < 1) {
+            return 'กรุณาแนบรูปหลักฐานอย่างน้อย 1 รูปสำหรับรายการที่ตรวจแล้ว';
+        }
+        return null;
+    }
+}
+
+if (!function_exists('inspection_validate_step_photos')) {
+    function inspection_validate_step_photos(array $results, array $photoCounts): ?string
+    {
+        foreach ($results as $result) {
+            $resultId = (int)($result['id'] ?? 0);
+            $error = inspection_validate_result_photo(
+                (string)($result['result_status'] ?? ''),
+                (int)($photoCounts[$resultId] ?? 0)
+            );
+            if ($error !== null) {
+                return $error;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('inspection_photo_counts_for_round')) {
+    function inspection_photo_counts_for_round(mysqli $conn, int $roundId): array
+    {
+        $counts = [];
+        $rows = inspection_fetch_all(
+            $conn,
+            "SELECT result_id, COUNT(*) AS photo_count
+             FROM inspection_attachments
+             WHERE round_id = ? AND mime_type LIKE 'image/%'
+             GROUP BY result_id",
+            'i',
+            [$roundId]
+        );
+        foreach ($rows as $row) {
+            $counts[(int)$row['result_id']] = (int)$row['photo_count'];
+        }
+        return $counts;
     }
 }
 

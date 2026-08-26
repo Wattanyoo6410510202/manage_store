@@ -134,7 +134,7 @@ if ($store_id === 0) $store_id = null;
         
         $stmt = $conn->prepare($sql_main);
         $stmt->bind_param(
-            "iiiisssssisssiiisdssssddddddssi",
+            "iiiisssssissssiiisdsssddddddssi",
             $supplier_id, $store_id, $customer_id, $is_internal, $due_date, $priority, $reference_no, $payment_term,
             $payment_method, $installment_period, $payment_slip,
             $requested_by, $contact_tel, $notes, $expense_cat_id, $budget_type_id, $objective_id,

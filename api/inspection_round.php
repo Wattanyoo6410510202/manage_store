@@ -174,6 +174,7 @@ if ($action === 'save_results') {
         }
         $existingResults[(int)$item['id']] = $item;
     }
+    $photoCounts = inspection_photo_counts_for_round($conn, $roundId);
     $conn->begin_transaction();
     try {
         $stmt = $conn->prepare(
@@ -192,6 +193,10 @@ if ($action === 'save_results') {
             $validation = inspection_validate_result($existingResults[$resultId], $row);
             if ($validation) {
                 throw new RuntimeException($validation);
+            }
+            $photoValidation = inspection_validate_result_photo($status, $photoCounts[$resultId] ?? 0);
+            if ($photoValidation) {
+                throw new RuntimeException($photoValidation);
             }
             $note = trim((string)($row['note'] ?? ''));
             $responsible = trim((string)($row['responsible_person'] ?? ''));
@@ -236,9 +241,9 @@ if ($action === 'upload') {
     $tmp = $_FILES['file']['tmp_name'];
     $original = basename((string)$_FILES['file']['name']);
     $mime = function_exists('finfo_open') ? (new finfo(FILEINFO_MIME_TYPE))->file($tmp) : (string)$_FILES['file']['type'];
-    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!in_array($mime, $allowed, true)) {
-        inspection_round_response(['status' => 'error', 'message' => 'ไฟล์ต้องเป็น JPG, PNG, GIF, WEBP หรือ PDF'], 422);
+        inspection_round_response(['status' => 'error', 'message' => 'หลักฐานต้องเป็นรูป JPG, PNG, GIF หรือ WEBP'], 422);
     }
     $dir = dirname(__DIR__) . '/uploads/inspections/';
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
@@ -330,6 +335,24 @@ if ($action === 'approve') {
     }
     if (in_array($approvalAction, ['reject', 'return'], true) && $reason === '') {
         inspection_round_response(['status' => 'error', 'message' => 'กรุณาระบุเหตุผลที่ตีกลับ'], 422);
+    }
+    if (in_array($step, ['inspector_1', 'inspector_2'], true) && $approvalAction === 'approve') {
+        $stepResults = array_values(array_filter($context['results'], static function (array $result) use ($step): bool {
+            return (string)($result['inspection_step'] ?? 'inspector_1') === $step;
+        }));
+        foreach ($stepResults as $stepResult) {
+            $resultValidation = inspection_validate_result($stepResult, $stepResult);
+            if ($resultValidation !== null) {
+                inspection_round_response(['status' => 'error', 'message' => $resultValidation], 422);
+            }
+        }
+        $photoValidation = inspection_validate_step_photos(
+            $stepResults,
+            inspection_photo_counts_for_round($conn, $roundId)
+        );
+        if ($photoValidation !== null) {
+            inspection_round_response(['status' => 'error', 'message' => $photoValidation], 422);
+        }
     }
     $summary = inspection_compare_results($context['results']);
     if ($step === 'procurement' && $approvalAction === 'approve' && !$summary['passed'] && $reason === '') {

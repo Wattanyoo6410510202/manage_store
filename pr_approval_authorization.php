@@ -8,6 +8,42 @@ function pr_approval_is_team_gm(string $role): bool
         && !in_array($normalizedRole, ['gmacc', 'gmhok'], true);
 }
 
+function pr_approval_can_access_pending_page(string $role): bool
+{
+    $normalizedRole = strtolower(trim($role));
+    if (in_array($normalizedRole, ['procure', 'gmacc', 'mgr', 'mgr2', 'admin', 'gmhok'], true)) {
+        return true;
+    }
+
+    return pr_approval_is_team_gm($normalizedRole)
+        && pr_approval_subordinate_roles($normalizedRole) !== [];
+}
+
+function pending_approval_resolve_authorized_view(string $role, bool $hasInspectionAssignment, string $requestedView = ''): ?string
+{
+    $canAccessPr = pr_approval_can_access_pending_page($role);
+    if ($requestedView === 'inspection' && $hasInspectionAssignment) {
+        return 'inspection';
+    }
+    if ($requestedView === 'pr' && $canAccessPr) {
+        return 'pr';
+    }
+    if ($requestedView === 'inspection' && $canAccessPr) {
+        return 'pr';
+    }
+    if ($requestedView === 'pr' && $hasInspectionAssignment) {
+        return 'inspection';
+    }
+    if ($canAccessPr) {
+        return 'pr';
+    }
+    if ($hasInspectionAssignment) {
+        return 'inspection';
+    }
+
+    return null;
+}
+
 function pr_approval_subordinate_roles(string $gmRole): array
 {
     $roleMap = [

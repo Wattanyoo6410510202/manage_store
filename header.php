@@ -18,6 +18,7 @@ if (!isset($conn)) {
 require_once __DIR__ . '/inspection_workflow.php';
 require_once __DIR__ . '/project_authorization.php';
 require_once __DIR__ . '/pr_approval_authorization.php';
+require_once __DIR__ . '/stock_workflow.php';
 $approval_actor_database_user = null;
 $approval_actor_user_id = (int)($_SESSION['user_id'] ?? 0);
 if ($approval_actor_user_id > 0) {
@@ -29,6 +30,7 @@ if ($approval_actor_user_id > 0) {
 }
 $approval_actor_context = pr_approval_resolve_actor_context($_SESSION, $approval_actor_database_user);
 $inspection_has_assignment = inspection_user_has_assignment($conn, (int)($_SESSION['user_id'] ?? 0));
+$can_pr_approval = pr_approval_can_access_pending_page((string)$approval_actor_context['role']);
 
 $permissions = [
     // 1. Admin: ทำได้ทุกอย่างในระบบ
@@ -38,32 +40,41 @@ $permissions = [
     'gm' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
 
     // 3. GMHOK: สิทธิ์ระดับบริหารเฉพาะส่วน (เน้นดูงานและเอกสาร)
-    'gmhok' => ['dashboard', 'docs', 'projects', 'compare', 'procure'],
+    'gmhok' => ['dashboard', 'docs', 'projects', 'compare', 'procure', 'inventory'],
 
     // 4. HOK: สิทธิ์ระดับหัวหน้าส่วนงาน
-    'hok' => ['dashboard', 'docs', 'projects', 'compare'],
+    'hok' => ['dashboard', 'docs', 'projects', 'compare', 'inventory'],
 
     // 5. Staff: พนักงานปฏิบัติการ (เอา projects และ docs ออกตามสั่ง)
     'staff' => ['dashboard', 'compare', 'inventory'],
-    'maid_shotel' => ['dashboard', 'compare'],
-    'tech_shotel' => ['dashboard', 'compare'],
-    'cater_shotel' => ['dashboard', 'compare'],
+    'maid_shotel' => ['dashboard', 'compare', 'inventory'],
+    'tech_shotel' => ['dashboard', 'compare', 'inventory'],
+    'cater_shotel' => ['dashboard', 'compare', 'inventory'],
 
     // 6. Viewer: ดูได้ทุกอย่าง (ยกเว้นตั้งค่า) แต่จะไปคุมที่ปุ่มห้าม เพิ่ม/แก้ไข/ลบ
     'viewer' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
-    'procure' => ['dashboard', 'docs', 'projects', 'compare', 'setup', 'trash'],
+    'procure' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'setup', 'trash'],
     
     // 7. ฝ่ายบัญชี/บริหาร
-    'acc' => ['dashboard', 'compare'],
+    'acc' => ['dashboard', 'compare', 'inventory'],
     'mgr' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     'mgr2' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],
     
-    'fin' => ['dashboard', 'compare'],
+    'fin' => ['dashboard', 'compare', 'inventory'],
 
     // 8. ฝ่ายขาย/การตลาด
-    'gm_sale' => ['dashboard', 'compare'],
-    'sale' => ['dashboard', 'compare'],
-    'marketing' => ['dashboard', 'compare']
+    'gmhr' => ['dashboard', 'compare', 'inventory'],
+    'staff_hr' => ['dashboard', 'compare', 'inventory'],
+    'gmshotel' => ['dashboard', 'compare', 'inventory'],
+    'staff_shotel' => ['dashboard', 'compare', 'inventory'],
+    'gmmanonta' => ['dashboard', 'compare', 'inventory'],
+    'staff_manonta' => ['dashboard', 'compare', 'inventory'],
+    'gmnijuni' => ['dashboard', 'compare', 'inventory'],
+    'staff_nijuni' => ['dashboard', 'compare', 'inventory'],
+    'gmacc' => ['dashboard', 'compare', 'inventory'],
+    'gm_sale' => ['dashboard', 'compare', 'inventory'],
+    'sale' => ['dashboard', 'compare', 'inventory'],
+    'marketing' => ['dashboard', 'compare', 'inventory']
 ];
 
 $inspection_only_access = inspection_should_restrict_project_access(
@@ -132,6 +143,9 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 // 3. กลุ่ม "ขอซื้อ"
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
+$stock_pages = ['stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$is_stock_group = in_array($current_page, $stock_pages);
+
 // 4. กลุ่ม "ก่อสร้าง"
 $is_construction_group = in_array($current_page, ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php']);
 
@@ -178,11 +192,24 @@ if ($current_page == 'all_trash.php' && !can('trash')) {
 $is_gm = (strpos($user_role, 'gm') === 0);
 $allowed_roles = ['admin', 'procure', 'mgr', 'mgr2', 'viewer'];
 
+$requested_pending_approval_view = in_array($_GET['type'] ?? '', ['pr', 'inspection'], true) ? (string)$_GET['type'] : '';
+$pending_approval_view = pending_approval_resolve_authorized_view(
+    (string)$approval_actor_context['role'],
+    $inspection_has_assignment,
+    $requested_pending_approval_view
+);
 if ($current_page == 'pending_approval.php') {
-    $approval_page_role = $approval_actor_context['role'];
-    $approval_page_is_gm = (strpos($approval_page_role, 'gm') === 0);
-    if (strpos($approval_page_role, 'staff') === 0 || $approval_page_role === 'acc' || (!$approval_page_is_gm && !in_array($approval_page_role, $allowed_roles))) {
+    if ($pending_approval_view === null) {
         echo "<script>alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้ได้'); window.location.href='e_service.php';</script>";
+        exit;
+    }
+    if ($requested_pending_approval_view !== '' && $requested_pending_approval_view !== $pending_approval_view) {
+        $pendingRedirect = 'pending_approval.php?type=' . $pending_approval_view;
+        if (!headers_sent()) {
+            header('Location: ' . $pendingRedirect);
+        } else {
+            echo '<script>window.location.href=' . json_encode($pendingRedirect) . ';</script>';
+        }
         exit;
     }
 }
@@ -196,7 +223,7 @@ if ($current_page == 'pending_budget.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
 // อื่นๆ คือ cat_system
@@ -242,6 +269,8 @@ if ($pending_res) {
     $pending_row = mysqli_fetch_assoc($pending_res);
     $pending_count = $pending_row['total'] ?? 0;
 }
+$pr_pending_count = (int)$pending_count;
+$inspection_pending_count = inspection_pending_assignment_count($conn, (int)$user_id_for_count);
 
 // --- ดึงจำนวนรายการรออนุมัติงบประมาณ ---
 $pending_budget_count = 0;
@@ -258,6 +287,18 @@ if (in_array($user_role_for_count, $budget_approval_roles)) {
     if ($adjust_res) {
         $adjust_row = mysqli_fetch_assoc($adjust_res);
         $pending_budget_count += $adjust_row['total'] ?? 0;
+    }
+}
+
+// จำนวนใบเบิกที่ยังมีสินค้าเหลือรอผู้ดูแล Stock จ่าย
+$stock_pending_count = 0;
+if (in_array($user_role_for_count, ['procure', 'admin'], true)) {
+    require_once __DIR__ . '/stock_repository.php';
+    try {
+        $stock_pending_count = stock_count_pending_withdrawals($conn);
+    } catch (Throwable $exception) {
+        // Keep the global navigation usable while the Stock schema is being installed.
+        $stock_pending_count = 0;
     }
 }
 
@@ -505,11 +546,56 @@ if (!empty($_SESSION['sup_id'])) {
                     </div>
                 </div>
 
-                <?php if (strpos($user_role, 'staff') !== 0 && !in_array($user_role, ['acc', 'maid_shotel', 'tech_shotel', 'cater_shotel', 'sale', 'marketing'])): ?>
-                <a href="pending_approval.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_approval.php') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php') ? 'text-white' : 'text-rose-400'; ?>"></i>
-                    <span class="font-medium">รายการรออนุมัติ <?php echo ($pending_count > 0) ? "($pending_count)" : ""; ?></span>
+                <?php if (can('inventory')): ?>
+                <div class="space-y-1">
+                    <button onclick="toggleSubmenu('stock-submenu')"
+                        class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_stock_group ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-boxes-stacked w-5 text-cyan-400"></i>
+                            <span class="font-medium">Stock<?php if ($stock_pending_count > 0): ?> <span data-stock-pending-count>(<?= (int)$stock_pending_count ?>)</span><?php endif; ?></span>
+                        </div>
+                        <i id="arrow-stock-submenu"
+                            class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_stock_group ? 'rotate-180' : ''; ?>"></i>
+                    </button>
+                    <div id="stock-submenu"
+                        class="<?php echo $is_stock_group ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
+                        <?php if (stock_can_view_overview($user_role)): ?>
+                        <a href="stock.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <i class="fas fa-chart-pie text-[10px]"></i><span class="text-sm font-medium">ภาพรวม Stock</span>
+                        </a>
+                        <?php endif; ?>
+                        <?php if (in_array($user_role, ['procure', 'admin'], true)): ?>
+                        <a href="stock_receiving.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_receiving.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <i class="fas fa-dolly text-[10px]"></i><span class="text-sm font-medium">รับสินค้าเข้า</span>
+                        </a>
+                        <?php endif; ?>
+                        <a href="stock_withdrawals.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_withdrawals.php' || (stock_can_manage($user_role) && $current_page === 'stock_withdrawal_view.php') ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <i class="fas fa-cart-plus text-[10px]"></i><span class="text-sm font-medium"><?= stock_can_manage($user_role) ? 'ใบเบิกสินค้า' : 'เบิกสินค้า' ?></span>
+                        </a>
+                        <?php if (!stock_can_manage($user_role)): ?>
+                        <a href="stock_my_withdrawals.php"
+                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo in_array($current_page, ['stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true) ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <i class="fas fa-clock-rotate-left text-[10px]"></i><span class="text-sm font-medium">สถานะใบเบิกของฉัน</span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($can_pr_approval): ?>
+                <a id="pr-approval-nav" href="pending_approval.php?type=pr" class="flex items-center gap-3 rounded-xl p-3 transition-all <?php echo ($current_page == 'pending_approval.php' && $pending_approval_view === 'pr') ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-clipboard-check w-5 <?php echo ($current_page == 'pending_approval.php' && $pending_approval_view === 'pr') ? 'text-white' : 'text-rose-400'; ?>"></i>
+                    <span class="font-medium">รายการรออนุมัติ<?php if ($pr_pending_count > 0): ?> (<?= (int)$pr_pending_count ?>)<?php endif; ?></span>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($inspection_has_assignment): ?>
+                <a id="inspection-task-nav" href="pending_approval.php?type=inspection" class="flex items-center gap-3 rounded-xl p-3 transition-all <?php echo ($current_page == 'pending_approval.php' && $pending_approval_view === 'inspection') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-helmet-safety w-5 <?php echo ($current_page == 'pending_approval.php' && $pending_approval_view === 'inspection') ? 'text-white' : 'text-indigo-400'; ?>"></i>
+                    <span class="font-medium">งานตรวจรับ<?php if ($inspection_pending_count > 0): ?> (<?= (int)$inspection_pending_count ?>)<?php endif; ?></span>
                 </a>
                 <?php endif; ?>
 

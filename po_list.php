@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once 'po_installment_progress.php';
 include 'header.php';
 include('assets/alert.php');
 
@@ -18,7 +19,12 @@ $sql = "SELECT
             -- 3. แก้ Warning: first_item_desc (ดึงชื่อสินค้ารายการแรก) --
             (SELECT item_desc FROM po_items 
              WHERE po_id = p.id 
-             ORDER BY id ASC LIMIT 1) as first_item_desc
+             ORDER BY id ASC LIMIT 1) as first_item_desc,
+
+            COALESCE(ip.installment_total, 0) AS installment_total,
+            COALESCE(ip.installment_paid, 0) AS installment_paid,
+            ip.next_installment_no,
+            next_installment.due_date AS next_installment_due_date
 
         FROM po p
         LEFT JOIN customers c ON p.customer_id = c.id
@@ -29,6 +35,20 @@ $sql = "SELECT
         
         -- ต้อง JOIN ตาราง users เพื่อเอาชื่อคนอนุมัติ --
         LEFT JOIN users u_approver ON p.approved_by = u_approver.id
+
+        LEFT JOIN pr pr_ref ON p.reference_no = pr_ref.doc_no
+        LEFT JOIN (
+            SELECT
+                pr_id,
+                COUNT(*) AS installment_total,
+                SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS installment_paid,
+                MIN(CASE WHEN status <> 'paid' THEN installment_no END) AS next_installment_no
+            FROM installment_schedule
+            GROUP BY pr_id
+        ) ip ON ip.pr_id = pr_ref.id
+        LEFT JOIN installment_schedule next_installment
+            ON next_installment.pr_id = pr_ref.id
+            AND next_installment.installment_no = ip.next_installment_no
         
         WHERE p.deleted_at IS NULL 
         ORDER BY p.created_at DESC";
@@ -78,8 +98,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <select id="filterStatus"
                             class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-[11px] rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 transition-all">
                             <option value="">ทั้งหมด</option>
-                            <option value="รอ">รออนุมัติ</option>
-                            <option value="อนุมัติ">อนุมัติแล้ว</option>
+                            <option value="pending">รออนุมัติ</option>
+                            <option value="approved">อนุมัติแล้ว</option>
                         </select>
                     </div>
 
@@ -211,27 +231,52 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-search="<?= htmlspecialchars(strtolower($row['status'] ?: 'pending')) ?>">
                                     <?php
-                                    // กำหนดสีตามสถานะ (จารปรับชื่อสถานะให้ตรงกับใน DB นะครับ)
-                                    $status = $row['status'] ?: 'pending';
-
-                                    $config = [
-                                        'pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-600', 'border' => 'border-amber-100', 'dot' => 'bg-amber-400', 'label' => 'รอ'],
-                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'border' => 'border-emerald-100', 'dot' => 'bg-emerald-400', 'label' => 'อนุมัติ'],
+                                    $progress = po_installment_progress($row);
+                                    $progressStyles = [
+                                        'approval_pending' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-700', 'border' => 'border-amber-200', 'dot' => 'bg-amber-500', 'bar' => 'bg-amber-500'],
+                                        'approved' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-700', 'border' => 'border-emerald-200', 'dot' => 'bg-emerald-500', 'bar' => 'bg-emerald-500'],
+                                        'installment_waiting' => ['bg' => 'bg-indigo-50', 'text' => 'text-indigo-700', 'border' => 'border-indigo-200', 'dot' => 'bg-indigo-500', 'bar' => 'bg-indigo-500'],
+                                        'installment_progress' => ['bg' => 'bg-blue-50', 'text' => 'text-blue-700', 'border' => 'border-blue-200', 'dot' => 'bg-blue-500', 'bar' => 'bg-blue-500'],
+                                        'installment_overdue' => ['bg' => 'bg-rose-50', 'text' => 'text-rose-700', 'border' => 'border-rose-200', 'dot' => 'bg-rose-500', 'bar' => 'bg-rose-500'],
+                                        'installment_complete' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-700', 'border' => 'border-emerald-200', 'dot' => 'bg-emerald-500', 'bar' => 'bg-emerald-500'],
+                                        'cancelled' => ['bg' => 'bg-slate-100', 'text' => 'text-slate-700', 'border' => 'border-slate-200', 'dot' => 'bg-slate-500', 'bar' => 'bg-slate-500'],
                                     ];
-
-                                    $style = $config[$status] ?? $config['pending'];
+                                    $style = $progressStyles[$progress['key']] ?? $progressStyles['approval_pending'];
                                     ?>
 
                                     <div
-                                        class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?> shadow-sm">
-                                        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?> animate-pulse"></span>
+                                        class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border <?= $style['bg'] ?> <?= $style['border'] ?> <?= $style['text'] ?>">
+                                        <span class="w-1.5 h-1.5 rounded-full <?= $style['dot'] ?>"></span>
 
-                                        <span class="text-[12px] font-bold uppercase tracking-wide">
-                                            <?= $style['label'] ?>
+                                        <span class="text-[11px] font-bold whitespace-nowrap">
+                                            <?= htmlspecialchars($progress['label']) ?>
                                         </span>
                                     </div>
+
+                                    <?php if ($row['status'] === 'approved'): ?>
+                                        <span class="sr-only">อนุมัติแล้ว</span>
+                                    <?php endif; ?>
+
+                                    <?php if ($progress['percent'] !== null): ?>
+                                        <div class="mt-1.5 min-w-[138px]">
+                                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-600">
+                                                <span class="truncate"><?= htmlspecialchars($progress['detail'] ?: 'กำลังรอชำระเงิน') ?></span>
+                                                <span class="font-bold text-slate-700"><?= $progress['percent'] ?>%</span>
+                                            </div>
+                                            <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200" role="progressbar"
+                                                aria-label="ความคืบหน้าการชำระ <?= $progress['paid'] ?> จาก <?= $progress['total'] ?> งวด"
+                                                aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $progress['percent'] ?>">
+                                                <div class="h-full rounded-full <?= $style['bar'] ?>" style="width: <?= $progress['percent'] ?>%"></div>
+                                            </div>
+                                            <?php if (!empty($progress['next_due_date']) && $progress['key'] !== 'installment_complete'): ?>
+                                                <div class="mt-1 text-[10px] <?= $progress['key'] === 'installment_overdue' ? 'font-bold text-rose-700' : 'text-slate-600' ?>">
+                                                    ครบกำหนด <?= date('d/m/Y', strtotime($progress['next_due_date'])) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="p-4" data-order="<?= $row['created_at'] ?>">
                                     <div class="flex flex-col">
@@ -313,7 +358,11 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
 
         // 2. Custom Filters
         $('#filterSupplier').on('change', function () { poTable.column(4).search(this.value).draw(); });
-        $('#filterStatus').on('change', function () { poTable.column(9).search(this.value).draw(); });
+        $('#filterStatus').on('change', function () {
+            const status = this.value;
+            const exactStatus = status ? `^${$.fn.dataTable.util.escapeRegex(status)}$` : '';
+            poTable.column(9).search(exactStatus, true, false).draw();
+        });
         $('#filterMyWork').on('change', function () { poTable.draw(); });
 
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
@@ -495,22 +544,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     .then(res => {
                         if (res.status === 'success') {
                             renderAlert('success', 'อนุมัติใบสั่งซื้อเรียบร้อยแล้ว');
-
-                            const rowElement = $(`.po-checkbox[value="${id}"]`).closest('tr');
-
-                            // 1. สร้าง HTML Badge ตาม config ของจาร (Approved)
-                            const approvedBadge = `
-                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span class="text-[12px] font-bold uppercase tracking-wide">อนุมัติ</span>
-                        </div>`;
-
-                            // 2. อัปเดตคอลัมน์ Status (คอลัมน์ที่ 9) ด้วย Badge ใหม่
-                            rowElement.find('td:nth-child(10)').html(approvedBadge);
-
-                            // 3. ซ่อนปุ่ม Approve และปุ่ม Edit ทันทีที่อนุมัติเสร็จ
-                            rowElement.find('button[onclick*="approvePo"]').fadeOut(300);
-                            rowElement.find('a[href*="edit_po.php"]').fadeOut(300);
+                            setTimeout(() => window.location.reload(), 500);
 
                         } else {
                             renderAlert('error', res.message || 'เกิดข้อผิดพลาด');

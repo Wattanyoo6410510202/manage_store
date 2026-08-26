@@ -11,6 +11,21 @@ $dynamicResultGroups = $dynamic_context['resultsByStep'] ?? inspection_results_b
 $dynamicResults = in_array($dynamicNextStep, ['inspector_1', 'inspector_2'], true)
     ? ($dynamicResultGroups[$dynamicNextStep] ?? [])
     : ($dynamicResultGroups['inspector_1'] ?? $dynamicResultsAll);
+$dynamicPhotosByResult = [];
+if ($dynamicRound) {
+    $dynamicPhotoRows = inspection_fetch_all(
+        $conn,
+        "SELECT id, result_id, original_name, stored_name, mime_type
+         FROM inspection_attachments
+         WHERE round_id = ? AND mime_type LIKE 'image/%'
+         ORDER BY id",
+        'i',
+        [(int)$dynamicRound['id']]
+    );
+    foreach ($dynamicPhotoRows as $dynamicPhotoRow) {
+        $dynamicPhotosByResult[(int)$dynamicPhotoRow['result_id']][] = $dynamicPhotoRow;
+    }
+}
 $dynamicResultSummary = inspection_status_from_results($dynamicResults);
 $dynamicComparisonSummary = inspection_compare_results($dynamicResultsAll);
 $dynamicFinalDocument = $dynamicRound ? inspection_fetch_one($conn, "SELECT id FROM inspection_documents WHERE round_id = ? AND status = 'final' ORDER BY id DESC LIMIT 1", 'i', [(int)$dynamicRound['id']]) : null;
@@ -46,6 +61,10 @@ $dynamicFlowSteps = [
     'md' => ['label' => 'MD', 'icon' => 'fa-stamp', 'assignment' => 'md_name'],
     'gmacc' => ['label' => 'GMACC', 'icon' => 'fa-calculator', 'assignment' => 'gmacc_name'],
 ];
+$dynamicCanActCurrentStep = in_array($dynamicNextStep, array_keys($dynamicFlowSteps), true)
+    && inspection_can_act($dynamicChecklist ?: [], $dynamicNextStep, inspection_current_user_id(), $dynamicRole);
+$dynamicCurrentAssignmentField = $dynamicFlowSteps[$dynamicNextStep]['assignment'] ?? null;
+$dynamicCurrentAssigneeName = $dynamicCurrentAssignmentField ? trim((string)($dynamicChecklist[$dynamicCurrentAssignmentField] ?? '')) : '';
 $dynamicFlowApprovals = [];
 foreach (array_keys($dynamicFlowSteps) as $dynamicFlowStep) {
     $dynamicFlowApprovals[$dynamicFlowStep] = inspection_latest_approval($dynamicApprovals, $dynamicFlowStep);
@@ -251,45 +270,106 @@ if ($dynamicChecklist) {
             <p id="inspectionProgressText" class="text-xs font-bold text-slate-500 mt-2">กำลังโหลดความคืบหน้า...</p>
         </div>
 
-        <?php if ($dynamicNextStep === 'procurement'): ?>
+        <?php if (in_array($dynamicNextStep, ['procurement', 'md', 'gmacc'], true)): ?>
+            <?php
+            $dynamicComparisonReviewLabel = [
+                'procurement' => 'Procurement Review',
+                'md' => 'MD Review',
+                'gmacc' => 'GMACC Review',
+            ][$dynamicNextStep];
+            $dynamicConflictCount = count(array_filter($dynamicComparisonSummary['items'], static function (array $item): bool {
+                return !empty($item['conflict']);
+            }));
+            $comparisonStatusMeta = static function (string $status): array {
+                return [
+                    'pass' => ['label' => 'ผ่าน', 'class' => 'bg-emerald-100 text-emerald-800', 'icon' => 'fa-check'],
+                    'fail' => ['label' => 'ไม่ผ่าน', 'class' => 'bg-rose-100 text-rose-800', 'icon' => 'fa-xmark'],
+                    'conditional_pass' => ['label' => 'มีเงื่อนไข', 'class' => 'bg-amber-100 text-amber-800', 'icon' => 'fa-triangle-exclamation'],
+                    'not_applicable' => ['label' => 'ไม่เกี่ยวข้อง', 'class' => 'bg-slate-200 text-slate-800', 'icon' => 'fa-minus'],
+                    '' => ['label' => 'ยังไม่ระบุ', 'class' => 'bg-slate-100 text-slate-500', 'icon' => 'fa-clock'],
+                ][$status] ?? ['label' => 'ยังไม่ระบุ', 'class' => 'bg-slate-100 text-slate-500', 'icon' => 'fa-clock'];
+            };
+            ?>
             <section id="procurementDecisionPanel" class="mb-6 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 md:p-6">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <p class="text-xs font-black uppercase tracking-[1.5px] text-indigo-500">Procurement Review</p>
-                        <h3 class="mt-1 text-xl font-black text-slate-900">พิจารณาผลตรวจผู้ตรวจรับ 1 และ 2</h3>
-                        <p class="mt-1 text-sm text-slate-600">ผลของผู้ตรวจทั้งสองคนถูกเก็บแยกกัน จัดซื้อสามารถตัดสินผลรวมได้โดยไม่แก้ทับผลเดิม</p>
+                        <p class="text-xs font-black uppercase tracking-[1.5px] text-indigo-500"><?= inspection_h($dynamicComparisonReviewLabel) ?></p>
+                        <h3 class="mt-1 text-xl font-black text-slate-900">เปรียบเทียบผลตรวจผู้ตรวจรับ 1 และ 2</h3>
+                        <p class="mt-1 text-sm text-slate-600">ผลของผู้ตรวจทั้งสองคนถูกเก็บแยกกัน ผู้อนุมัติสามารถตรวจสอบผล หมายเหตุ และรูปหลักฐานได้โดยไม่แก้ทับผลเดิม</p>
                     </div>
                     <span class="inline-flex items-center rounded-full <?= $dynamicComparisonSummary['passed'] ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800' ?> px-3 py-1.5 text-xs font-black">
                         <?= $dynamicComparisonSummary['passed'] ? 'ผลตรงกันและผ่าน' : ($dynamicComparisonSummary['has_conflict'] ? 'ผลตรวจไม่ตรงกัน' : 'มีรายการต้องพิจารณา') ?>
                     </span>
                 </div>
-                <div class="mt-5 overflow-x-auto rounded-2xl border border-indigo-100 bg-white">
-                    <table class="w-full min-w-[680px] text-sm">
+                <div class="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="กรองผลเปรียบเทียบ">
+                    <button type="button" data-comparison-filter="all" aria-pressed="true" class="comparison-filter rounded-xl bg-slate-800 px-3 py-2 text-xs font-black text-white transition focus:outline-none focus:ring-2 focus:ring-slate-500">ทั้งหมด <?= (int)$dynamicComparisonSummary['item_count'] ?></button>
+                    <button type="button" data-comparison-filter="conflict" aria-pressed="false" class="comparison-filter rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-600 transition focus:outline-none focus:ring-2 focus:ring-rose-400">เฉพาะผลต่าง <?= $dynamicConflictCount ?></button>
+                </div>
+
+                <div class="mt-4 hidden overflow-x-auto rounded-2xl border border-indigo-100 bg-white md:block">
+                    <table class="w-full min-w-[760px] text-sm">
                         <thead class="bg-slate-50 text-left text-xs font-black text-slate-500">
-                            <tr><th class="px-4 py-3">รายการตรวจ</th><th class="px-4 py-3">ผู้ตรวจ 1</th><th class="px-4 py-3">ผู้ตรวจ 2</th><th class="px-4 py-3">หมายเหตุ</th></tr>
+                            <tr><th class="w-[28%] px-4 py-3">รายการตรวจ</th><th class="w-[36%] px-4 py-3">ผู้ตรวจ 1 · <?= inspection_h($dynamicChecklist['inspector_1_name'] ?? '-') ?></th><th class="w-[36%] px-4 py-3">ผู้ตรวจ 2 · <?= inspection_h($dynamicChecklist['inspector_2_name'] ?? '-') ?></th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <?php foreach ($dynamicComparisonSummary['items'] as $comparisonItem): ?>
                                 <?php
                                 $firstResult = $comparisonItem['inspector_1'] ?? [];
                                 $secondResult = $comparisonItem['inspector_2'] ?? [];
-                                $comparisonNote = trim((string)($firstResult['note'] ?? '') . (($firstResult['note'] ?? '') && ($secondResult['note'] ?? '') ? ' / ' : '') . (string)($secondResult['note'] ?? ''));
-                                $statusLabel = static function ($status) {
-                                    return ['pass' => 'ผ่าน', 'fail' => 'ไม่ผ่าน', 'conditional_pass' => 'มีเงื่อนไข', 'not_applicable' => 'ไม่เกี่ยวข้อง', '' => 'ยังไม่ระบุ'][$status] ?? 'ยังไม่ระบุ';
-                                };
-                                $statusClass = static function ($status) {
-                                    return ['pass' => 'bg-emerald-50 text-emerald-700', 'fail' => 'bg-rose-50 text-rose-700', 'conditional_pass' => 'bg-amber-50 text-amber-800', 'not_applicable' => 'bg-slate-100 text-slate-700', '' => 'bg-slate-50 text-slate-500'][$status] ?? 'bg-slate-50 text-slate-500';
-                                };
+                                $firstMeta = $comparisonStatusMeta((string)$comparisonItem['inspector_1_status']);
+                                $secondMeta = $comparisonStatusMeta((string)$comparisonItem['inspector_2_status']);
+                                $firstPhotos = $dynamicPhotosByResult[(int)($firstResult['id'] ?? 0)] ?? [];
+                                $secondPhotos = $dynamicPhotosByResult[(int)($secondResult['id'] ?? 0)] ?? [];
+                                $firstPhoto = $firstPhotos ? end($firstPhotos) : null;
+                                $secondPhoto = $secondPhotos ? end($secondPhotos) : null;
+                                $isConflict = !empty($comparisonItem['conflict']);
                                 ?>
-                                <tr>
-                                    <td class="px-4 py-3 font-bold text-slate-800"><?= inspection_h($firstResult['title'] ?? ($secondResult['title'] ?? '-')) ?></td>
-                                    <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-black <?= $statusClass($comparisonItem['inspector_1_status']) ?>"><?= inspection_h($statusLabel($comparisonItem['inspector_1_status'])) ?></span></td>
-                                    <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-black <?= $statusClass($comparisonItem['inspector_2_status']) ?>"><?= inspection_h($statusLabel($comparisonItem['inspector_2_status'])) ?></span></td>
-                                    <td class="px-4 py-3 text-xs text-slate-500"><?= inspection_h($comparisonNote ?: '-') ?></td>
+                                <tr class="comparison-item <?= $isConflict ? 'comparison-conflict bg-rose-50/70' : 'bg-white' ?>" data-comparison-conflict="<?= $isConflict ? '1' : '0' ?>">
+                                    <td class="px-4 py-4 align-top">
+                                        <div class="flex items-start justify-between gap-2"><span class="font-black text-slate-900"><?= inspection_h($firstResult['title'] ?? ($secondResult['title'] ?? '-')) ?></span><?php if ($isConflict): ?><span class="shrink-0 rounded-full bg-rose-600 px-2 py-1 text-[10px] font-black text-white">ผลต่าง</span><?php endif; ?></div>
+                                        <p class="mt-1 text-xs text-slate-500"><?= inspection_h($firstResult['category'] ?? ($secondResult['category'] ?? '')) ?> · ข้อ <?= (int)($firstResult['item_order'] ?? ($secondResult['item_order'] ?? 0)) ?></p>
+                                    </td>
+                                    <?php foreach ([['result' => $firstResult, 'meta' => $firstMeta, 'photos' => $firstPhotos, 'photo' => $firstPhoto, 'class' => 'comparison-inspector-1'], ['result' => $secondResult, 'meta' => $secondMeta, 'photos' => $secondPhotos, 'photo' => $secondPhoto, 'class' => 'comparison-inspector-2']] as $side): ?>
+                                        <td class="<?= $side['class'] ?> px-4 py-4 align-top">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-black <?= $side['meta']['class'] ?>"><i class="fas <?= $side['meta']['icon'] ?>" aria-hidden="true"></i><?= inspection_h($side['meta']['label']) ?></span>
+                                            <p class="mt-2 text-xs leading-relaxed text-slate-600"><span class="font-black text-slate-500">หมายเหตุ:</span> <?= inspection_h(trim((string)($side['result']['note'] ?? '')) ?: '-') ?></p>
+                                            <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                                <?php if ($side['photo']): ?><a href="uploads/inspections/<?= rawurlencode(basename((string)$side['photo']['stored_name'])) ?>" target="_blank" rel="noopener" class="inline-flex items-center gap-2 font-bold text-indigo-700 hover:text-indigo-900"><img src="uploads/inspections/<?= rawurlencode(basename((string)$side['photo']['stored_name'])) ?>" alt="รูปหลักฐาน" class="h-10 w-10 rounded-lg border border-slate-200 object-cover">รูปหลักฐาน <?= count($side['photos']) ?> รูป</a><?php else: ?><span class="inline-flex items-center gap-1.5"><i class="fas fa-image text-slate-400" aria-hidden="true"></i>ไม่มีรูปหลักฐาน</span><?php endif; ?>
+                                            </div>
+                                        </td>
+                                    <?php endforeach; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="mt-4 space-y-3 md:hidden">
+                    <?php foreach ($dynamicComparisonSummary['items'] as $comparisonItem): ?>
+                        <?php
+                        $firstResult = $comparisonItem['inspector_1'] ?? [];
+                        $secondResult = $comparisonItem['inspector_2'] ?? [];
+                        $firstMeta = $comparisonStatusMeta((string)$comparisonItem['inspector_1_status']);
+                        $secondMeta = $comparisonStatusMeta((string)$comparisonItem['inspector_2_status']);
+                        $firstPhotos = $dynamicPhotosByResult[(int)($firstResult['id'] ?? 0)] ?? [];
+                        $secondPhotos = $dynamicPhotosByResult[(int)($secondResult['id'] ?? 0)] ?? [];
+                        $firstPhoto = $firstPhotos ? end($firstPhotos) : null;
+                        $secondPhoto = $secondPhotos ? end($secondPhotos) : null;
+                        $isConflict = !empty($comparisonItem['conflict']);
+                        ?>
+                        <article class="comparison-item comparison-mobile-card overflow-hidden rounded-2xl border <?= $isConflict ? 'comparison-conflict border-rose-300 bg-rose-50/70' : 'border-slate-200 bg-white' ?>" data-comparison-conflict="<?= $isConflict ? '1' : '0' ?>">
+                            <header class="flex items-start justify-between gap-3 border-b <?= $isConflict ? 'border-rose-200' : 'border-slate-100' ?> p-4"><div><h4 class="font-black leading-snug text-slate-900"><?= inspection_h($firstResult['title'] ?? ($secondResult['title'] ?? '-')) ?></h4><p class="mt-1 text-xs text-slate-500"><?= inspection_h($firstResult['category'] ?? ($secondResult['category'] ?? '')) ?> · ข้อ <?= (int)($firstResult['item_order'] ?? ($secondResult['item_order'] ?? 0)) ?></p></div><?php if ($isConflict): ?><span class="shrink-0 rounded-full bg-rose-600 px-2.5 py-1 text-[10px] font-black text-white">ผลต่าง</span><?php endif; ?></header>
+                            <div class="divide-y <?= $isConflict ? 'divide-rose-200' : 'divide-slate-100' ?>">
+                                <?php foreach ([['label' => 'ผู้ตรวจ 1', 'name' => $dynamicChecklist['inspector_1_name'] ?? '-', 'result' => $firstResult, 'meta' => $firstMeta, 'photos' => $firstPhotos, 'photo' => $firstPhoto, 'class' => 'comparison-inspector-1'], ['label' => 'ผู้ตรวจ 2', 'name' => $dynamicChecklist['inspector_2_name'] ?? '-', 'result' => $secondResult, 'meta' => $secondMeta, 'photos' => $secondPhotos, 'photo' => $secondPhoto, 'class' => 'comparison-inspector-2']] as $side): ?>
+                                    <section class="<?= $side['class'] ?> p-4">
+                                        <div class="flex items-center justify-between gap-2"><p class="text-xs font-black text-slate-700"><?= inspection_h($side['label']) ?> · <?= inspection_h($side['name']) ?></p><span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black <?= $side['meta']['class'] ?>"><i class="fas <?= $side['meta']['icon'] ?>" aria-hidden="true"></i><?= inspection_h($side['meta']['label']) ?></span></div>
+                                        <p class="mt-2 text-xs leading-relaxed text-slate-600"><span class="font-black">หมายเหตุ:</span> <?= inspection_h(trim((string)($side['result']['note'] ?? '')) ?: '-') ?></p>
+                                        <div class="mt-3"><?php if ($side['photo']): ?><a href="uploads/inspections/<?= rawurlencode(basename((string)$side['photo']['stored_name'])) ?>" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-2.5 py-2 text-xs font-black text-indigo-700"><img src="uploads/inspections/<?= rawurlencode(basename((string)$side['photo']['stored_name'])) ?>" alt="รูปหลักฐาน" class="h-9 w-9 rounded-lg object-cover">ดูรูป <?= count($side['photos']) ?> รูป</a><?php else: ?><span class="inline-flex min-h-11 items-center gap-2 text-xs text-slate-500"><i class="fas fa-image" aria-hidden="true"></i>ไม่มีรูปหลักฐาน</span><?php endif; ?></div>
+                                    </section>
+                                <?php endforeach; ?>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
                 </div>
             </section>
         <?php endif; ?>
@@ -309,6 +389,9 @@ if ($dynamicChecklist) {
                 <?php foreach ($dynamicResults as $result): ?>
                     <?php
                     $resultStatus = (string)($result['result_status'] ?? '');
+                    $resultPhotos = $dynamicPhotosByResult[(int)$result['id']] ?? [];
+                    $resultPhotoCount = count($resultPhotos);
+                    $resultPhoto = $resultPhotos ? end($resultPhotos) : null;
                     $hasIssue = in_array($resultStatus, ['fail', 'conditional_pass'], true);
                     $hasDetails = $hasIssue || !empty($result['note']) || !empty($result['responsible_person']) || !empty($result['due_date']) || !empty($result['correction_note']);
                     $hasContractContext = !empty($result['detail']) || !empty($result['contract_ref']) || !empty($result['acceptance_criteria']) || !empty($result['correction_note']);
@@ -319,13 +402,19 @@ if ($dynamicChecklist) {
                     // Starting at column 2 left an empty block under the item title on desktop.
                     $detailsPlacementClass = 'lg:col-span-full';
                     $statusButtonClasses = [
-                        'pass' => 'border-emerald-200 bg-emerald-50 text-emerald-700',
-                        'fail' => 'border-rose-200 bg-rose-50 text-rose-700',
-                        'conditional_pass' => 'border-amber-200 bg-amber-50 text-amber-700',
+                        'pass' => 'border-emerald-600 bg-emerald-600 text-white ring-2 ring-emerald-200',
+                        'fail' => 'border-rose-600 bg-rose-600 text-white ring-2 ring-rose-200',
+                        'conditional_pass' => 'border-amber-500 bg-amber-500 text-white ring-2 ring-amber-200',
+                        'not_applicable' => 'border-slate-600 bg-slate-600 text-white ring-2 ring-slate-200',
+                    ];
+                    $statusInactiveClasses = [
+                        'pass' => 'border-emerald-300 bg-emerald-50 text-emerald-700',
+                        'fail' => 'border-rose-300 bg-rose-50 text-rose-700',
+                        'conditional_pass' => 'border-amber-300 bg-amber-50 text-amber-700',
                         'not_applicable' => 'border-slate-300 bg-slate-100 text-slate-700',
                     ];
                     ?>
-                    <div class="result-row bg-white rounded-2xl border <?= $resultStatus === 'fail' ? 'border-rose-200' : ($resultStatus === 'conditional_pass' ? 'border-amber-200' : 'border-slate-200') ?> p-4 md:p-5 lg:p-4 xl:p-5 transition-colors" data-result-id="<?= (int)$result['id'] ?>" data-result-status="<?= inspection_h($resultStatus ?: 'open') ?>">
+                    <div class="result-row bg-white rounded-2xl border <?= $resultStatus === 'fail' ? 'border-rose-200' : ($resultStatus === 'conditional_pass' ? 'border-amber-200' : 'border-slate-200') ?> p-4 md:p-5 lg:p-4 xl:p-5 transition-colors" data-result-id="<?= (int)$result['id'] ?>" data-result-status="<?= inspection_h($resultStatus ?: 'open') ?>" data-photo-count="<?= $resultPhotoCount ?>" data-photo-uploading="false">
                         <div class="grid grid-cols-1 items-start gap-4 <?= $cardGridClass ?>">
                             <div class="min-w-0 lg:pt-1">
                                 <div class="flex items-center gap-2 lg:flex-col lg:items-start lg:gap-2">
@@ -344,15 +433,29 @@ if ($dynamicChecklist) {
                             <?php endif; ?>
                             <div class="w-full lg:border-l lg:border-slate-100 lg:pl-5 xl:pl-6">
                                 <div class="mb-2 flex items-center justify-between"><span class="text-xs font-bold text-slate-500">ผลตรวจ</span><span class="result-status-label text-xs font-black text-slate-500"><?= $resultStatus === 'pass' ? 'ผ่าน' : ($resultStatus === 'fail' ? 'ไม่ผ่าน' : ($resultStatus === 'conditional_pass' ? 'มีเงื่อนไข' : ($resultStatus === 'not_applicable' ? 'ไม่เกี่ยวข้อง' : 'ยังไม่ระบุ'))) ?></span></div>
-                                <div class="quick-status grid grid-cols-2 gap-2" role="group" aria-label="เลือกผลตรวจ">
-                                    <button type="button" class="status-choice rounded-xl border min-h-11 px-3 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 <?= $resultStatus === 'pass' ? $statusButtonClasses['pass'] : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50' ?>" data-value="pass" aria-pressed="<?= $resultStatus === 'pass' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>>ผ่าน</button>
-                                    <button type="button" class="status-choice rounded-xl border min-h-11 px-3 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 <?= $resultStatus === 'fail' ? $statusButtonClasses['fail'] : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:bg-rose-50' ?>" data-value="fail" aria-pressed="<?= $resultStatus === 'fail' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>>ไม่ผ่าน</button>
-                                    <button type="button" class="status-choice rounded-xl border min-h-11 px-3 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 <?= $resultStatus === 'conditional_pass' ? $statusButtonClasses['conditional_pass'] : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:bg-amber-50' ?>" data-value="conditional_pass" aria-pressed="<?= $resultStatus === 'conditional_pass' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>>มีเงื่อนไข</button>
-                                    <button type="button" class="status-choice rounded-xl border min-h-11 px-3 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 <?= $resultStatus === 'not_applicable' ? $statusButtonClasses['not_applicable'] : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100' ?>" data-value="not_applicable" aria-pressed="<?= $resultStatus === 'not_applicable' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>>ไม่เกี่ยวข้อง</button>
+                                <div class="quick-status grid grid-cols-4 gap-1.5 sm:gap-2" role="group" aria-label="เลือกผลตรวจ">
+                                    <button type="button" class="status-choice status-choice-pass group flex min-h-11 min-w-0 flex-col items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-bold text-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60" data-value="pass" aria-label="ผ่าน" aria-pressed="<?= $resultStatus === 'pass' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><span class="status-choice-circle flex h-12 w-12 items-center justify-center rounded-full border-2 text-lg transition sm:h-14 sm:w-14 sm:text-xl <?= $resultStatus === 'pass' ? $statusButtonClasses['pass'] : $statusInactiveClasses['pass'] ?>"><i class="fas fa-check" aria-hidden="true"></i></span><span>ผ่าน</span></button>
+                                    <button type="button" class="status-choice status-choice-fail group flex min-h-11 min-w-0 flex-col items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-bold text-rose-700 transition focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60" data-value="fail" aria-label="ไม่ผ่าน" aria-pressed="<?= $resultStatus === 'fail' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><span class="status-choice-circle flex h-12 w-12 items-center justify-center rounded-full border-2 text-lg transition sm:h-14 sm:w-14 sm:text-xl <?= $resultStatus === 'fail' ? $statusButtonClasses['fail'] : $statusInactiveClasses['fail'] ?>"><i class="fas fa-xmark" aria-hidden="true"></i></span><span>ไม่ผ่าน</span></button>
+                                    <button type="button" class="status-choice status-choice-conditional group flex min-h-11 min-w-0 flex-col items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-bold text-amber-700 transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60" data-value="conditional_pass" aria-label="มีเงื่อนไข" aria-pressed="<?= $resultStatus === 'conditional_pass' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><span class="status-choice-circle flex h-12 w-12 items-center justify-center rounded-full border-2 text-lg transition sm:h-14 sm:w-14 sm:text-xl <?= $resultStatus === 'conditional_pass' ? $statusButtonClasses['conditional_pass'] : $statusInactiveClasses['conditional_pass'] ?>"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span><span>มีเงื่อนไข</span></button>
+                                    <button type="button" class="status-choice status-choice-na group flex min-h-11 min-w-0 flex-col items-center gap-1.5 rounded-lg px-0.5 py-1 text-[11px] font-bold text-slate-700 transition focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60" data-value="not_applicable" aria-label="ไม่เกี่ยวข้อง" aria-pressed="<?= $resultStatus === 'not_applicable' ? 'true' : 'false' ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><span class="status-choice-circle flex h-12 w-12 items-center justify-center rounded-full border-2 text-lg transition sm:h-14 sm:w-14 sm:text-xl <?= $resultStatus === 'not_applicable' ? $statusButtonClasses['not_applicable'] : $statusInactiveClasses['not_applicable'] ?>"><i class="fas fa-minus" aria-hidden="true"></i></span><span>ไม่เกี่ยวข้อง</span></button>
                                 </div>
                                 <select class="result-status sr-only" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><option value="">-- เลือกผลตรวจ --</option><option value="pass" <?= $resultStatus === 'pass' ? 'selected' : '' ?>>ผ่าน</option><option value="fail" <?= $resultStatus === 'fail' ? 'selected' : '' ?>>ไม่ผ่าน</option><option value="conditional_pass" <?= $resultStatus === 'conditional_pass' ? 'selected' : '' ?>>ผ่านแบบมีเงื่อนไข</option><option value="not_applicable" <?= $resultStatus === 'not_applicable' ? 'selected' : '' ?>>ไม่เกี่ยวข้อง</option></select>
+                                <div class="result-photo-state mt-4 rounded-xl border <?= $resultPhotoCount > 0 ? 'border-emerald-200 bg-emerald-50/70' : 'border-slate-200 bg-slate-50' ?> p-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="result-photo-preview flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-400">
+                                            <?php if ($resultPhoto): ?><img src="uploads/inspections/<?= rawurlencode(basename((string)$resultPhoto['stored_name'])) ?>" alt="รูปหลักฐานข้อ <?= (int)$result['item_order'] ?>" class="h-full w-full object-cover"><?php else: ?><i class="fas fa-camera text-xl" aria-hidden="true"></i><?php endif; ?>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="result-photo-message text-xs font-black <?= $resultPhotoCount > 0 ? 'text-emerald-700' : 'text-slate-700' ?>"><?= $resultPhotoCount > 0 ? 'แนบรูปแล้ว ' . $resultPhotoCount . ' รูป' : ($resultStatus === 'not_applicable' ? 'ข้อไม่เกี่ยวข้อง ไม่บังคับแนบรูป' : 'ต้องแนบรูปอย่างน้อย 1 รูป') ?></p>
+                                            <p class="result-photo-required mt-0.5 text-[11px] text-slate-500 <?= $resultStatus === 'not_applicable' ? 'hidden' : '' ?>">ใช้เป็นหลักฐานก่อนบันทึกผลตรวจ</p>
+                                        </div>
+                                        <?php if ($dynamicCanEditResults): ?>
+                                            <label class="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-indigo-600 px-3 py-2 text-xs font-black text-white transition hover:bg-indigo-700 focus-within:ring-2 focus-within:ring-indigo-400 focus-within:ring-offset-2"><i class="fas fa-camera mr-1.5" aria-hidden="true"></i><span class="hidden sm:inline">ถ่ายรูป</span><span class="sm:hidden">รูป</span><input type="file" class="result-file sr-only" accept="image/*" capture="environment" data-result-id="<?= (int)$result['id'] ?>"></label>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
-                            <details class="result-more mt-1 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 <?= $detailsPlacementClass ?>" <?= $hasDetails ? 'open' : '' ?>><summary class="flex cursor-pointer items-center justify-between gap-3 text-xs font-bold text-slate-600"><span class="inline-flex items-center gap-2"><i class="fas fa-sliders-h text-indigo-500" aria-hidden="true"></i>รายละเอียดเพิ่มเติม</span><span class="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-500"><?= $hasDetails ? 'มีข้อมูล' : 'ยังไม่มีข้อมูล' ?></span></summary><div class="grid grid-cols-1 gap-2 pt-3 md:grid-cols-2 lg:grid-cols-3"><textarea class="result-note min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm md:col-span-2" rows="2" placeholder="หมายเหตุ / เหตุผล" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><?= inspection_h($result['note'] ?? '') ?></textarea><input class="result-responsible w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="ผู้รับผิดชอบแก้ไข" value="<?= inspection_h($result['responsible_person'] ?? '') ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?> /><input type="date" class="result-due w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" value="<?= inspection_h($result['due_date'] ?? '') ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?> /><?php if ($dynamicCanEditResults): ?><label class="block text-xs font-bold text-slate-500 lg:col-span-3">แนบหลักฐาน<input type="file" class="result-file mt-1 w-full text-xs" accept="image/*,.pdf" data-result-id="<?= (int)$result['id'] ?>"></label><?php endif; ?></div></details>
+                            <details class="result-more mt-1 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 <?= $detailsPlacementClass ?>" <?= $hasDetails ? 'open' : '' ?>><summary class="flex cursor-pointer items-center justify-between gap-3 text-xs font-bold text-slate-600"><span class="inline-flex items-center gap-2"><i class="fas fa-sliders-h text-indigo-500" aria-hidden="true"></i>รายละเอียดเพิ่มเติม</span><span class="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-500"><?= $hasDetails ? 'มีข้อมูล' : 'ยังไม่มีข้อมูล' ?></span></summary><div class="grid grid-cols-1 gap-2 pt-3 md:grid-cols-2 lg:grid-cols-3"><textarea class="result-note min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm md:col-span-2" rows="2" placeholder="หมายเหตุ / เหตุผล" <?= $dynamicCanEditResults ? '' : 'disabled' ?>><?= inspection_h($result['note'] ?? '') ?></textarea><input class="result-responsible w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="ผู้รับผิดชอบแก้ไข" value="<?= inspection_h($result['responsible_person'] ?? '') ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?> /><input type="date" class="result-due w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" value="<?= inspection_h($result['due_date'] ?? '') ?>" <?= $dynamicCanEditResults ? '' : 'disabled' ?> /></div></details>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -369,8 +472,10 @@ if ($dynamicChecklist) {
                 <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center"><p class="font-black text-slate-800">รอผู้ตรวจรับที่ได้รับมอบหมาย</p><p class="text-sm text-slate-500 mt-1">หน้านี้แสดงผลแบบอ่านอย่างเดียว ผู้ตรวจรับตามรายชื่อจะเป็นผู้กรอกผลตรวจ</p></div>
             <?php elseif ($dynamicNextStep === 'revision'): ?>
                 <div id="inspectionActionBar" class="sticky bottom-3 z-10"><button type="button" id="revisionButton" class="w-full rounded-xl bg-amber-500 py-3.5 font-black text-white transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400"><i class="fas fa-rotate-right mr-2"></i>เริ่มตรวจงานแก้รอบใหม่</button></div>
-            <?php elseif ($dynamicNextStep !== 'completed'): ?>
+            <?php elseif ($dynamicNextStep !== 'completed' && $dynamicCanActCurrentStep): ?>
                 <div id="inspectionActionBar" class="sticky bottom-3 z-10 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm"><p class="font-black text-amber-900">รอการยืนยันขั้นตอน: <?= inspection_h($dynamicNextStepLabel) ?></p><p class="text-sm text-amber-700 mt-1">ผู้ที่ได้รับมอบหมายจะเห็นปุ่มยืนยันเมื่อเข้าสู่ระบบ</p><div class="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" id="approveRoundButton" class="rounded-xl bg-emerald-600 px-5 py-3 font-black text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"><i class="fas fa-check mr-2"></i>ยืนยันขั้นตอนนี้</button><button type="button" id="returnRoundButton" class="rounded-xl bg-rose-100 px-5 py-3 font-black text-rose-700 transition hover:bg-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-300"><i class="fas fa-rotate-left mr-2"></i>ตีกลับ</button></div></div>
+            <?php elseif ($dynamicNextStep !== 'completed'): ?>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center"><p class="font-black text-slate-800">รอผู้รับผิดชอบขั้นตอนนี้</p><p class="mt-1 text-sm text-slate-600">ขั้นตอนปัจจุบัน: <span class="font-black text-indigo-700"><?= inspection_h($dynamicNextStepLabel) ?></span><?php if ($dynamicCurrentAssigneeName !== ''): ?><br>ผู้ได้รับมอบหมาย: <span class="font-black text-slate-800"><?= inspection_h($dynamicCurrentAssigneeName) ?></span><?php endif; ?></p><p class="mt-2 text-xs text-slate-500">คุณสามารถดูความคืบหน้าได้ แต่ไม่สามารถยืนยันหรือตีกลับแทนผู้ได้รับมอบหมาย</p></div>
             <?php else: ?>
                 <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-center"><p class="font-black text-emerald-900 text-lg"><i class="fas fa-circle-check mr-2"></i>GMACC ยืนยันแล้ว กระบวนการตรวจรับเสร็จสิ้น</p></div>
             <?php endif; ?>
@@ -633,12 +738,36 @@ if ($dynamicChecklist) {
     function collectResults() { return [...document.querySelectorAll('.result-row')].map(row => ({ id: row.dataset.resultId, result_status: row.querySelector('.result-status').value, note: row.querySelector('.result-note').value, responsible_person: row.querySelector('.result-responsible').value, due_date: row.querySelector('.result-due').value })); }
     const statusLabels = { pass: 'ผ่าน', fail: 'ไม่ผ่าน', conditional_pass: 'มีเงื่อนไข', not_applicable: 'ไม่เกี่ยวข้อง', '': 'ยังไม่ระบุ' };
     const statusClasses = {
-        pass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        fail: 'border-rose-200 bg-rose-50 text-rose-700',
-        conditional_pass: 'border-amber-200 bg-amber-50 text-amber-700',
-        not_applicable: 'border-slate-300 bg-slate-100 text-slate-700',
-        '': 'border-slate-200 bg-white text-slate-600'
+        pass: 'border-emerald-600 bg-emerald-600 text-white ring-2 ring-emerald-200',
+        fail: 'border-rose-600 bg-rose-600 text-white ring-2 ring-rose-200',
+        conditional_pass: 'border-amber-500 bg-amber-500 text-white ring-2 ring-amber-200',
+        not_applicable: 'border-slate-600 bg-slate-600 text-white ring-2 ring-slate-200'
     };
+    const statusInactiveClasses = {
+        pass: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        fail: 'border-rose-300 bg-rose-50 text-rose-700',
+        conditional_pass: 'border-amber-300 bg-amber-50 text-amber-700',
+        not_applicable: 'border-slate-300 bg-slate-100 text-slate-700'
+    };
+    function syncPhotoState(row) {
+        const status = row.querySelector('.result-status').value;
+        const photoCount = Number.parseInt(row.dataset.photoCount || '0', 10);
+        const isOptional = status === 'not_applicable';
+        const state = row.querySelector('.result-photo-state');
+        const message = row.querySelector('.result-photo-message');
+        const required = row.querySelector('.result-photo-required');
+        if (!state || !message || !required) return;
+        state.classList.toggle('border-emerald-200', photoCount > 0);
+        state.classList.toggle('bg-emerald-50/70', photoCount > 0);
+        state.classList.toggle('border-slate-200', photoCount < 1);
+        state.classList.toggle('bg-slate-50', photoCount < 1);
+        message.classList.toggle('text-emerald-700', photoCount > 0);
+        message.classList.toggle('text-slate-700', photoCount < 1);
+        message.textContent = photoCount > 0
+            ? `แนบรูปแล้ว ${photoCount} รูป`
+            : (isOptional ? 'ข้อไม่เกี่ยวข้อง ไม่บังคับแนบรูป' : 'ต้องแนบรูปอย่างน้อย 1 รูป');
+        required.classList.toggle('hidden', isOptional);
+    }
     function syncStatusRow(row, value) {
         row.dataset.resultStatus = value || 'open';
         row.classList.remove('border-slate-200', 'border-rose-200', 'border-amber-200');
@@ -646,11 +775,13 @@ if ($dynamicChecklist) {
         const label = row.querySelector('.result-status-label');
         if (label) label.textContent = statusLabels[value] || statusLabels[''];
         row.querySelectorAll('.status-choice').forEach(button => {
-            button.className = 'status-choice rounded-xl border min-h-11 px-3 py-2.5 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ' + (button.dataset.value === value ? statusClasses[value] : statusClasses['']);
+            const circle = button.querySelector('.status-choice-circle');
+            const allStateClasses = [...Object.values(statusClasses), ...Object.values(statusInactiveClasses)].flatMap(classes => classes.split(' '));
+            circle.classList.remove(...allStateClasses);
+            circle.classList.add(...(button.dataset.value === value ? statusClasses[value] : statusInactiveClasses[button.dataset.value]).split(' '));
             button.setAttribute('aria-pressed', button.dataset.value === value ? 'true' : 'false');
-            if (button.dataset.value !== value) button.classList.add('hover:border-indigo-300', 'hover:bg-indigo-50');
-            if (button.disabled) button.classList.add('opacity-60', 'cursor-not-allowed');
         });
+        syncPhotoState(row);
         if (['fail', 'conditional_pass'].includes(value)) {
             const details = row.querySelector('.result-more');
             if (details) details.open = true;
@@ -695,7 +826,28 @@ if ($dynamicChecklist) {
         });
         syncStatusRow(select.closest('.result-row'), select.value);
     });
-    function saveResults(callback) { $.post('api/inspection_round.php?action=save_results', { round_id: roundId, results: JSON.stringify(collectResults()), punch_list: $('#roundPunchList').val(), fix_within_days: $('#roundFixDays').val() }, function (res) { if (res.status === 'success') { if (callback) callback(); else Swal.fire({ icon: 'success', title: 'บันทึกร่างแล้ว', confirmButtonColor: '#4f46e5' }); } else Swal.fire('บันทึกไม่ได้', res.message, 'error'); }, 'json'); }
+    function validatePhotoRequirements() {
+        const invalidRow = [...document.querySelectorAll('.result-row')].find(row => {
+            const status = row.querySelector('.result-status').value;
+            return ['pass', 'fail', 'conditional_pass'].includes(status) && Number.parseInt(row.dataset.photoCount || '0', 10) < 1;
+        });
+        const uploadingRow = [...document.querySelectorAll('.result-row')].find(row => row.dataset.photoUploading === 'true');
+        if (uploadingRow) {
+            Swal.fire('กำลังอัปโหลดรูป', 'กรุณารอให้อัปโหลดรูปเสร็จก่อนบันทึก', 'info');
+            uploadingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        if (invalidRow) {
+            Swal.fire('ต้องแนบรูปหลักฐาน', 'กรุณาแนบรูปอย่างน้อย 1 รูปในข้อที่ตรวจแล้ว ยกเว้นข้อที่ไม่เกี่ยวข้อง', 'warning');
+            invalidRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        return true;
+    }
+    function saveResults(callback) {
+        if (!validatePhotoRequirements()) return;
+        $.post('api/inspection_round.php?action=save_results', { round_id: roundId, results: JSON.stringify(collectResults()), punch_list: $('#roundPunchList').val(), fix_within_days: $('#roundFixDays').val() }, function (res) { if (res.status === 'success') { if (callback) callback(); else Swal.fire({ icon: 'success', title: 'บันทึกร่างแล้ว', confirmButtonColor: '#4f46e5' }); } else Swal.fire('บันทึกไม่ได้', res.message, 'error'); }, 'json');
+    }
     const saveButton = document.getElementById('saveRoundButton');
     if (saveButton) saveButton.addEventListener('click', () => saveResults());
     function approve(action = 'approve') { const needsProcurementReason = action === 'approve' && nextStep === 'procurement' && !<?= $dynamicComparisonSummary['passed'] ? 'true' : 'false' ?>; const reasonPrompt = action === 'approve' && needsProcurementReason ? 'กรุณาระบุเหตุผลประกอบการตัดสินของจัดซื้อ' : (action === 'approve' ? '' : prompt('กรุณาระบุเหตุผลที่ตีกลับ')); const send = () => { if ((needsProcurementReason && !reasonPrompt) || (action !== 'approve' && !reasonPrompt)) { Swal.fire('ต้องระบุเหตุผล', 'กรุณาระบุเหตุผลก่อนบันทึกการตัดสิน', 'warning'); return; } $.post('api/inspection_round.php?action=approve', { round_id: roundId, step: nextStep, approval_action: action, reason: reasonPrompt }, function (res) { if (res.status === 'success') Swal.fire({ icon: 'success', title: action === 'approve' ? 'ยืนยันแล้ว' : 'ตีกลับแล้ว', text: res.message, confirmButtonColor: '#4f46e5' }).then(() => location.reload()); else Swal.fire('ดำเนินการไม่ได้', res.message, 'error'); }, 'json'); }; if (action === 'approve' && ['inspector_1','inspector_2'].includes(nextStep)) saveResults(send); else send(); }
@@ -705,7 +857,58 @@ if ($dynamicChecklist) {
     if (returnButton) returnButton.addEventListener('click', () => approve('return'));
     const revisionButton = document.getElementById('revisionButton');
     if (revisionButton) revisionButton.addEventListener('click', function () { $.post('api/inspection_round.php?action=revision', { round_id: roundId }, function (res) { if (res.status === 'success') location.reload(); else Swal.fire('สร้างรอบใหม่ไม่ได้', res.message, 'error'); }, 'json'); });
-    document.querySelectorAll('.result-file').forEach(input => input.addEventListener('change', function () { if (!this.files[0]) return; const data = new FormData(); data.append('round_id', roundId); data.append('result_id', this.dataset.resultId); data.append('file', this.files[0]); $.ajax({ url: 'api/inspection_round.php?action=upload', type: 'POST', data, processData: false, contentType: false, dataType: 'json', success: res => res.status === 'success' ? Swal.fire({ icon: 'success', title: 'แนบหลักฐานแล้ว', timer: 1200, showConfirmButton: false }) : Swal.fire('แนบไฟล์ไม่ได้', res.message, 'error') }); }));
+    document.querySelectorAll('.result-file').forEach(input => input.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const row = this.closest('.result-row');
+        const data = new FormData();
+        data.append('round_id', roundId);
+        data.append('result_id', this.dataset.resultId);
+        data.append('file', file);
+        row.dataset.photoUploading = 'true';
+        this.disabled = true;
+        $.ajax({
+            url: 'api/inspection_round.php?action=upload',
+            type: 'POST',
+            data,
+            processData: false,
+            contentType: false,
+            dataType: 'json'
+        }).done(res => {
+            if (res.status !== 'success') {
+                Swal.fire('แนบรูปไม่ได้', res.message, 'error');
+                return;
+            }
+            row.dataset.photoCount = String(Number.parseInt(row.dataset.photoCount || '0', 10) + 1);
+            const preview = row.querySelector('.result-photo-preview');
+            const imageUrl = URL.createObjectURL(file);
+            preview.innerHTML = `<img src="${imageUrl}" alt="รูปหลักฐานล่าสุด" class="h-full w-full object-cover">`;
+            preview.querySelector('img').addEventListener('load', () => URL.revokeObjectURL(imageUrl), { once: true });
+            syncPhotoState(row);
+            Swal.fire({ icon: 'success', title: 'แนบรูปแล้ว', timer: 1200, showConfirmButton: false });
+        }).fail(xhr => {
+            Swal.fire('แนบรูปไม่ได้', xhr.responseJSON?.message || 'ไม่สามารถอัปโหลดรูปได้', 'error');
+        }).always(() => {
+            row.dataset.photoUploading = 'false';
+            this.disabled = false;
+            this.value = '';
+        });
+    }));
+    const comparisonFilterButtons = document.querySelectorAll('[data-comparison-filter]');
+    comparisonFilterButtons.forEach(button => button.addEventListener('click', function () {
+        const filter = this.dataset.comparisonFilter;
+        comparisonFilterButtons.forEach(filterButton => {
+            const isActive = filterButton === this;
+            filterButton.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            filterButton.classList.toggle('bg-slate-800', isActive);
+            filterButton.classList.toggle('text-white', isActive);
+            filterButton.classList.toggle('bg-white', !isActive);
+            filterButton.classList.toggle('text-slate-600', !isActive);
+        });
+        document.querySelectorAll('.comparison-item').forEach(item => {
+            item.classList.toggle('hidden', filter === 'conflict' && item.dataset.comparisonConflict !== '1');
+        });
+    }));
     document.querySelectorAll('.result-filter').forEach(button => button.addEventListener('click', function () { document.querySelectorAll('.result-filter').forEach(b => b.classList.remove('bg-slate-800','text-white')); document.querySelectorAll('.result-filter').forEach(b => b.classList.add('bg-slate-100','text-slate-600')); this.classList.add('bg-slate-800','text-white'); this.classList.remove('bg-slate-100','text-slate-600'); const filter = this.dataset.filter; document.querySelectorAll('.result-row').forEach(row => { const status = row.querySelector('.result-status').value; row.style.display = filter === 'all' || (filter === 'open' && !['pass', 'not_applicable'].includes(status)) || (filter === 'pass' && status === 'pass') ? '' : 'none'; }); }));
     updateProgress();
 })();

@@ -21,10 +21,22 @@ if (
     || !function_exists('pr_approval_can_reject_request')
     || !function_exists('pr_approval_supervisor_notification_team_id')
     || !function_exists('pr_approval_resolve_actor_context')
+    || !function_exists('pr_approval_can_access_pending_page')
+    || !function_exists('pending_approval_resolve_authorized_view')
 ) {
     fwrite(STDERR, "FAIL: PR approval team authorization is not implemented\n");
     exit(1);
 }
+
+assert_pr_approval_same(true, pr_approval_can_access_pending_page('gmshotel'), 'team GMs must access PR approvals');
+assert_pr_approval_same(true, pr_approval_can_access_pending_page('procure'), 'procurement must access PR approvals');
+assert_pr_approval_same(true, pr_approval_can_access_pending_page('gmacc'), 'GMACC must access PR approvals');
+assert_pr_approval_same(false, pr_approval_can_access_pending_page('tech_shotel'), 'assigned technical staff must not inherit PR access');
+assert_pr_approval_same(false, pr_approval_can_access_pending_page('viewer'), 'viewer must not receive PR approval access');
+assert_pr_approval_same('inspection', pending_approval_resolve_authorized_view('tech_shotel', true, 'pr'), 'inspection-only users opening PR must be routed to inspection work');
+assert_pr_approval_same(null, pending_approval_resolve_authorized_view('tech_shotel', false, 'pr'), 'users without either permission must not access pending work');
+assert_pr_approval_same('pr', pending_approval_resolve_authorized_view('procure', false, 'inspection'), 'PR-only users opening inspection must be routed to PR approvals');
+assert_pr_approval_same('inspection', pending_approval_resolve_authorized_view('gmshotel', true, 'inspection'), 'users with both permissions may open inspection work');
 
 assert_pr_approval_same(true, pr_approval_is_team_gm('gm_sale'), 'department GM roles must be treated as team supervisors');
 assert_pr_approval_same(false, pr_approval_is_team_gm('gmacc'), 'GMACC must not be treated as the requester supervisor');

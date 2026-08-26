@@ -49,6 +49,18 @@ if (strpos($html, 'aria-pressed="false"') === false || strpos($html, 'min-h-11')
     fwrite(STDERR, "Missing accessible status button state\n");
     exit(1);
 }
+foreach (['status-choice-circle', 'fa-check', 'fa-xmark', 'fa-triangle-exclamation', 'fa-minus', 'result-photo-state', 'capture="environment"', 'data-photo-count='] as $marker) {
+    if (strpos($html, $marker) === false) {
+        fwrite(STDERR, "Missing mobile checklist control {$marker}\n");
+        exit(1);
+    }
+}
+foreach (['status-choice-pass', 'status-choice-fail', 'status-choice-conditional', 'status-choice-na'] as $marker) {
+    if (strpos($html, $marker) === false) {
+        fwrite(STDERR, "Missing always-visible mobile status color {$marker}\n");
+        exit(1);
+    }
+}
 
 $_SESSION['user_id'] = 12;
 $_SESSION['role'] = 'procure';

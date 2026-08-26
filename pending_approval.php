@@ -6,15 +6,17 @@ include('assets/alert.php');
 
 $user_role_sup = $approval_actor_context['role'] ?? ($_SESSION['role'] ?? '');
 $sup_id = $approval_actor_context['sup_id'] ?? ($_SESSION['sup_id'] ?? 0);
+$pending_view = $pending_approval_view ?? pending_approval_resolve_authorized_view($user_role_sup, $inspection_has_assignment, '');
+$can_pr_approval = pr_approval_can_access_pending_page($user_role_sup);
 $auto_filter_supplier = '';
 
 $is_gm_role = pr_approval_is_team_gm($user_role_sup);
-
-// Scope each GM to PRs created by users in the same team (users.sup_id).
-$where_extra = '';
-$where_extra = pr_approval_creator_scope_sql($user_role_sup, (int)$sup_id, 'u_creator');
-
-$sql = "SELECT 
+$pr_list = [];
+$suppliers = [];
+if ($pending_view === 'pr' && $can_pr_approval) {
+    // Scope each GM to PRs created by users in the same team (users.sup_id).
+    $where_extra = pr_approval_creator_scope_sql($user_role_sup, (int)$sup_id, 'u_creator');
+    $sql = "SELECT 
             p.*, 
             s.company_name as supplier_name,
             st.store_name as store_name,
@@ -44,22 +46,79 @@ $sql = "SELECT
         WHERE p.deleted_at IS NULL AND p.is_internal = 1 $where_extra
         ORDER BY p.created_at DESC";
 
-$result = mysqli_query($conn, $sql);
-$pr_list = [];
-while ($row = mysqli_fetch_assoc($result)) {
-    $pr_list[] = $row;
-}
+    $result = mysqli_query($conn, $sql);
+    while ($row = mysqli_fetch_assoc($result)) {
+        $pr_list[] = $row;
+    }
 
-// The GM team scope is based on the requester. Supplier remains a normal list filter.
-$supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
-$supplier_res = mysqli_query($conn, $supplier_sql);
-$suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
+    // The GM team scope is based on the requester. Supplier remains a normal list filter.
+    $supplier_sql = "SELECT id, company_name FROM suppliers ORDER BY company_name ASC";
+    $supplier_res = mysqli_query($conn, $supplier_sql);
+    $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
+}
 $isAdminOrProcure = ($user_role_sup === 'admin' || strpos($user_role_sup, 'procure') === 0);
+$inspection_tasks = $pending_view === 'inspection' && $inspection_has_assignment
+    ? inspection_assigned_tasks($conn, (int)($_SESSION['user_id'] ?? 0))
+    : [];
+$inspection_actionable_count = inspection_count_actionable_tasks($inspection_tasks);
 ?>
 
-<div class="w-full p-0">
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="w-full p-0" data-pending-view="<?= htmlspecialchars($pending_view) ?>">
+    <?php if ($inspection_tasks && $pending_view === 'inspection'): ?>
+        <section id="inspectionAssignmentInbox" class="mb-5 overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-indigo-100 bg-indigo-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[1.5px] text-indigo-500">Construction Inspection</p>
+                    <h2 class="mt-1 text-lg font-black text-slate-900">งานตรวจรับที่ได้รับมอบหมาย</h2>
+                    <p class="mt-1 text-xs text-slate-600">ติดตามงานได้ตั้งแต่ได้รับมอบหมาย และดำเนินการได้เมื่อ Flow มาถึงคิวของคุณ</p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-black">
+                    <span class="rounded-full bg-white px-3 py-1.5 text-slate-600">ทั้งหมด <?= count($inspection_tasks) ?></span>
+                    <?php if ($inspection_actionable_count > 0): ?><span class="rounded-full bg-emerald-600 px-3 py-1.5 text-white">ถึงคิว <?= $inspection_actionable_count ?></span><?php endif; ?>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-3 p-3 lg:grid-cols-2">
+                <?php foreach ($inspection_tasks as $inspection_task): ?>
+                    <?php
+                    $inspectionActionable = !empty($inspection_task['actionable']);
+                    $inspectionAssignedLabels = implode(', ', $inspection_task['assigned_labels'] ?? []);
+                    $inspectionCurrentOwner = trim((string)($inspection_task['current_owner_name'] ?? ''));
+                    $inspectionRoundText = !empty($inspection_task['round_id'])
+                        ? 'รอบตรวจที่ ' . (int)($inspection_task['round_no'] ?? 1)
+                        : 'ยังไม่เริ่มรอบตรวจ';
+                    ?>
+                    <article class="inspection-assignment-card rounded-2xl border <?= $inspectionActionable ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200 bg-white' ?> p-4" data-actionable="<?= $inspectionActionable ? '1' : '0' ?>">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-black text-slate-900"><?= htmlspecialchars((string)$inspection_task['project_name']) ?></p>
+                                <p class="mt-1 text-xs font-bold text-indigo-700"><?= htmlspecialchars((string)$inspection_task['milestone_name']) ?></p>
+                            </div>
+                            <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black <?= $inspectionActionable ? 'bg-emerald-600 text-white' : 'bg-sky-100 text-sky-700' ?>"><?= $inspectionActionable ? 'ถึงคิวคุณแล้ว' : 'กำลังดำเนินการ' ?></span>
+                        </div>
+                        <div class="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                            <div class="rounded-xl bg-white/90 p-3 ring-1 ring-slate-200">
+                                <p class="font-bold text-slate-500">ได้รับมอบหมายเป็น</p>
+                                <p class="mt-1 font-black text-slate-800"><?= htmlspecialchars($inspectionAssignedLabels ?: '-') ?></p>
+                            </div>
+                            <div class="rounded-xl bg-white/90 p-3 ring-1 <?= $inspectionActionable ? 'ring-emerald-200' : 'ring-slate-200' ?>">
+                                <p class="font-bold text-slate-500">ขั้นตอนปัจจุบัน</p>
+                                <p class="mt-1 font-black <?= $inspectionActionable ? 'text-emerald-700' : 'text-slate-800' ?>"><?= htmlspecialchars((string)$inspection_task['current_label']) ?></p>
+                                <p class="mt-0.5 text-[11px] text-slate-500"><?= $inspectionCurrentOwner !== '' ? 'อยู่ที่ ' . htmlspecialchars($inspectionCurrentOwner) : 'รอระบบดำเนินการขั้นถัดไป' ?></p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex flex-col gap-2 border-t border-slate-200/80 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span class="text-[11px] font-bold text-slate-500"><i class="fas fa-clipboard-list mr-1.5 text-indigo-500" aria-hidden="true"></i><?= htmlspecialchars($inspectionRoundText) ?></span>
+                            <a href="add_inspection.php?project_id=<?= (int)$inspection_task['project_id'] ?>&milestone_id=<?= (int)$inspection_task['milestone_id'] ?>" class="inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-xs font-black transition focus:outline-none focus:ring-2 focus:ring-offset-1 <?= $inspectionActionable ? 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500' : 'bg-slate-800 text-white hover:bg-slate-950 focus:ring-slate-500' ?>"><i class="fas <?= $inspectionActionable ? 'fa-pen-to-square' : 'fa-eye' ?> mr-2" aria-hidden="true"></i><?= $inspectionActionable ? 'ดำเนินการ' : 'ดูความคืบหน้า' ?></a>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+    <?php if ($pending_view === 'pr' && $can_pr_approval): ?>
+    <div id="prApprovalSection" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-4">
+            <div class="mb-4"><p class="text-[11px] font-black uppercase tracking-[1.5px] text-slate-400">Purchase Request</p><h2 class="mt-1 text-lg font-black text-slate-900">ใบขอซื้อ</h2></div>
             <!-- Filter Section (Responsive) -->
             <div class="grid grid-cols-2 md:flex md:flex-wrap items-end gap-3 mb-4 w-full">
                 <div class="relative col-span-2 md:col-span-1 md:min-w-[180px]">
@@ -308,8 +367,10 @@ $isAdminOrProcure = ($user_role_sup === 'admin' || strpos($user_role_sup, 'procu
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
+<?php if ($pending_view !== 'inspection'): ?>
 <script>
     const PR_DATA = <?= json_encode($pr_list, JSON_UNESCAPED_UNICODE) ?>;
     const USER_ID = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
@@ -660,4 +721,5 @@ $isAdminOrProcure = ($user_role_sup === 'admin' || strpos($user_role_sup, 'procu
 
     function viewAttachment(url) { window.open(url, '_blank'); }
 </script>
+<?php endif; ?>
 <?php include 'footer.php'; ?>

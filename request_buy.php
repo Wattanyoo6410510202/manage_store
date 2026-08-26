@@ -67,6 +67,132 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
 ?>
 
 <style>
+    .pr-form {
+        --pr-border: #cbd5e1;
+        --pr-border-hover: #94a3b8;
+        --pr-ink: #0f172a;
+        --pr-muted: #475569;
+        --pr-accent: #4f46e5;
+        color: var(--pr-ink);
+    }
+
+    .pr-form .rounded-3xl {
+        border-radius: 16px !important;
+    }
+
+    .pr-form label {
+        margin-bottom: 6px !important;
+        color: #334155 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        line-height: 1.4;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    .pr-form label.flex {
+        margin-bottom: 0 !important;
+    }
+
+    .pr-form input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+    .pr-form select,
+    .pr-form textarea {
+        width: 100%;
+        color: var(--pr-ink) !important;
+        font-size: 14px !important;
+        background: #ffffff !important;
+        border: 1px solid var(--pr-border) !important;
+        border-radius: 10px !important;
+        box-shadow: none;
+        outline: none;
+        transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    }
+
+    .pr-form input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+    .pr-form select {
+        min-height: 44px;
+        padding: 9px 12px !important;
+    }
+
+    .pr-form textarea {
+        min-height: 76px;
+        padding: 10px 12px !important;
+        line-height: 1.5;
+    }
+
+    .pr-form input::placeholder,
+    .pr-form textarea::placeholder {
+        color: #64748b !important;
+        opacity: 1;
+        font-weight: 400;
+    }
+
+    .pr-form input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="file"]):hover,
+    .pr-form select:hover,
+    .pr-form textarea:hover {
+        border-color: var(--pr-border-hover) !important;
+    }
+
+    .pr-form input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="file"]):focus,
+    .pr-form select:focus,
+    .pr-form textarea:focus {
+        border-color: var(--pr-accent) !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14) !important;
+    }
+
+    .pr-form input:disabled,
+    .pr-form select:disabled,
+    .pr-form textarea:disabled {
+        color: #64748b !important;
+        background: #f1f5f9 !important;
+        cursor: not-allowed;
+    }
+
+    .pr-form input[type="file"] {
+        min-height: 44px;
+        color: var(--pr-muted);
+        font-size: 13px;
+        background: #ffffff !important;
+        border: 1px solid var(--pr-border) !important;
+        border-radius: 10px !important;
+    }
+
+    .pr-form input[type="radio"],
+    .pr-form input[type="checkbox"] {
+        accent-color: var(--pr-accent);
+    }
+
+    .pr-form #itemsTable thead {
+        color: #334155;
+        background: #f8fafc;
+    }
+
+    .pr-form #itemsTable tbody tr {
+        transition: background-color 180ms ease;
+    }
+
+    .pr-form #itemsTable tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .pr-form #itemsTable td {
+        vertical-align: middle;
+    }
+
+    .pr-form #itemsTable textarea {
+        min-height: 44px;
+        resize: vertical;
+    }
+
+    .pr-form #itemsTable .row-total {
+        color: #3730a3 !important;
+        font-size: 15px;
+    }
+
+    .pr-form button {
+        transition-duration: 180ms !important;
+    }
+
     @media (max-width: 767px) {
         .overflow-x-auto { overflow: visible !important; }
         #itemsTable { width: 100%; }
@@ -199,9 +325,42 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
             font-size: 16px !important;
             color: #4f46e5;
         }
+
+        .pr-form label {
+            font-size: 13px !important;
+        }
+
+        .pr-form input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+        .pr-form select {
+            min-height: 46px;
+            font-size: 14px !important;
+        }
+
+        .pr-form textarea {
+            font-size: 14px !important;
+        }
+
+        .pr-form #itemsTable tr.item-row {
+            border-color: var(--pr-border);
+            border-radius: 14px;
+            box-shadow: none;
+        }
+
+        .pr-form .pr-supplier-row {
+            flex-wrap: wrap;
+        }
+
+        .pr-form .pr-supplier-picker {
+            width: calc(100% - 44px);
+        }
+
+        .pr-form .pr-supplier-summary {
+            flex-basis: 100%;
+            padding: 8px 10px;
+        }
     }
 </style>
-<form action="api/save_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
+<form class="pr-form" action="api/save_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($customer_id) ?>">
 
     <div class="bg-slate-50 ">
@@ -209,15 +368,17 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
 
             <div class="lg:col-span-1 mb-6">
                 <div class="bg-white p-1.5 px-2 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex items-center gap-2">
+                    <div class="pr-supplier-row flex items-center gap-2">
 
                         <div
                             class="shrink-0 bg-slate-50 p-1 rounded-lg border border-slate-100 flex items-center justify-center w-9 h-9">
-                            <img id="comp_logo_preview" src="" class="h-7 w-7 object-contain hidden">
+                            <img id="comp_logo_preview"
+                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+                                class="h-7 w-7 object-contain hidden" alt="โลโก้ผู้ขาย">
                             <i id="comp_logo_icon" class="fas fa-building text-lg text-slate-400"></i>
                         </div>
 
-                        <div class="w-48 shrink-0">
+                        <div class="pr-supplier-picker w-48 shrink-0">
                             <select name="supplier_id" id="supplier_select" onchange="updateSupplierInfo()"
                                 class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] focus:border-indigo-500 outline-none font-bold text-slate-700 cursor-pointer">
                                 <option value="0">เลือกผู้ขาย...</option>
@@ -234,7 +395,7 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             </select>
                         </div>
 
-                        <div class="flex-1 min-w-0 bg-slate-50/50 rounded-lg border-l-2 border-indigo-500 px-2 py-0.5">
+                        <div class="pr-supplier-summary flex-1 min-w-0 bg-indigo-50/50 rounded-lg border border-indigo-100 px-2 py-0.5">
                             <div class="flex items-center gap-2 overflow-hidden">
                                 <span id="comp_name"
                                     class="text-[12px] font-black text-slate-800 truncate leading-tight uppercase">รอเลือกข้อมูล...</span>
@@ -261,7 +422,7 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
             </div>
 
             <div class="lg:col-span-2 space-y-6">
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
                         <label
                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">ความสำคัญ</label>
@@ -554,7 +715,7 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
                         <button type="button" onclick="clearFile('file1')"
-                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            class="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -568,7 +729,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                             class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all 
 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-indigo-50 file:text-indigo-600">
                         <button type="button" onclick="clearFile('file2')"
-                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            class="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -583,7 +744,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                             class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-emerald-500 transition-all 
 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] file:font-bold file:bg-emerald-50 file:text-emerald-600">
                         <button type="button" onclick="clearFile('payment_slip')"
-                            class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
+                            class="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -609,7 +770,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                         class="bg-slate-50/80 text-[12px] uppercase text-slate-800 font-black border-b border-slate-200">
                         <tr>
                             <th class="px-6 py-4 w-12 text-center">#</th>
-                            <th class="px-2 py-4">รายละเอียดสินค้า</th>
+                            <th class="px-2 py-4">รายละเอียดสินค้า <span class="text-rose-500">*</span></th>
                             <th class="px-2 py-4 w-24 text-center">จำนวน</th>
                             <th class="px-2 py-4 w-24 text-center">หน่วย</th>
                             <th class="px-2 py-4 w-32 text-right">ราคา/หน่วย</th>
@@ -623,7 +784,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                             <td class="px-6 py-4 text-center text-xs font-bold text-slate-800 row-number">1
                             </td>
                             <td class="px-2 py-4" data-label="รายละเอียด">
-                                <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รหัสสินค้า..." rows="1"
+                                <textarea name="item_desc[]" required data-required-item-details placeholder="ระบุชื่อสินค้า / สี / ขนาด / รุ่น / วัสดุ / สเปก (ถ้ามี)..." rows="1"
                                     oninput="autoResize(this)"
                                     class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
                             </td>
@@ -739,7 +900,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
         newRow.innerHTML = `
         <td class="px-6 py-4 text-center text-xs font-bold text-slate-800 row-number"></td>
         <td class="px-2 py-4" data-label="รายละเอียด">
-            <textarea name="item_desc[]" placeholder="ระบุชื่อสินค้า / รายละเอียด..."
+            <textarea name="item_desc[]" required data-required-item-details placeholder="ระบุชื่อสินค้า / สี / ขนาด / รุ่น / วัสดุ / สเปก (ถ้ามี)..."
                 rows="1" oninput="autoResize(this)"
                 class="w-full bg-transparent border-none focus:ring-0 outline-none text-sm text-slate-700 font-bold resize-none block overflow-hidden"></textarea>
         </td>

@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once 'po_installment_progress.php';
 include('header.php');
 include('assets/alert.php');
 
@@ -33,7 +34,12 @@ $sql = "SELECT p.*,
 
                -- 5. ข้อมูลคนสร้าง PR (กรณีอ้างอิง PR)
                u_pr.name as pr_creator_name,
-               s_pr.company_name as pr_creator_sup
+               s_pr.company_name as pr_creator_sup,
+
+               COALESCE(ip.installment_total, 0) AS installment_total,
+               COALESCE(ip.installment_paid, 0) AS installment_paid,
+               ip.next_installment_no,
+               next_installment.due_date AS next_installment_due_date
 
         FROM po p
         -- เชื่อมตาราง suppliers เพื่อเอาข้อมูลบริษัทเรา โดยใช้ supplier_id จาก po
@@ -49,11 +55,34 @@ $sql = "SELECT p.*,
         LEFT JOIN pr ON p.reference_no = pr.doc_no
         LEFT JOIN users u_pr ON pr.created_by = u_pr.id
         LEFT JOIN suppliers s_pr ON u_pr.sup_id = s_pr.id
+        LEFT JOIN (
+            SELECT
+                pr_id,
+                COUNT(*) AS installment_total,
+                SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS installment_paid,
+                MIN(CASE WHEN status <> 'paid' THEN installment_no END) AS next_installment_no
+            FROM installment_schedule
+            GROUP BY pr_id
+        ) ip ON ip.pr_id = pr.id
+        LEFT JOIN installment_schedule next_installment
+            ON next_installment.pr_id = pr.id
+            AND next_installment.installment_no = ip.next_installment_no
         
         WHERE p.id = '$id' LIMIT 1";
 
 $result = mysqli_query($conn, $sql);
 $data = mysqli_fetch_assoc($result);
+$po_progress = po_installment_progress($data ?: []);
+$po_progress_styles = [
+    'approval_pending' => ['badge' => 'bg-amber-50 text-amber-700 border-amber-200', 'bar' => 'bg-amber-500'],
+    'approved' => ['badge' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'bar' => 'bg-emerald-500'],
+    'installment_waiting' => ['badge' => 'bg-indigo-50 text-indigo-700 border-indigo-200', 'bar' => 'bg-indigo-500'],
+    'installment_progress' => ['badge' => 'bg-blue-50 text-blue-700 border-blue-200', 'bar' => 'bg-blue-500'],
+    'installment_overdue' => ['badge' => 'bg-rose-50 text-rose-700 border-rose-200', 'bar' => 'bg-rose-500'],
+    'installment_complete' => ['badge' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'bar' => 'bg-emerald-500'],
+    'cancelled' => ['badge' => 'bg-slate-100 text-slate-700 border-slate-200', 'bar' => 'bg-slate-500'],
+];
+$po_progress_style = $po_progress_styles[$po_progress['key']] ?? $po_progress_styles['approval_pending'];
 
 // เช็ค Path โลโก้ให้ชัวร์
 $logo_path = (!empty($data['logo_path']) && file_exists('uploads/' . $data['logo_path']))
@@ -209,6 +238,41 @@ function ReadNumber($number)
         <button onclick="exportWord()" class="btn-tool btn-word" title="ดาวน์โหลด Word">
             <i class="fas fa-file-word"></i>
         </button>
+    </div>
+</div>
+
+<div class="no-print mx-auto mb-3 w-[210mm] max-w-full rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-slate-800">สถานะ PO</span>
+                <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold <?= $po_progress_style['badge'] ?>">
+                    <?= htmlspecialchars($po_progress['label']) ?>
+                </span>
+            </div>
+            <?php if (!empty($po_progress['detail'])): ?>
+                <p class="mt-1 text-xs text-slate-600"><?= htmlspecialchars($po_progress['detail']) ?></p>
+            <?php endif; ?>
+            <?php if (!empty($po_progress['next_due_date']) && $po_progress['key'] !== 'installment_complete'): ?>
+                <p class="mt-1 text-xs <?= $po_progress['key'] === 'installment_overdue' ? 'font-bold text-rose-700' : 'text-slate-600' ?>">
+                    งวดถัดไปครบกำหนด <?= date('d/m/Y', strtotime($po_progress['next_due_date'])) ?>
+                </p>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($po_progress['percent'] !== null): ?>
+            <div class="w-full sm:w-72">
+                <div class="mb-1 flex items-center justify-between text-xs text-slate-600">
+                    <span>ชำระแล้ว <?= $po_progress['paid'] ?> จาก <?= $po_progress['total'] ?> งวด</span>
+                    <span class="font-bold text-slate-800"><?= $po_progress['percent'] ?>%</span>
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-slate-200" role="progressbar"
+                    aria-label="ความคืบหน้าการชำระ <?= $po_progress['paid'] ?> จาก <?= $po_progress['total'] ?> งวด"
+                    aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $po_progress['percent'] ?>">
+                    <div class="h-full rounded-full <?= $po_progress_style['bar'] ?>" style="width: <?= $po_progress['percent'] ?>%"></div>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

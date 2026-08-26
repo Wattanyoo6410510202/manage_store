@@ -21,7 +21,11 @@ if (!empty($inspection_only_access)) {
                 INNER JOIN inspection_checklists ic ON ic.milestone_id = pm.id
                 WHERE pm.project_id = p.id
                   AND ic.status IN ('active', 'draft')
-                  AND (ic.inspector_1_user_id = $inspection_user_id OR ic.inspector_2_user_id = $inspection_user_id)
+                  AND (ic.inspector_1_user_id = $inspection_user_id
+                       OR ic.inspector_2_user_id = $inspection_user_id
+                       OR ic.procurement_user_id = $inspection_user_id
+                       OR ic.md_user_id = $inspection_user_id
+                       OR ic.gmacc_user_id = $inspection_user_id)
             )
             ORDER BY p.id DESC";
 }
