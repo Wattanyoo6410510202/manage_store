@@ -172,7 +172,7 @@ $result = mysqli_query($conn, $sql);
                 <tr>
                     <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ชื่อโปรเจค</th>
                     <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
-                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ลูกค้า</th>
+                    <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Supplier</th>
                     <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">โปรเจคย่อย</th>
                     <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">มูลค่ารวม</th>
                     <th class="p-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">รับแล้ว</th>

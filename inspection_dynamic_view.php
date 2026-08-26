@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/inspection_workflow.php';
+require_once __DIR__ . '/supplier_display.php';
 
 $round = inspection_fetch_one($conn, "SELECT * FROM inspection_rounds WHERE id = ? LIMIT 1", 'i', [$dynamic_round_id]);
 if (!$round) {
@@ -9,6 +10,7 @@ if (!$round) {
 
 $context = inspection_load_context($conn, (int)$round['project_id'], (int)$round['milestone_id']);
 $project = $context['project'] ?: [];
+$liveProject = $project;
 $liveContractReferenceNo = trim((string)($project['contract_reference_no'] ?? ($project['contract_no'] ?? '')));
 $results = inspection_fetch_all($conn, "SELECT * FROM inspection_round_results WHERE round_id = ? ORDER BY category, item_order, id", 'i', [$dynamic_round_id]);
 $approvals = inspection_fetch_all($conn, "SELECT * FROM inspection_approvals WHERE round_id = ? ORDER BY created_at, id", 'i', [$dynamic_round_id]);
@@ -17,6 +19,11 @@ $document = inspection_fetch_one($conn, "SELECT * FROM inspection_documents WHER
 $snapshot = ($document && ($document['status'] ?? '') === 'final') ? json_decode((string)$document['snapshot_json'], true) : null;
 if (is_array($snapshot)) {
     $project = $snapshot['project'] ?? $project;
+    foreach (['supplier_name', 'customer_name'] as $projectNameField) {
+        if (empty($project[$projectNameField]) && !empty($liveProject[$projectNameField])) {
+            $project[$projectNameField] = $liveProject[$projectNameField];
+        }
+    }
     if (empty($project['contract_reference_no']) && $liveContractReferenceNo !== '') {
         $project['contract_reference_no'] = $liveContractReferenceNo;
     }
@@ -25,6 +32,8 @@ if (is_array($snapshot)) {
     $attachments = $snapshot['attachments'] ?? $attachments;
 }
 $contractReferenceNo = trim((string)($project['contract_reference_no'] ?? ($project['contract_no'] ?? '')));
+$employerName = supplier_display_name(trim((string)($project['supplier_name'] ?? '')));
+$supplierName = trim((string)($project['customer_name'] ?? ''));
 
 $summary = inspection_compare_results($results);
 $resultGroups = inspection_results_by_step($results);
@@ -55,7 +64,10 @@ $approvalLabels = [
 $approvalName = static function (?array $approval): string {
     return trim((string)($approval['user_name_snapshot'] ?? '')) ?: '................................';
 };
-$contractor = trim((string)($project['contractor_name'] ?? ($project['supplier_name'] ?? '')));
+$contractor = trim((string)($project['contractor_name'] ?? ''));
+if ($contractor === '') {
+    $contractor = $supplierName;
+}
 $milestoneName = trim((string)($project['milestone_name'] ?? ''));
 $milestoneNumber = trim((string)($project['milestone_no'] ?? ''));
 $milestoneDetail = '';
@@ -183,9 +195,9 @@ $resultStatusLabel = static function ($status): string {
         </header>
 
         <section class="lead-letter">
-            <p><strong>เรียน</strong> กรรมการผู้จัดการบริษัท</p>
+            <p><strong>เรียน</strong> กรรมการผู้จัดการบริษัท <strong><?= inspection_h($employerName ?: '-') ?></strong></p>
             <p>ตามสัญญาจ้างเลขที่ <strong><?= inspection_h($contractReferenceNo ?: '-') ?></strong> ลงวันที่ <strong><?= $date($project['contract_date'] ?? null) ?></strong></p>
-            <p>ข้าพเจ้า <strong><?= inspection_h($contractor ?: '-') ?></strong> ขอส่งมอบงานตาม <strong><?= inspection_h($milestone) ?></strong> เพื่อดำเนินการตรวจรับและเบิกจ่าย เป็นเงิน <strong><?= $money($project['milestone_amount'] ?? 0) ?> บาท</strong></p>
+            <p>ข้าพเจ้า <strong><?= inspection_h($supplierName ?: '-') ?></strong> ขอส่งมอบงานตาม <strong><?= inspection_h($milestone) ?></strong> เพื่อดำเนินการตรวจรับและเบิกจ่าย เป็นเงิน <strong><?= $money($project['milestone_amount'] ?? 0) ?> บาท</strong></p>
         </section>
 
         <section class="doc-section">

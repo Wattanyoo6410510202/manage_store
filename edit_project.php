@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/supplier_display.php';
 include('header.php');
 
 // 1. รับ ID และดึงข้อมูลเดิม
@@ -190,10 +191,10 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">Supplier</label>
                                 <select name="customer_id"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
-                                    <option value="">-- เลือกลูกค้า --</option>
+                                    <option value="">-- เลือก Supplier --</option>
                                     <?php while ($c = mysqli_fetch_assoc($customers)): ?>
                                     <option value="<?= $c['id'] ?>"
                                         <?= ($c['id'] == $pj['customer_id']) ? 'selected' : '' ?>>
@@ -205,10 +206,10 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
 
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">
-                                    (Supplier)</label>
+                                    ผู้ว่าจ้าง</label>
                                 <select name="supplier_id" id="supplier_select"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:border-indigo-500">
-                                    <option value="">-- เลือก Supplier / ร้านค้า --</option>
+                                    <option value="">-- เลือกผู้ว่าจ้าง --</option>
                                     <?php
     if (isset($suppliers)):
         mysqli_data_seek($suppliers, 0);
@@ -216,7 +217,7 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
     ?>
                                     <option value="<?= $s['id'] ?>"
                                         <?= ($s['id'] == $pj['supplier_id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($s['company_name']) ?>
+                                        <?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?>
                                     </option>
                                     <?php
         endwhile;

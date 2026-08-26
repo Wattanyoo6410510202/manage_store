@@ -68,10 +68,10 @@ $projects = mysqli_query($conn, "SELECT id, project_name, project_no FROM projec
                                 placeholder="รายละเอียดเพิ่มเติม..."><?= htmlspecialchars($bp['description'] ?? '') ?></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">ลูกค้า</label>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Supplier</label>
                             <select name="customer_id" id="customer_select"
                                 class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
-                                <option value="">-- เลือกลูกค้า --</option>
+                                <option value="">-- เลือก Supplier --</option>
                                 <?php while ($c = mysqli_fetch_assoc($customers)): ?>
                                     <option value="<?= $c['id'] ?>" <?= ($bp['customer_id'] ?? '') == $c['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($c['customer_name']) ?>

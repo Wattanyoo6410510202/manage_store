@@ -468,10 +468,12 @@ if (!function_exists('inspection_load_context')) {
                     m.retention_amount, m.net_amount, m.claim_date, m.remarks AS milestone_remarks,
                     m.vat_percent, m.vat_amount, m.wht_percent, m.wht_amount, m.total_request_amount,
                     m.other_deduction_amount, m.deduction_note,
-                    s.company_name AS supplier_name, s.address AS supplier_address, s.tax_id AS supplier_tax_id
+                    s.company_name AS supplier_name, s.address AS supplier_address, s.tax_id AS supplier_tax_id,
+                    c.customer_name AS customer_name
              FROM projects p
              INNER JOIN project_milestones m ON m.project_id = p.id
              LEFT JOIN suppliers s ON s.id = p.supplier_id
+             LEFT JOIN customers c ON c.id = p.customer_id
              WHERE p.id = ? AND m.id = ?
              LIMIT 1",
             'ii',

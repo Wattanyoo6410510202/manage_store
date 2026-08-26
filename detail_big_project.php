@@ -115,7 +115,7 @@ $items = mysqli_query($conn, "
                 </h3>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p class="text-slate-500 text-[11px]">ลูกค้า</p>
+                        <p class="text-slate-500 text-[11px]">Supplier</p>
                         <p class="font-bold text-slate-800"><?= htmlspecialchars($bp['customer_name'] ?? '-') ?></p>
                     </div>
                     <div>

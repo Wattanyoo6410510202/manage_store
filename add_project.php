@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/supplier_display.php';
 include('header.php');
 
 // ดึงรายชื่อลูกค้า
@@ -54,10 +55,10 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-1">คู่ค้า</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">Supplier</label>
                                 <select name="customer_id" id="customer_select"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
-                                    <option value="">-- เลือกบริษัทลูกค้า --</option>
+                                    <option value="">-- เลือก Supplier --</option>
                                     <?php
                                     mysqli_data_seek($customers, 0);
                                     while ($c = mysqli_fetch_assoc($customers)):
@@ -69,17 +70,17 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
 
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-1">
-                                    (Supplier)</label>
+                                    ผู้ว่าจ้าง</label>
                                 <select name="supplier_id" id="supplier_select"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
-                                    <option value="">-- เลือก Supplier / ร้านค้า --</option>
+                                    <option value="">-- เลือกผู้ว่าจ้าง --</option>
                                     <?php
                                     // สมมติว่าจารมีตัวแปร $suppliers ที่ดึงข้อมูลมาจากฐานข้อมูลไว้แล้ว
                                     if (isset($suppliers)):
                                         mysqli_data_seek($suppliers, 0);
                                         while ($s = mysqli_fetch_assoc($suppliers)):
                                             ?>
-                                            <option value="<?= $s['id'] ?>"><?= $s['company_name'] ?></option>
+                                            <option value="<?= $s['id'] ?>"><?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?></option>
                                             <?php
                                         endwhile;
                                     endif;
@@ -93,7 +94,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         <script>
                             $(document).ready(function () {
                                 $('#customer_select').select2({
-                                    placeholder: '-- เลือกบริษัทลูกค้า --',
+                                    placeholder: '-- เลือก Supplier --',
                                     allowClear: true,
                                     width: '100%'
                                 });

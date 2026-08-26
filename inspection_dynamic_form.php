@@ -1,5 +1,7 @@
 <?php
+require_once __DIR__ . '/supplier_display.php';
 $dynamicProject = $dynamic_context['project'] ?? [];
+$dynamicEmployerName = $dynamicProject['supplier_name'] ?: ($dynamicProject['contractor_name'] ?? '-');
 $dynamicChecklist = $dynamic_context['checklist'] ?? null;
 $dynamicItems = $dynamic_context['items'] ?? [];
 $dynamicRound = $dynamic_context['round'] ?? null;
@@ -151,8 +153,8 @@ if ($dynamicChecklist) {
             <p class="text-xl font-black text-slate-800 mt-1"><?= number_format((float)($dynamicProject['milestone_amount'] ?? 0), 2) ?> บาท</p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">ผู้รับจ้าง</p>
-            <p class="font-bold text-slate-700 mt-1 truncate"><?= inspection_h($dynamicProject['supplier_name'] ?: ($dynamicProject['contractor_name'] ?? '-')) ?></p>
+            <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">ผู้ว่าจ้าง</p>
+            <p class="font-bold text-slate-700 mt-1 truncate"><?= inspection_h(supplier_display_name($dynamicEmployerName)) ?></p>
         </div>
         <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
             <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">รอบตรวจล่าสุด</p>
