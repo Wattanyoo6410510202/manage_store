@@ -77,7 +77,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                         <?php foreach ($suppliers as $s): ?>
                             <option value="<?= htmlspecialchars($s['company_name']) ?>"
                                 <?= ($auto_filter_supplier === $s['company_name']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($s['company_name']) ?>
+                                <?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -184,7 +184,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
-                                        <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                        <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>
                                 </td>
                                 <td>
@@ -551,7 +551,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                     <div class="flex justify-between items-start">
                         <div class="space-y-1">
                             <span class="text-[9px] text-slate-400 uppercase font-black tracking-widest block">หน่วยงาน/บริษัท</span>
-                            <span class="text-sm font-bold text-slate-700">${row.supplier_name || '-'}</span>
+                            <span class="text-sm font-bold text-slate-700">${formatSupplierDisplayName(row.supplier_name || '-')}</span>
                         </div>
                         <span class="px-3 py-1 rounded-full text-[10px] font-black border ${p_style.bg} ${p_style.border} ${p_style.text} uppercase tracking-wider">${prio}</span>
                     </div>
@@ -738,7 +738,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                 const hasPo = po && po.id;
 
                 document.getElementById('receivePrDoc').textContent = pr.doc_no;
-                document.getElementById('receiveSupplier').textContent = pr.supplier_name || '-';
+                document.getElementById('receiveSupplier').textContent = formatSupplierDisplayName(pr.supplier_name || '-');
                 document.getElementById('receivePoDoc').textContent = hasPo ? po.doc_no : '-';
 
                 let rows = '';

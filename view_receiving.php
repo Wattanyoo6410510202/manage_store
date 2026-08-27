@@ -81,7 +81,7 @@ $status_color = $all_full ? '#10b981' : '#ef4444';
                 <img src="<?= $logo_path ?>" style="width: 60px; height: 60px; object-fit: contain;">
             <?php endif; ?>
             <div>
-                <h1 style="margin: 0; font-size: 15px; color: #0f172a;"><?= $pr['my_company'] ?></h1>
+                <h1 style="margin: 0; font-size: 15px; color: #0f172a;"><?= htmlspecialchars(supplier_display_name($pr['my_company']), ENT_QUOTES, 'UTF-8') ?></h1>
                 <p style="margin: 2px 0; font-size: 10px; color: #64748b;"><?= $pr['my_address'] ?></p>
                 <?php if (!empty($pr['my_tax'])): ?><p style="margin: 2px 0; font-size: 10px; color: #64748b;">Tax ID: <?= $pr['my_tax'] ?> | Tel: <?= $pr['my_phone'] ?></p><?php endif; ?>
             </div>
@@ -98,7 +98,7 @@ $status_color = $all_full ? '#10b981' : '#ef4444';
         <div style="flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc;">
             <h4 style="margin: 0 0 6px; font-size: 12px; color: #0f172a;">ผู้จำหน่าย / Supplier</h4>
             <div style="font-size: 11px; line-height: 1.6;">
-                <div><b style="color: #64748b;">ชื่อ:</b> <?= $pr['supplier_name'] ?></div>
+                <div><b style="color: #64748b;">ชื่อ:</b> <?= htmlspecialchars(supplier_display_name($pr['supplier_name']), ENT_QUOTES, 'UTF-8') ?></div>
             </div>
         </div>
         <div style="flex: 1; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc;">

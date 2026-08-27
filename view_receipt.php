@@ -213,7 +213,7 @@ function ReadNumber($number)
 
             <div style="font-size: 12px; line-height: 1.5;">
                 <h1 style="margin: 0 0 5px; font-size: 20px; color: #0f172a; font-weight: 800;">
-                    <?= htmlspecialchars($data['my_company'] ?? '') ?>
+                    <?= htmlspecialchars(supplier_display_name($data['my_company'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
                 </h1>
 
                 <?php if (!empty($data['my_address'])): ?>

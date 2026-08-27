@@ -161,7 +161,7 @@ if (isset($_GET['action'])) {
                         if (!empty($bt['line_token'])) {
                             $msg = "\n💰 อนุมัติงบประมาณใหม่\n";
                             $msg .= "ประเภทงบ: " . $bt['name'] . "\n";
-                            $msg .= "บริษัท: " . $bt['company_name'] . "\n";
+                            $msg .= "บริษัท: " . supplier_display_name($bt['company_name']) . "\n";
                             $msg .= "จำนวนเงิน: " . number_format($bt['budget_amount'], 2) . " บาท\n";
                             $msg .= "สถานะ: พร้อมใช้งานแล้ว";
                             sendLineNotify($msg, $bt['line_token']);
@@ -294,7 +294,7 @@ function fetchPending() {
 
                 bHtml += `
                 <tr class="hover:bg-slate-50 transition text-sm">
-                    <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
+                    <td class="p-4 font-bold text-slate-700">${formatSupplierDisplayName(item.company_name)}</td>
                     <td class="p-4">
                         <div class="flex flex-col gap-1">
                             <span class="text-slate-600 font-bold">${item.name}</span>
@@ -346,7 +346,7 @@ function fetchPending() {
 
                 aHtml += `
                 <tr class="hover:bg-slate-50 transition text-sm cursor-pointer" onclick="toggleAdjHistory(${item.budget_type_id}, this, ${item.id})">
-                    <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
+                    <td class="p-4 font-bold text-slate-700">${formatSupplierDisplayName(item.company_name)}</td>
                     <td class="p-4 font-bold text-slate-600">
                         <i class="fas fa-chevron-right text-[8px] mr-1.5 text-slate-300 transition-transform" id="adj-icon-${item.id}"></i>
                         ${item.budget_name}
@@ -463,7 +463,7 @@ function viewDetails(id, type) {
                 <div class="space-y-4">
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-slate-500">บริษัท:</span>
-                        <span class="font-bold">${item.company_name}</span>
+                        <span class="font-bold">${formatSupplierDisplayName(item.company_name)}</span>
                     </div>
                     <div class="flex justify-between border-b pb-2">
                         <span class="text-slate-500">ชื่อรายการ:</span>
@@ -537,7 +537,7 @@ function viewDetails(id, type) {
                         <div class="flex items-center justify-between p-2.5 bg-sky-50/50 rounded-xl border border-sky-100 hover:border-sky-200 transition">
                             <div class="flex items-center gap-3 min-w-0 flex-1">
                                 <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="font-bold text-indigo-600 text-xs hover:underline truncate">${pr.doc_no || '-'}</a>
-                                <span class="text-[10px] text-slate-500 truncate">${pr.supplier_name || '-'}</span>
+                                <span class="text-[10px] text-slate-500 truncate">${formatSupplierDisplayName(pr.supplier_name || '-')}</span>
                                 <span class="text-[10px] text-slate-400">${pr.requested_by || ''}</span>
                             </div>
                             <div class="flex items-center gap-3 shrink-0">

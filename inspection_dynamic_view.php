@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/inspection_workflow.php';
 require_once __DIR__ . '/supplier_display.php';
+require_once __DIR__ . '/inspection_document_options.php';
 
 $round = inspection_fetch_one($conn, "SELECT * FROM inspection_rounds WHERE id = ? LIMIT 1", 'i', [$dynamic_round_id]);
 if (!$round) {
@@ -60,6 +61,7 @@ $approvalLabels = [
     'inspector_2' => 'ผู้ตรวจรับ 2',
     'procurement' => 'เจ้าหน้าที่จัดซื้อ',
     'md' => 'MD ผู้อนุมัติ',
+    'gmacc' => 'หัวหน้าบัญชี (GMACC)',
 ];
 $approvalName = static function (?array $approval): string {
     return trim((string)($approval['user_name_snapshot'] ?? '')) ?: '................................';
@@ -87,6 +89,8 @@ $milestoneDetail = $milestoneDetail ?: '-';
 $milestone = $milestoneNumber . ($milestoneDetail !== '-' ? ': ' . $milestoneDetail : '');
 $mdApproval = $approvalFor($approvals, 'md');
 $procurementApproval = $approvalFor($approvals, 'procurement');
+$documentOptions = inspection_document_options();
+$documentSelection = inspection_document_selection_from_json($procurementApproval['selected_documents_json'] ?? '');
 $hasIssues = !empty($summary['has_fail']) || !empty($summary['has_conflict']);
 $inspectionOutcome = !$results ? 'รอสรุปผลการตรวจรับ' : ($hasIssues ? 'มีรายการแก้ไข/เงื่อนไข' : 'ผ่านการตรวจรับทั้งหมด');
 $nextAction = $mdApproval ? 'ส่งฝ่ายบัญชีดำเนินการเบิกจ่าย' : 'รอการอนุมัติจาก MD';
@@ -144,6 +148,7 @@ $resultStatusLabel = static function ($status): string {
     .punch-box p { margin: 0; font-size: 9.5pt; }
     .attachment-row { display: flex; flex-wrap: wrap; gap: 5px 13px; padding: 6px 8px; border: 1px solid var(--doc-line); background: #fff; }
     .attachment { display: inline-flex; align-items: center; gap: 5px; font-size: 9pt; }
+    .attachment-other-detail { margin-top: 5px; padding: 5px 8px; border: 1px solid var(--doc-line); background: var(--doc-soft); color: var(--doc-ink); font-size: 9pt; }
     .result-compare-table { width: 100%; border-collapse: collapse; margin-top: 7px; font-size: 8.5pt; }
     .result-compare-table th, .result-compare-table td { padding: 4px 6px; border-bottom: 1px solid var(--doc-line); text-align: left; vertical-align: top; }
     .result-compare-table th { color: var(--doc-muted); background: var(--doc-soft); font-weight: 800; }
@@ -152,9 +157,13 @@ $resultStatusLabel = static function ($status): string {
     .handover-signature { display: grid; grid-template-columns: 1fr 150px; gap: 10px; margin-top: 7px; padding: 5px 7px; border-top: 1px solid var(--doc-line); border-bottom: 1px solid var(--doc-line); }
     .handover-delivery-date { min-height: 18mm; box-sizing: border-box; padding-top: 1px; }
     .handover-delivery-date .signature-date { display: block; margin-top: 9px; }
-    .signature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; margin-top: 6px; }
+    .signature-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+    .signature-grid .signature { grid-column: span 2; }
+    .signature-grid .signature:nth-child(4) { grid-column: 2 / span 2; }
+    .signature-grid .signature:nth-child(5) { grid-column: 4 / span 2; }
     .signature { min-height: 18mm; padding: 4px 5px; border: 1px solid var(--doc-line); text-align: center; }
-    .signature-line { height: 8mm; margin: 0 8px 2px; border-bottom: 1px solid #64748b; }
+    .signature-line { display: flex; height: 8mm; align-items: flex-end; justify-content: center; margin: 0 8px 2px; border-bottom: 1px solid #64748b; }
+    .signature-line img { max-width: 90%; max-height: 7mm; object-fit: contain; }
     .signature-name { font-size: 8.5pt; font-weight: 700; }
     .signature-role { margin-top: 2px; color: var(--doc-muted); font-size: 8.5pt; }
     .signature-date { color: var(--doc-muted); font-size: 7.5pt; }
@@ -162,13 +171,33 @@ $resultStatusLabel = static function ($status): string {
     .no-print button, .no-print a { display: inline-flex; align-items: center; border: 0; border-radius: 9px; padding: 9px 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
     @media (max-width: 960px) { .dynamic-document, .dynamic-page { width: 100%; min-height: auto; } .dynamic-page { padding: 18px 14px; } }
     @media (max-width: 640px) { .doc-header, .handover-signature { grid-template-columns: 1fr; display: grid; } .doc-id { min-width: 0; } .field-grid, .money-grid, .decision-row, .signature-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } }
+    @media (max-width: 640px) { .signature-grid .signature { grid-column: auto; } }
     @media print {
         @page { size: A4 portrait; margin: 0; }
         html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
         body * { visibility: hidden !important; }
         #dynamic-inspection-document, #dynamic-inspection-document * { visibility: visible !important; }
-        #dynamic-inspection-document { position: absolute; top: 0; left: 0; width: 210mm; min-height: 292mm; margin: 0; }
-        .dynamic-page { width: 210mm; min-height: 292mm; margin: 0; padding: 11mm 12mm 10mm; border: 0; box-shadow: none; }
+        #dynamic-inspection-document { position: absolute; top: 0; left: 0; width: 210mm; min-height: 0; margin: 0; font-size: 10.5pt; line-height: 1.35; }
+        .dynamic-page { width: 210mm; min-height: 0; margin: 0; padding: 8mm 11mm 7mm; border: 0; box-shadow: none; }
+        .doc-header { padding-bottom: 8px; }
+        .lead-letter { margin-top: 9px; padding: 8px 10px; }
+        .lead-letter p { margin: 3px 0; }
+        .doc-section { margin-top: 9px; }
+        .section-heading { margin-bottom: 7px; }
+        .field { padding: 4px 6px; }
+        .money-card { min-height: 40px; padding: 6px 8px; }
+        .decision-row-plain { padding: 6px 0; }
+        .attachment-row { padding: 5px 8px; }
+        .payment-note { margin-top: 6px; padding: 5px 7px; }
+        .handover-signature { margin-top: 6px; padding: 5px 7px; }
+        .handover-delivery-date { min-height: 16mm; }
+        .handover-delivery-date .signature-date { margin-top: 7px; }
+        .signature-grid { margin-top: 6px; gap: 6px; }
+        .signature { min-height: 16mm; padding: 4px 5px; }
+        .signature-line { height: 7mm; margin: 0 7px 2px; }
+        .signature-name { font-size: 8.5pt; }
+        .signature-role { margin-top: 2px; font-size: 8.5pt; }
+        .signature-date { font-size: 7.5pt; }
         .doc-section, .lead-letter, .handover-signature, .signature-grid { page-break-inside: avoid; break-inside: avoid; }
         .field, .money-card, .decision, .punch-box, .attachment-row, .payment-note, .signature { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
@@ -239,10 +268,13 @@ $resultStatusLabel = static function ($status): string {
         <section class="doc-section">
             <div class="section-heading"><span class="section-no">04</span><div><h2>เอกสารแนบ</h2><p>เลือกเอกสารที่ใช้ประกอบการตรวจรับงวดนี้</p></div></div>
             <div class="attachment-row">
-                <?php foreach (['BOQ', 'แบบก่อสร้าง (Drawing)', 'รายงานความคืบหน้า', 'รูปถ่ายหน้างาน', 'ใบแจ้งหนี้ (Invoice)', 'อื่น ๆ'] as $attachmentLabel): ?>
-                    <span class="attachment"><span class="checkbox"></span><?= inspection_h($attachmentLabel) ?></span>
+                <?php foreach ($documentOptions as $documentKey => $attachmentLabel): ?>
+                    <span class="attachment"><span class="checkbox <?= in_array($documentKey, $documentSelection['selected'], true) ? 'checked' : '' ?>"></span><?= inspection_h($attachmentLabel) ?></span>
                 <?php endforeach; ?>
             </div>
+            <?php if ($documentSelection['other_detail'] !== ''): ?>
+                <div class="attachment-other-detail"><strong>รายละเอียดเอกสารอื่น ๆ:</strong> <?= nl2br(inspection_h($documentSelection['other_detail'])) ?></div>
+            <?php endif; ?>
         </section>
 
         <section class="doc-section">
@@ -260,8 +292,8 @@ $resultStatusLabel = static function ($status): string {
                 <?php if ($procurementApproval && !empty($procurementApproval['reason'])): ?><div><strong>เหตุผลจัดซื้อ:</strong> <?= nl2br(inspection_h($procurementApproval['reason'])) ?></div><?php endif; ?>
             </div>
             <div class="signature-grid">
-                <?php foreach (['inspector_1', 'inspector_2', 'procurement', 'md'] as $step): $approval = $approvalFor($approvals, $step); ?>
-                    <div class="signature"><div class="signature-line"></div><div class="signature-name">( <?= inspection_h($approvalName($approval)) ?> )</div><div class="signature-role"><?= inspection_h($approvalLabels[$step]) ?></div><div class="signature-date">วันที่ <?= $date($approval['created_at'] ?? null) ?></div></div>
+                <?php foreach (['inspector_1', 'inspector_2', 'procurement', 'md', 'gmacc'] as $step): $approval = $approvalFor($approvals, $step); $signaturePath = trim((string)($approval['signature_snapshot'] ?? '')); ?>
+                    <div class="signature"><div class="signature-line"><?php if ($signaturePath !== ''): ?><img src="uploads/signatures/<?= rawurlencode(basename($signaturePath)) ?>" alt="ลายเซ็น <?= inspection_h($approvalLabels[$step]) ?>"><?php endif; ?></div><div class="signature-name">( <?= inspection_h($approvalName($approval)) ?> )</div><div class="signature-role"><?= inspection_h($approvalLabels[$step]) ?></div><div class="signature-date">วันที่ <?= $date($approval['created_at'] ?? null) ?></div></div>
                 <?php endforeach; ?>
             </div>
         </section>

@@ -120,7 +120,7 @@ include('header.php');
                     <?php
                     $sups = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
                     while($s = mysqli_fetch_assoc($sups)) {
-                        echo "<option value='{$s['id']}'>{$s['company_name']}</option>";
+                        echo "<option value='{$s['id']}'>" . htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') . "</option>";
                     }
                     ?>
                 </select>
@@ -219,7 +219,7 @@ function fetchData() {
                 let storeDisplay = item.store_names ? item.store_names.split('||').map(n => `<span class="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] mr-1">${$('<span>').text(n).html()}</span>`).join('') : '<span class="text-slate-300 italic">-</span>';
                 html += `
                 <tr class="hover:bg-slate-50 transition text-sm">
-                    <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
+                    <td class="p-4 font-bold text-slate-700">${formatSupplierDisplayName(item.company_name)}</td>
                     <td class="p-4">${storeDisplay}</td>
                     <td class="p-4 text-slate-600">${item.name}</td>
                     <td class="p-4">${rolesDisplay}</td>

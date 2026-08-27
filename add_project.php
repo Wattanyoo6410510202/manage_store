@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once __DIR__ . '/supplier_display.php';
+require_once __DIR__ . '/bank_options.php';
 include('header.php');
 
 // ดึงรายชื่อลูกค้า
@@ -166,9 +167,14 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">ธนาคาร</label>
-                            <input type="text" name="bank_name"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"
-                                placeholder="เช่น กสิกรไทย">
+                            <select name="bank_name" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                                <option value="">-- เลือกธนาคาร --</option>
+                                <?php foreach (thai_bank_options() as $bank): ?>
+                                    <option value="<?= htmlspecialchars($bank, ENT_QUOTES, 'UTF-8') ?>">
+                                        <?= htmlspecialchars($bank, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">เลขที่บัญชี</label>

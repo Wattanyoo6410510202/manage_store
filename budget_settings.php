@@ -67,7 +67,7 @@ if (isset($_GET['action'])) {
                     if (!empty($bt['line_token'])) {
                         $msg = "\n💰 อนุมัติงบประมาณใหม่\n";
                         $msg .= "ประเภทงบ: " . $bt['name'] . "\n";
-                        $msg .= "บริษัท: " . $bt['company_name'] . "\n";
+                        $msg .= "บริษัท: " . supplier_display_name($bt['company_name']) . "\n";
                         $msg .= "จำนวนเงิน: " . number_format($bt['budget_amount'], 2) . " บาท\n";
                         $msg .= "สถานะ: พร้อมใช้งานแล้ว";
                         sendLineNotify($msg, $bt['line_token']);
@@ -146,7 +146,7 @@ if (isset($_GET['action'])) {
         while ($row = mysqli_fetch_assoc($result)) {
             $balance = $row['total_budget'] - ($row['total_spent'] ?: 0);
             fputcsv($output, [
-                $row['company_name'], $row['name'], $row['initial_budget'], 
+                supplier_display_name($row['company_name']), $row['name'], $row['initial_budget'],
                 $row['total_spent'] ?: 0, $balance
             ]);
         }
@@ -291,7 +291,7 @@ include('header.php');
                     <?php
                     $sups = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
                     while($s = mysqli_fetch_assoc($sups)) {
-                        echo "<option value='{$s['id']}'>{$s['company_name']}</option>";
+                        echo "<option value='{$s['id']}'>" . htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') . "</option>";
                     }
                     ?>
                 </select>
@@ -432,7 +432,7 @@ function fetchBudget() {
                 
                 html += `
             <tr class="hover:bg-slate-50 transition text-sm cursor-pointer" onclick="toggleSubRows(${item.id}, this)">
-            <td class="p-4 font-bold text-slate-700">${item.company_name}</td>
+            <td class="p-4 font-bold text-slate-700">${formatSupplierDisplayName(item.company_name)}</td>
             <td class="p-4">
                 <div class="flex flex-col gap-1">
                     <span class="text-slate-600 font-bold"><i class="fas fa-chevron-right text-[8px] mr-1.5 text-slate-300 transition-transform" id="icon-${item.id}"></i>${item.name}${pendingBadge}</span>
@@ -525,7 +525,7 @@ function toggleSubRows(id, row) {
                         <div class="flex items-center gap-4 px-8 py-2 text-xs">
                             <span class="text-slate-400 w-[90px] shrink-0">${pr.created_at ? pr.created_at.substring(0,10) : '-'}</span>
                             <a href="view_pr_new.php?id=${pr.id}" target="_blank" class="text-indigo-600 font-bold w-[130px] shrink-0 hover:underline truncate">${pr.doc_no || '-'}</a>
-                            <span class="text-slate-600 w-[120px] truncate">${pr.supplier_name || '-'}</span>
+                            <span class="text-slate-600 w-[120px] truncate">${formatSupplierDisplayName(pr.supplier_name || '-')}</span>
                             <span class="text-slate-500 w-[100px] truncate">${pr.requested_by || '-'}</span>
                             <span class="font-mono font-bold w-[120px] text-right text-slate-700">${parseFloat(pr.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                             <span class="w-[80px]">${prStatusBadge}</span>

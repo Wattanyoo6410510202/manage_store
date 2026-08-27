@@ -105,9 +105,10 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
                                 class="w-full px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[11px] focus:border-indigo-500 outline-none font-bold text-slate-700 cursor-pointer">
                                 <option value="0">เลือกผู้ขาย...</option>
                                 <?php foreach ($suppliers as $sup): ?>
-                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'
+                                    <?php $supplierDisplayInfo = $sup; $supplierDisplayInfo['display_name'] = supplier_display_name($sup['company_name']); ?>
+                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($supplierDisplayInfo, ENT_QUOTES) ?>'
                                         <?= ($pr_data['supplier_id'] == $sup['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($sup['company_name']) ?>
+                                        <?= htmlspecialchars($supplierDisplayInfo['display_name'], ENT_QUOTES, 'UTF-8') ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -604,7 +605,7 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
 
         try {
             const data = JSON.parse(infoAttr);
-            document.getElementById('comp_name').innerText = data.company_name || '-';
+            document.getElementById('comp_name').innerText = data.display_name || data.company_name || '-';
             document.getElementById('comp_tax').innerText = data.tax_id || '-';
             document.getElementById('comp_phone').innerText = data.phone || '-';
             document.getElementById('comp_email').innerText = data.email || '-';

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/supplier_display.php';
+
 // เริ่ม Session หากยังไม่ได้เริ่ม
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -308,7 +310,7 @@ if (!empty($_SESSION['sup_id'])) {
     $sup_id = intval($_SESSION['sup_id']);
     $sup_res = mysqli_query($conn, "SELECT company_name FROM suppliers WHERE id = $sup_id");
     if ($sup_res && $sup_row = mysqli_fetch_assoc($sup_res)) {
-        $company_name = $sup_row['company_name'];
+        $company_name = supplier_display_name($sup_row['company_name']);
     }
 }
 ?>
@@ -473,6 +475,24 @@ if (!empty($_SESSION['sup_id'])) {
         }
     </style>
     <script>
+        window.formatSupplierDisplayName = function (name) {
+            const supplierName = String(name || '');
+            const normalizedName = supplierName.toLowerCase().replace(/[^a-z0-9]+/g, '');
+            const displayNames = {
+                manonta: 'บริษัท นรพล กรุ๊ป จำกัด',
+                nijuni: 'บริษัท 2 ธันวา 2497 จำกัด',
+                shotel: 'บริษัท ดับเบิ้ลเอส กรุ๊ป จำกัด'
+            };
+
+            for (const alias in displayNames) {
+                if (normalizedName.includes(alias)) {
+                    return displayNames[alias];
+                }
+            }
+
+            return supplierName;
+        };
+
         try {
             if (localStorage.getItem('prosystem.sidebar.collapsed') === 'true') {
                 document.documentElement.classList.add('sidebar-collapsed-preference');

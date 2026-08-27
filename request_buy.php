@@ -386,10 +386,12 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                                     <?php
                                     // เช็คว่า ID นี้ตรงกับ sup_id ใน session ไหม
                                     $is_selected = (isset($_SESSION['sup_id']) && $_SESSION['sup_id'] == $sup['id']) ? 'selected' : '';
+                                    $supplierDisplayInfo = $sup;
+                                    $supplierDisplayInfo['display_name'] = supplier_display_name($sup['company_name']);
                                     ?>
-                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'
+                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($supplierDisplayInfo, ENT_QUOTES) ?>'
                                         <?= $is_selected ?>>
-                                        <?= htmlspecialchars($sup['company_name']) ?>
+                                        <?= htmlspecialchars($supplierDisplayInfo['display_name'], ENT_QUOTES, 'UTF-8') ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -1133,7 +1135,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
             const data = JSON.parse(infoAttr);
 
             // อัปเดตข้อมูลตัวหนังสือ
-            document.getElementById('comp_name').innerText = data.company_name || '-';
+            document.getElementById('comp_name').innerText = data.display_name || data.company_name || '-';
             document.getElementById('comp_tax').innerText = data.tax_id || '-';
             document.getElementById('comp_phone').innerText = data.phone || '-';
             document.getElementById('comp_email').innerText = data.email || '-';

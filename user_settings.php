@@ -79,7 +79,7 @@ include('assets/alert.php');
                             <?php
                             $sup_query = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
                             while ($sup = mysqli_fetch_assoc($sup_query)): ?>
-                                <option value="<?= $sup['id'] ?>"><?= $sup['company_name'] ?></option>
+                                <option value="<?= $sup['id'] ?>"><?= htmlspecialchars(supplier_display_name($sup['company_name']), ENT_QUOTES, 'UTF-8') ?></option>
                             <?php endwhile; ?>
                         </select>
                         <p class="text-[12px] text-slate-400 mt-1 italic">
@@ -180,7 +180,7 @@ include('assets/alert.php');
                                     </span>
                                 </td>
                                 <td class="text-slate-500 text-xs">
-                                    <?= $row['company_name'] ? htmlspecialchars($row['company_name']) : '<span class="text-slate-300 italic">ไม่ระบุ</span>' ?>
+                                    <?= $row['company_name'] ? htmlspecialchars(supplier_display_name($row['company_name']), ENT_QUOTES, 'UTF-8') : '<span class="text-slate-300 italic">ไม่ระบุ</span>' ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if (!empty($row['line_user_id'])): ?>

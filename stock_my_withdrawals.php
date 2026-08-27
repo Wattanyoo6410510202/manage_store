@@ -47,7 +47,7 @@ include __DIR__ . '/header.php';
                         <h2 class="text-base font-black text-slate-950"><?= stock_e($row['doc_no']) ?></h2>
                         <span data-stock-withdrawal-status class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold <?= stock_withdrawal_status_badge_class((string)$row['status']) ?>"><?= stock_e(stock_status_label((string)$row['status'])) ?></span>
                     </div>
-                    <p class="mt-1 text-xs font-medium text-slate-600"><i class="far fa-calendar-alt mr-1.5 text-slate-400"></i><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?> <span class="mx-1 text-slate-300">·</span> <?= stock_e($row['company_name']) ?></p>
+                    <p class="mt-1 text-xs font-medium text-slate-600"><i class="far fa-calendar-alt mr-1.5 text-slate-400"></i><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?> <span class="mx-1 text-slate-300">·</span> <?= stock_e(supplier_display_name($row['company_name'])) ?></p>
                 </div>
                 <a href="stock_withdrawal_view.php?id=<?= (int)$row['id'] ?>" class="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"><i class="fas fa-arrow-right mr-2"></i>ดูรายละเอียด</a>
             </header>

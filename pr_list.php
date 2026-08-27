@@ -59,7 +59,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                             <option value="">ทั้งหมด (Show All)</option>
                             <?php foreach ($suppliers as $s): ?>
                                 <option value="<?= htmlspecialchars($s['company_name']) ?>">
-                                    <?= htmlspecialchars($s['company_name']) ?>
+                                <?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -154,7 +154,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[200px]">
-                                        <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                        <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>
                                 </td>
                                 <td>

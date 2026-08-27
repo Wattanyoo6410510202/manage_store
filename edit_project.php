@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once __DIR__ . '/supplier_display.php';
+require_once __DIR__ . '/bank_options.php';
 include('header.php');
 
 // 1. รับ ID และดึงข้อมูลเดิม
@@ -17,6 +18,11 @@ if (!$pj) {
 // ดึงรายชื่อลูกค้า
 $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER BY customer_name ASC");
 $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
+$bank_options = thai_bank_options();
+$existing_bank_name = trim((string)($pj['bank_name'] ?? ''));
+if ($existing_bank_name !== '' && !in_array($existing_bank_name, $bank_options, true)) {
+    array_unshift($bank_options, $existing_bank_name);
+}
 
 // ดึงเอกสารเชื่อมโยงเดิม
 $sql_docs = "SELECT * FROM project_documents WHERE project_id = '$pj_id'";
@@ -290,8 +296,15 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">ธนาคาร</label>
-                            <input type="text" name="bank_name" value="<?= htmlspecialchars($pj['bank_name']) ?>"
-                                class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                            <select name="bank_name" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none">
+                                <option value="">-- เลือกธนาคาร --</option>
+                                <?php foreach ($bank_options as $bank): ?>
+                                    <option value="<?= htmlspecialchars($bank, ENT_QUOTES, 'UTF-8') ?>"
+                                        <?= $bank === $existing_bank_name ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($bank, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">เลขที่บัญชี</label>

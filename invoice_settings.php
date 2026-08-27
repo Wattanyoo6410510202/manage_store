@@ -61,8 +61,9 @@ $default_inv_no = "INV" . date('Ym') . "-001";
                             class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 mb-5 transition-all cursor-pointer">
                             <option value="0">ไม่ระบุ / อื่นๆ</option>
                             <?php foreach ($suppliers as $sup): ?>
-                                <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'>
-                                    <?= htmlspecialchars($sup['company_name']) ?>
+                                <?php $supplierDisplayInfo = $sup; $supplierDisplayInfo['display_name'] = supplier_display_name($sup['company_name']); ?>
+                                <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($supplierDisplayInfo, ENT_QUOTES) ?>'>
+                                    <?= htmlspecialchars($supplierDisplayInfo['display_name'], ENT_QUOTES, 'UTF-8') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -427,7 +428,7 @@ $default_inv_no = "INV" . date('Ym') . "-001";
             const data = JSON.parse(infoAttr);
 
             // อัปเดตข้อมูลตัวหนังสือ (เช็คชื่อตัวแปรให้ตรงกับในฐานข้อมูล)
-            if (elements.name) elements.name.innerText = data.company_name || '-';
+            if (elements.name) elements.name.innerText = data.display_name || data.company_name || '-';
             if (elements.tax) elements.tax.innerText = data.tax_id || '-';
             if (elements.phone) elements.phone.innerText = data.phone || '-';
             if (elements.email) elements.email.innerText = data.email || '-';

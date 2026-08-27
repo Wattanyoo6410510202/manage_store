@@ -286,13 +286,13 @@ function ReadNumber($number)
             <?php elseif (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุซัพพลายเออร์'): ?>
                 <div
                     style="width: 70px; height: 70px; background: #0f172a; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;">
-                    <?= mb_substr($data['my_company'], 0, 1, 'UTF-8') ?>
+                    <?= mb_substr(supplier_display_name($data['my_company']), 0, 1, 'UTF-8') ?>
                 </div>
 
             <?php endif; ?>
             <?php if (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุ'): ?>
                 <div style="font-size: 11px; line-height: 1.4;">
-                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= $data['my_company'] ?></h1>
+                    <h1 style="margin: 0 0 4px; font-size: 18px; color: #0f172a;"><?= htmlspecialchars(supplier_display_name($data['my_company']), ENT_QUOTES, 'UTF-8') ?></h1>
 
                     <?php if (!empty($data['my_address'])): ?>
                         <p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p>
@@ -332,7 +332,7 @@ function ReadNumber($number)
             </h3>
             <?php if (!empty($data['pr_creator_sup'])): ?>
                 <div style="margin: 2px 0 0; font-size: 12px; color: #64748b;">
-                    <b>หน่วยงาน:</b> <?= $data['pr_creator_sup'] ?>
+                    <b>หน่วยงาน:</b> <?= htmlspecialchars(supplier_display_name($data['pr_creator_sup']), ENT_QUOTES, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
 
@@ -532,7 +532,7 @@ function ReadNumber($number)
                 )</p>
                 <?php if (!empty($data['pr_creator_sup'])): ?>
                     <p style="margin: 0; font-size: 9px; color: #94a3b8;">
-                        หน่วยงาน: <?= $data['pr_creator_sup'] ?>
+                        หน่วยงาน: <?= htmlspecialchars(supplier_display_name($data['pr_creator_sup']), ENT_QUOTES, 'UTF-8') ?>
                     </p>
                 <?php endif; ?>
                 <p style="margin: 4px 0 0; font-size: 10px; color: #94a3b8;">วันที่ ......../......../........</p>

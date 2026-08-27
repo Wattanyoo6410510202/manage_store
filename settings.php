@@ -127,7 +127,7 @@ include('assets/alert.php');
                                         onerror="this.src='https://ui-avatars.com/api/?name=<?php echo urlencode($row['company_name']); ?>'">
                                 </td>
                                 <td>
-                                    <div class="font-bold text-slate-700"><?php echo $row['company_name']; ?></div>
+                                    <div class="font-bold text-slate-700"><?php echo htmlspecialchars(supplier_display_name($row['company_name']), ENT_QUOTES, 'UTF-8'); ?></div>
                                     <div class="text-[12px] text-slate-700">Tax ID: <?php echo $row['tax_id'] ?: '-'; ?>
                                     </div>
                                 </td>
@@ -212,7 +212,7 @@ include('assets/alert.php');
     }
 
     function editSupplier(data) {
-        $('#form-title').text('แก้ไขข้อมูล: ' + data.company_name);
+        $('#form-title').text('แก้ไขข้อมูล: ' + formatSupplierDisplayName(data.company_name));
         $('#form-supplier-id').val(data.id);
         $('#form-name').val(data.company_name);
         $('#form-tax').val(data.tax_id);

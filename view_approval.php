@@ -67,7 +67,7 @@ $col_width = (100 / count($display_list)) . '%';
         <div style="display: flex; gap: 15px;">
             <?php if ($logo_path): ?> <img src="<?= $logo_path ?>" style="width: 65px; height: 65px; object-fit: contain;"> <?php endif; ?>
             <div style="font-size: 10px; line-height: 1.4;">
-                <h1 style="margin: 0; font-size: 16px; color: #0f172a;"><?= htmlspecialchars($data['my_company'] ?? '') ?></h1>
+                <h1 style="margin: 0; font-size: 16px; color: #0f172a;"><?= htmlspecialchars(supplier_display_name($data['my_company'] ?? ''), ENT_QUOTES, 'UTF-8') ?></h1>
                 <p style="margin: 0; color: #64748b;"><?= htmlspecialchars($data['my_address'] ?? '') ?></p>
                 <p style="margin: 0; color: #64748b;">Tax ID: <?= htmlspecialchars($data['my_tax'] ?? '') ?> | Tel: <?= htmlspecialchars($data['my_phone'] ?? '') ?></p>
             </div>

@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/supplier_display.php';
+require_once __DIR__ . '/inspection_document_options.php';
 $dynamicProject = $dynamic_context['project'] ?? [];
-$dynamicEmployerName = $dynamicProject['supplier_name'] ?: ($dynamicProject['contractor_name'] ?? '-');
+$dynamicEmployerName = supplier_display_name($dynamicProject['supplier_name'] ?: ($dynamicProject['contractor_name'] ?? '-'));
 $dynamicChecklist = $dynamic_context['checklist'] ?? null;
 $dynamicItems = $dynamic_context['items'] ?? [];
 $dynamicRound = $dynamic_context['round'] ?? null;
@@ -55,6 +56,7 @@ $dynamicStepLabels = [
     'revision' => 'เริ่มรอบแก้ไข',
     'completed' => 'เสร็จสิ้น',
 ];
+$dynamicDocumentOptions = inspection_document_options();
 $dynamicNextStepLabel = $dynamicStepLabels[$dynamicNextStep] ?? $dynamicNextStep;
 $dynamicFlowSteps = [
     'inspector_1' => ['label' => 'ผู้ตรวจรับ 1', 'icon' => 'fa-helmet-safety', 'assignment' => 'inspector_1_name'],
@@ -71,6 +73,9 @@ $dynamicFlowApprovals = [];
 foreach (array_keys($dynamicFlowSteps) as $dynamicFlowStep) {
     $dynamicFlowApprovals[$dynamicFlowStep] = inspection_latest_approval($dynamicApprovals, $dynamicFlowStep);
 }
+$dynamicProcurementSelection = inspection_document_selection_from_json(
+    ($dynamicFlowApprovals['procurement']['selected_documents_json'] ?? '')
+);
 $dynamicDefaultItems = [
     ['category' => 'งานโครงสร้างและสถาปัตย์', 'title' => 'งานดำเนินการครบตาม BOQ', 'detail' => '', 'contract_ref' => '', 'acceptance_criteria' => '', 'is_required' => 1],
     ['category' => 'งานโครงสร้างและสถาปัตย์', 'title' => 'งานเป็นไปตามแบบ', 'detail' => '', 'contract_ref' => '', 'acceptance_criteria' => '', 'is_required' => 1],
@@ -373,6 +378,27 @@ if ($dynamicChecklist) {
                         </article>
                     <?php endforeach; ?>
                 </div>
+                <?php if ($dynamicNextStep === 'procurement' && $dynamicCanActCurrentStep): ?>
+                    <section id="procurementAttachmentChecklist" class="mt-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 md:p-5">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[1.5px] text-amber-700">หัวข้อ 4 · เอกสารแนบ</p>
+                            <h4 class="mt-1 text-base font-black text-slate-900">เลือกเอกสารที่แนบประกอบการตรวจรับ</h4>
+                            <p class="mt-1 text-sm text-slate-600">กรุณาติ๊กเอกสารที่มีอยู่จริงก่อนกดยืนยันขั้นตอนจัดซื้อ</p>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            <?php foreach ($dynamicDocumentOptions as $documentKey => $documentLabel): ?>
+                                <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white bg-white px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200">
+                                    <input type="checkbox" class="procurement-document h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="<?= inspection_h($documentKey) ?>" data-document-key="<?= inspection_h($documentKey) ?>" <?= in_array($documentKey, $dynamicProcurementSelection['selected'], true) ? 'checked' : '' ?>>
+                                    <span><?= inspection_h($documentLabel) ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <label id="procurementOtherDocumentWrap" class="mt-3 hidden text-sm font-bold text-slate-700">
+                            รายละเอียดเอกสารอื่น ๆ <span class="text-rose-500">*</span>
+                            <textarea id="other_document_detail" rows="2" class="mt-2 min-h-20 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="ระบุชื่อหรือรายละเอียดเอกสารอื่น ๆ" disabled><?= inspection_h($dynamicProcurementSelection['other_detail']) ?></textarea>
+                        </label>
+                    </section>
+                <?php endif; ?>
             </section>
         <?php endif; ?>
 
@@ -852,11 +878,69 @@ if ($dynamicChecklist) {
     }
     const saveButton = document.getElementById('saveRoundButton');
     if (saveButton) saveButton.addEventListener('click', () => saveResults());
-    function approve(action = 'approve') { const needsProcurementReason = action === 'approve' && nextStep === 'procurement' && !<?= $dynamicComparisonSummary['passed'] ? 'true' : 'false' ?>; const reasonPrompt = action === 'approve' && needsProcurementReason ? 'กรุณาระบุเหตุผลประกอบการตัดสินของจัดซื้อ' : (action === 'approve' ? '' : prompt('กรุณาระบุเหตุผลที่ตีกลับ')); const send = () => { if ((needsProcurementReason && !reasonPrompt) || (action !== 'approve' && !reasonPrompt)) { Swal.fire('ต้องระบุเหตุผล', 'กรุณาระบุเหตุผลก่อนบันทึกการตัดสิน', 'warning'); return; } $.post('api/inspection_round.php?action=approve', { round_id: roundId, step: nextStep, approval_action: action, reason: reasonPrompt }, function (res) { if (res.status === 'success') Swal.fire({ icon: 'success', title: action === 'approve' ? 'ยืนยันแล้ว' : 'ตีกลับแล้ว', text: res.message, confirmButtonColor: '#4f46e5' }).then(() => location.reload()); else Swal.fire('ดำเนินการไม่ได้', res.message, 'error'); }, 'json'); }; if (action === 'approve' && ['inspector_1','inspector_2'].includes(nextStep)) saveResults(send); else send(); }
+    function collectProcurementDocumentSelection() {
+        return {
+            selected: [...document.querySelectorAll('.procurement-document:checked')].map(input => input.dataset.documentKey || input.value),
+            other_detail: (document.getElementById('other_document_detail')?.value || '').trim()
+        };
+    }
+    function syncProcurementOtherDocumentField() {
+        const otherSelected = [...document.querySelectorAll('.procurement-document:checked')].some(input => (input.dataset.documentKey || input.value) === 'other');
+        const wrap = document.getElementById('procurementOtherDocumentWrap');
+        const detail = document.getElementById('other_document_detail');
+        if (wrap) wrap.classList.toggle('hidden', !otherSelected);
+        if (detail) {
+            detail.disabled = !otherSelected;
+            if (!otherSelected) detail.value = '';
+        }
+    }
+    function validateProcurementDocumentSelection(selection) {
+        if (nextStep !== 'procurement') return true;
+        if (!selection.selected.length) {
+            Swal.fire('ยังเลือกเอกสารไม่ครบ', 'กรุณาติ๊กเอกสารในหัวข้อ 4 อย่างน้อย 1 รายการ', 'warning');
+            document.getElementById('procurementAttachmentChecklist')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        if (selection.selected.includes('other') && !selection.other_detail) {
+            Swal.fire('กรุณาระบุรายละเอียด', 'เมื่อเลือก “อื่น ๆ” กรุณาพิมพ์รายละเอียดเอกสารด้วย', 'warning');
+            document.getElementById('other_document_detail')?.focus();
+            return false;
+        }
+        return true;
+    }
+    function approve(action = 'approve') {
+        let documentSelection = { selected: [], other_detail: '' };
+        if (action === 'approve' && nextStep === 'procurement') {
+            documentSelection = collectProcurementDocumentSelection();
+            if (!validateProcurementDocumentSelection(documentSelection)) return;
+        }
+        const needsProcurementReason = action === 'approve' && nextStep === 'procurement' && !<?= $dynamicComparisonSummary['passed'] ? 'true' : 'false' ?>;
+        const reasonPrompt = action === 'approve' && needsProcurementReason ? prompt('กรุณาระบุเหตุผลประกอบการตัดสินของจัดซื้อ') : (action === 'approve' ? '' : prompt('กรุณาระบุเหตุผลที่ตีกลับ'));
+        const send = () => {
+            if ((needsProcurementReason && !reasonPrompt) || (action !== 'approve' && !reasonPrompt)) {
+                Swal.fire('ต้องระบุเหตุผล', 'กรุณาระบุเหตุผลก่อนบันทึกการตัดสิน', 'warning');
+                return;
+            }
+            $.post('api/inspection_round.php?action=approve', {
+                round_id: roundId,
+                step: nextStep,
+                approval_action: action,
+                reason: reasonPrompt,
+                selected_documents: JSON.stringify(documentSelection.selected),
+                other_document_detail: documentSelection.other_detail
+            }, function (res) {
+                if (res.status === 'success') Swal.fire({ icon: 'success', title: action === 'approve' ? 'ยืนยันแล้ว' : 'ตีกลับแล้ว', text: res.message, confirmButtonColor: '#4f46e5' }).then(() => location.reload());
+                else Swal.fire('ดำเนินการไม่ได้', res.message, 'error');
+            }, 'json');
+        };
+        if (action === 'approve' && ['inspector_1','inspector_2'].includes(nextStep)) saveResults(send); else send();
+    }
     const approveButton = document.getElementById('approveRoundButton');
     if (approveButton) approveButton.addEventListener('click', () => approve('approve'));
     const returnButton = document.getElementById('returnRoundButton');
     if (returnButton) returnButton.addEventListener('click', () => approve('return'));
+    document.querySelectorAll('.procurement-document').forEach(input => input.addEventListener('change', syncProcurementOtherDocumentField));
+    syncProcurementOtherDocumentField();
     const revisionButton = document.getElementById('revisionButton');
     if (revisionButton) revisionButton.addEventListener('click', function () { $.post('api/inspection_round.php?action=revision', { round_id: roundId }, function (res) { if (res.status === 'success') location.reload(); else Swal.fire('สร้างรอบใหม่ไม่ได้', res.message, 'error'); }, 'json'); });
     document.querySelectorAll('.result-file').forEach(input => input.addEventListener('change', function () {

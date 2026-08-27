@@ -129,7 +129,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                         <?php endif; ?>
                         <?php foreach ($suppliers as $s): ?>
                             <option value="<?= htmlspecialchars($s['company_name']) ?>" <?= ($auto_filter_supplier === $s['company_name']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($s['company_name']) ?>
+                                <?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -220,7 +220,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                                 </td>
                                 <td>
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
-                                        <?= htmlspecialchars($row['supplier_name'] ?: '-') ?>
+                                        <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>
                                 </td>
                                 <td>
@@ -514,7 +514,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                     <div class="flex justify-between items-start">
                         <div class="space-y-1">
                             <span class="text-[9px] text-slate-400 uppercase font-black tracking-widest block">หน่วยงาน/บริษัท</span>
-                            <span class="text-sm font-bold text-slate-700">${row.supplier_name || '-'}</span>
+                            <span class="text-sm font-bold text-slate-700">${formatSupplierDisplayName(row.supplier_name || '-')}</span>
                         </div>
                         <span class="px-3 py-1 rounded-full text-[10px] font-black border ${p_style.bg} ${p_style.border} ${p_style.text} uppercase tracking-wider">${prio}</span>
                     </div>

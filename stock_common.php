@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/supplier_display.php';
 require_once __DIR__ . '/stock_workflow.php';
 require_once __DIR__ . '/stock_repository.php';
 

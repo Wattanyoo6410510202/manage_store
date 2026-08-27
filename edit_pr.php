@@ -100,9 +100,10 @@ if ($my_sup_id > 0) {
 
                             <?php if (!empty($suppliers)): ?>
                                 <?php foreach ($suppliers as $sup): ?>
-                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($sup, ENT_QUOTES) ?>'
+                                    <?php $supplierDisplayInfo = $sup; $supplierDisplayInfo['display_name'] = supplier_display_name($sup['company_name']); ?>
+                                    <option value="<?= $sup['id'] ?>" data-info='<?= json_encode($supplierDisplayInfo, ENT_QUOTES) ?>'
                                         <?= (isset($pr_data['supplier_id']) && $sup['id'] == $pr_data['supplier_id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($sup['company_name']) ?>
+                                        <?= htmlspecialchars($supplierDisplayInfo['display_name'], ENT_QUOTES, 'UTF-8') ?>
                                     </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -487,7 +488,7 @@ if ($my_sup_id > 0) {
             const data = JSON.parse(dataAttr);
             
             // 2. อัปเดตข้อมูล Text
-            document.getElementById('comp_name').innerText = data.company_name || 'ไม่ระบุชื่อบริษัท';
+            document.getElementById('comp_name').innerText = data.display_name || data.company_name || 'ไม่ระบุชื่อบริษัท';
             document.getElementById('comp_tax').innerText = data.tax_id || '-';
             document.getElementById('comp_phone').innerText = data.phone || '-';
             document.getElementById('comp_email').innerText = data.email || '-';

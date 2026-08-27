@@ -36,7 +36,7 @@ if (empty($milestones)) {
 
 $first = $milestones[0]; // ใช้ข้อมูลโครงการจากแถวแรก
 
-// ดึงลายเซ็นคนล็อคอินปัจจุบัน (สำหรับส่วนผู้จัดทำ)
+// ดึงลายเซ็นคนล็อคอินปัจจุบัน (สำหรับส่วนผู้ว่าจ้าง)
 $my_user_id = $_SESSION['user_id'] ?? 0;
 $my_sig_res = mysqli_query($conn, "SELECT path FROM signatures WHERE users_id = '$my_user_id' LIMIT 1");
 $my_sig_row = mysqli_fetch_assoc($my_sig_res);
@@ -241,18 +241,27 @@ if ($num_rows <= 5) {
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                 <div style="font-size: 11px; color: #64748b; line-height: 1.8; margin-top: 6px;">
-                    <div>
-                        <strong>ผู้รับจ้าง:</strong> <span
-                            style="color: #334155;"><?= $first['contractor_name'] ?: '-' ?></span>
-                        &nbsp;&nbsp;&nbsp;&nbsp;
-                        <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= $first['bank_name'] ?: '-' ?></span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0 20px; align-items: flex-start;">
+                        <div style="flex: 1 1 280px; min-width: 0;">
+                            <div>
+                                <strong>ผู้รับจ้าง:</strong> <span
+                                    style="color: #334155;"><?= htmlspecialchars($first['contractor_name'] ?: '-', ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                            <div style="margin-top: 2px;">
+                                <strong>ที่อยู่:</strong>
+                                <span style="color: #334155;"><?= !empty($first['my_address']) ? nl2br(htmlspecialchars($first['my_address'], ENT_QUOTES, 'UTF-8')) : '-' ?></span>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 auto;">
+                            <strong>ธนาคาร:</strong> <span style="color: #334155;"><?= htmlspecialchars($first['bank_name'] ?: '-', ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
                     </div>
                     <div>
                         <strong>ชื่อบัญชี:</strong> <span
-                            style="color: #334155;"><?= $first['bank_account_name'] ?: '-' ?></span>
+                            style="color: #334155;"><?= htmlspecialchars($first['bank_account_name'] ?: '-', ENT_QUOTES, 'UTF-8') ?></span>
                         &nbsp;&nbsp;&nbsp;&nbsp;
                         <strong>เลขที่บัญชี:</strong> <span
-                            style="color: #334155;"><?= $first['bank_account_no'] ?: '-' ?></span>
+                            style="color: #334155;"><?= htmlspecialchars($first['bank_account_no'] ?: '-', ENT_QUOTES, 'UTF-8') ?></span>
                     </div>
                 </div>
 
@@ -292,7 +301,7 @@ if ($num_rows <= 5) {
             <div style="font-size: 11px; line-height: 1.4;">
                 <?php if (!empty($header['my_company'])): ?>
                     <h1 style="margin: 0 0 4px; font-size: 14px; color: #0f172a;">
-                        <?= $header['my_company'] ?>
+                        <?= htmlspecialchars(supplier_display_name($header['my_company']), ENT_QUOTES, 'UTF-8') ?>
                     </h1>
                 <?php endif; ?>
 
@@ -462,7 +471,7 @@ if ($num_rows <= 5) {
 
                 <div style="width: 32%;">
                     <div style="height: 60px; border-bottom: 1px dotted #cbd5e1; margin-bottom: 8px;"></div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้จัดทำ</p>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้รับจ้าง</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
                         (<?= !empty($first['contractor_name']) ? $first['contractor_name'] : '.........................................' ?>)
                     </p>
@@ -494,7 +503,7 @@ if ($num_rows <= 5) {
                             <img src="<?= $prepared_sig ?>?v=<?= time() ?>" style="max-height: 50px; object-fit: contain;">
                         <?php endif; ?>
                     </div>
-                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ลูกค้า</p>
+                    <p style="margin: 0; font-weight: bold; font-size: 13px; color: #0f172a;">ผู้ว่าจ้าง</p>
                     <p style="margin: 4px 0 0; font-size: 11px; color: #1e293b;">
                         (
                         <?= $_SESSION['user_name'] ?? '................................' ?>)

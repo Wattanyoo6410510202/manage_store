@@ -221,12 +221,12 @@ function ReadNumber($number) {
                 <img src="<?= $logo_path ?>" style="width: 65px; height: 65px; object-fit: contain;">
             <?php elseif (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุซัพพลายเออร์'): ?>
                 <div style="width: 65px; height: 65px; background: #0f172a; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;">
-                    <?= mb_substr($data['my_company'], 0, 1, 'UTF-8') ?>
+                    <?= mb_substr(supplier_display_name($data['my_company']), 0, 1, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
             <?php if (!empty($data['my_company']) && $data['my_company'] !== 'ไม่ระบุ'): ?>
                 <div style="font-size: 10px; line-height: 1.4;">
-                    <h1 style="margin: 0 0 2px; font-size: 16px; color: #0f172a;"><?= $data['my_company'] ?></h1>
+                    <h1 style="margin: 0 0 2px; font-size: 16px; color: #0f172a;"><?= htmlspecialchars(supplier_display_name($data['my_company']), ENT_QUOTES, 'UTF-8') ?></h1>
                     <?php if (!empty($data['my_address'])): ?><p style="margin: 0; color: #64748b;"><?= $data['my_address'] ?></p><?php endif; ?>
                     <p style="margin: 1px 0 0; color: #64748b;">
                         <?php if (!empty($data['my_tax'])): ?><b>Tax ID:</b> <?= $data['my_tax'] ?><?php endif; ?>

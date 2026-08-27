@@ -214,7 +214,7 @@ $top_suppliers = mysqli_query($conn, "SELECT s.company_name, COALESCE(SUM(p.gran
   LEFT JOIN pr p ON p.supplier_id = s.id AND p.status = 'approved' AND p.deleted_at IS NULL AND $mtd_p$sup_p_pr
   GROUP BY s.id HAVING total > 0 ORDER BY total DESC LIMIT 10");
 $sup_labels = []; $sup_vals = [];
-while ($r = mysqli_fetch_assoc($top_suppliers)) { $sup_labels[] = $r['company_name']; $sup_vals[] = (float)$r['total']; }
+while ($r = mysqli_fetch_assoc($top_suppliers)) { $sup_labels[] = supplier_display_name($r['company_name']); $sup_vals[] = (float)$r['total']; }
 
 // Budget remaining (stacked bar) + table
 $budget_query = mysqli_query($conn, "SELECT bt.name,
@@ -370,7 +370,7 @@ function fm($n) { return number_format($n ?? 0, 2); }
           <select name="sup_id" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none">
             <option value="0">ทั้งหมด</option>
             <?php mysqli_data_seek($suppliers_list, 0); while ($s = mysqli_fetch_assoc($suppliers_list)): ?>
-            <option value="<?= $s['id'] ?>" <?= $sup_id == $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['company_name']) ?></option>
+            <option value="<?= $s['id'] ?>" <?= $sup_id == $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?></option>
             <?php endwhile; ?>
           </select>
         </div>
@@ -574,7 +574,7 @@ function fm($n) { return number_format($n ?? 0, 2); }
               ?>
               <tr>
                 <td class="text-slate-400"><?= $i++ ?></td>
-                <td class="font-bold"><?= htmlspecialchars($r['company_name'] ?? '-') ?></td>
+                <td class="font-bold"><?= htmlspecialchars(supplier_display_name($r['company_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars(mb_substr($r['item_desc'] ?? '-', 0, 50)) ?></td>
                 <td class="text-right font-mono"><?= fm($r['grand_total']) ?></td>
                 <td><?= htmlspecialchars($r['store_name'] ?? '-') ?></td>
@@ -640,7 +640,7 @@ function fm($n) { return number_format($n ?? 0, 2); }
             <?php $has_pr = false; while ($r = mysqli_fetch_assoc($pending_receive)): $has_pr = true; ?>
             <tr>
               <td><a href="view_pr_new.php?id=<?= $r['id'] ?>" class="text-indigo-600 hover:underline font-bold"><?= htmlspecialchars($r['doc_no']) ?></a></td>
-              <td class="font-bold"><?= htmlspecialchars($r['company_name'] ?? '-') ?></td>
+              <td class="font-bold"><?= htmlspecialchars(supplier_display_name($r['company_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
               <td><?= htmlspecialchars(mb_substr($r['item_desc'] ?? '-', 0, 50)) ?></td>
               <td class="text-right font-mono"><?= fm($r['grand_total']) ?></td>
               <td><?= htmlspecialchars($r['store_name'] ?? '-') ?></td>

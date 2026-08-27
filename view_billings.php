@@ -24,7 +24,7 @@ $cust_data = mysqli_fetch_assoc($res_cust);
 // รวมข้อมูลเข้าด้วยกันเพื่อใช้งานในโค้ดส่วนล่าง (จำลองโครงสร้างเดิมเพื่อไม่ให้ Error)
 if ($cust_data) {
     $data = array_merge($cust_data, [
-        'my_company' => $sup_data['company_name'] ?? 'ไม่ได้ระบุชื่อบริษัท',
+        'my_company' => supplier_display_name($sup_data['company_name'] ?? 'ไม่ได้ระบุชื่อบริษัท'),
         'my_tax' => $sup_data['tax_id'] ?? '-',
         'my_phone' => $sup_data['phone'] ?? '-',
         'my_email' => $sup_data['email'] ?? '-',

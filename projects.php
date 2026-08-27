@@ -73,7 +73,7 @@ $result = mysqli_query($conn, $sql);
                     while ($s = $supplier_query->fetch_assoc()):
                         ?>
                         <option value="<?= $s['id'] ?>">
-                            <?= htmlspecialchars($s['company_name']) ?>
+                            <?= htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8') ?>
                         </option>
                     <?php endwhile; ?>
                 </select>

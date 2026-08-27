@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once '../inspection_workflow.php';
+require_once '../inspection_document_options.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -24,15 +25,15 @@ function inspection_round_require(int $roundId): ?array
     return inspection_fetch_one($conn, "SELECT * FROM inspection_rounds WHERE id = ? LIMIT 1", 'i', [$roundId]);
 }
 
-function inspection_round_insert_approval(mysqli $conn, int $roundId, string $step, string $action, string $reason = ''): void
+function inspection_round_insert_approval(mysqli $conn, int $roundId, string $step, string $action, string $reason = '', string $selectedDocumentsJson = ''): void
 {
     $userId = inspection_current_user_id();
     $snapshot = inspection_user_snapshot($conn, $userId);
     $stmt = $conn->prepare(
-        "INSERT INTO inspection_approvals (round_id, step, action, user_id, user_name_snapshot, role_snapshot, signature_snapshot, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO inspection_approvals (round_id, step, action, user_id, user_name_snapshot, role_snapshot, signature_snapshot, reason, selected_documents_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $stmt->bind_param(
-        'ississss',
+        'ississsss',
         $roundId,
         $step,
         $action,
@@ -40,7 +41,8 @@ function inspection_round_insert_approval(mysqli $conn, int $roundId, string $st
         $snapshot['name'],
         $snapshot['role'],
         $snapshot['signature'],
-        $reason
+        $reason,
+        $selectedDocumentsJson
     );
     if (!$stmt->execute()) {
         $error = $stmt->error;
@@ -324,6 +326,7 @@ if ($action === 'approve') {
     $step = (string)($_POST['step'] ?? '');
     $approvalAction = (string)($_POST['approval_action'] ?? 'approve');
     $reason = trim((string)($_POST['reason'] ?? ''));
+    $documentSelection = ['selected' => [], 'other_detail' => ''];
     if (!in_array($step, ['inspector_1', 'inspector_2', 'procurement', 'md', 'gmacc'], true)) {
         inspection_round_response(['status' => 'error', 'message' => 'ขั้นอนุมัติไม่ถูกต้อง'], 422);
     }
@@ -335,6 +338,18 @@ if ($action === 'approve') {
     }
     if (in_array($approvalAction, ['reject', 'return'], true) && $reason === '') {
         inspection_round_response(['status' => 'error', 'message' => 'กรุณาระบุเหตุผลที่ตีกลับ'], 422);
+    }
+    if ($step === 'procurement' && $approvalAction === 'approve') {
+        $documentSelection = inspection_normalize_document_selection(
+            $_POST['selected_documents'] ?? [],
+            trim((string)($_POST['other_document_detail'] ?? ''))
+        );
+        if (!$documentSelection['selected']) {
+            inspection_round_response(['status' => 'error', 'message' => 'กรุณาเลือกเอกสารในหัวข้อ 4 อย่างน้อย 1 รายการ'], 422);
+        }
+        if (in_array('other', $documentSelection['selected'], true) && $documentSelection['other_detail'] === '') {
+            inspection_round_response(['status' => 'error', 'message' => 'กรุณาระบุรายละเอียดเอกสารอื่น ๆ'], 422);
+        }
     }
     if (in_array($step, ['inspector_1', 'inspector_2'], true) && $approvalAction === 'approve') {
         $stepResults = array_values(array_filter($context['results'], static function (array $result) use ($step): bool {
@@ -360,7 +375,13 @@ if ($action === 'approve') {
     }
     $conn->begin_transaction();
     try {
-        inspection_round_insert_approval($conn, $roundId, $step, $approvalAction, $reason);
+        $selectedDocumentsJson = $step === 'procurement' && $approvalAction === 'approve'
+            ? json_encode($documentSelection, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : '';
+        if ($selectedDocumentsJson === false) {
+            throw new RuntimeException('ไม่สามารถบันทึกรายการเอกสารได้');
+        }
+        inspection_round_insert_approval($conn, $roundId, $step, $approvalAction, $reason, $selectedDocumentsJson);
         if ($approvalAction !== 'approve') {
             $returnStatus = in_array($step, ['md', 'gmacc'], true) ? 'returned' : 'correction_required';
             inspection_round_set_status($conn, $roundId, $returnStatus);

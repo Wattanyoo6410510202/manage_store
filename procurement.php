@@ -138,7 +138,7 @@ $current_year_be = $year > 0 ? $year : (intval(date('Y')) + 543);
                 <option value="0">ทุกหน่วยงาน/บริษัท</option>
                 <?php 
                 mysqli_data_seek($suppliers, 0);
-                while($s = mysqli_fetch_assoc($suppliers)) echo "<option value='".$s['id']."' ".($sup_id == $s['id'] ? 'selected':'').">".$s['company_name']."</option>"; 
+                while($s = mysqli_fetch_assoc($suppliers)) echo "<option value='".$s['id']."' ".($sup_id == $s['id'] ? 'selected':'').">".htmlspecialchars(supplier_display_name($s['company_name']), ENT_QUOTES, 'UTF-8')."</option>";
                 ?>
             </select>
             <select id="monthFilter" class="bg-white border-slate-200 border rounded-xl px-4 py-2 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all">
