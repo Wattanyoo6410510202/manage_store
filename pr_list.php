@@ -152,7 +152,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
                                 <td class="text-center text-slate-300 font-mono text-[12px]"><?= $i++ ?></td>
                                 <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
-                                <td>
+                                <td data-search="<?= htmlspecialchars(trim(($row['supplier_name'] ?: '-') . ' ' . supplier_display_name($row['supplier_name'] ?: '-')), ENT_QUOTES, 'UTF-8') ?>">
                                     <div class="font-semibold text-slate-700 truncate max-w-[200px]">
                                         <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>

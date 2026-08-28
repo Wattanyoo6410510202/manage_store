@@ -182,7 +182,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                         <?= $prio ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td data-search="<?= htmlspecialchars(trim(($row['supplier_name'] ?: '-') . ' ' . supplier_display_name($row['supplier_name'] ?: '-')), ENT_QUOTES, 'UTF-8') ?>">
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>

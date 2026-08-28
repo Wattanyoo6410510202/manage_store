@@ -218,7 +218,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                                         <?= $prio ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td data-search="<?= htmlspecialchars(trim(($row['supplier_name'] ?: '-') . ' ' . supplier_display_name($row['supplier_name'] ?: '-')), ENT_QUOTES, 'UTF-8') ?>">
                                     <div class="font-semibold text-slate-700 truncate max-w-[150px]">
                                         <?= htmlspecialchars(supplier_display_name($row['supplier_name'] ?: '-'), ENT_QUOTES, 'UTF-8') ?>
                                     </div>
