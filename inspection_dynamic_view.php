@@ -60,7 +60,7 @@ $approvalLabels = [
     'inspector_1' => 'ผู้ตรวจรับ 1',
     'inspector_2' => 'ผู้ตรวจรับ 2',
     'procurement' => 'เจ้าหน้าที่จัดซื้อ',
-    'md' => 'MD ผู้อนุมัติ',
+    'md' => 'OA&HR Manager',
     'gmacc' => 'หัวหน้าบัญชี (GMACC)',
 ];
 $approvalName = static function (?array $approval): string {
@@ -93,7 +93,7 @@ $documentOptions = inspection_document_options();
 $documentSelection = inspection_document_selection_from_json($procurementApproval['selected_documents_json'] ?? '');
 $hasIssues = !empty($summary['has_fail']) || !empty($summary['has_conflict']);
 $inspectionOutcome = !$results ? 'รอสรุปผลการตรวจรับ' : ($hasIssues ? 'มีรายการแก้ไข/เงื่อนไข' : 'ผ่านการตรวจรับทั้งหมด');
-$nextAction = $mdApproval ? 'ส่งฝ่ายบัญชีดำเนินการเบิกจ่าย' : 'รอการอนุมัติจาก MD';
+$nextAction = $mdApproval ? 'ส่งฝ่ายบัญชีดำเนินการเบิกจ่าย' : 'รอการอนุมัติจาก OA&HR Manager';
 $documentNo = $document['document_no'] ?? ('INS-' . str_pad((string)$round['id'], 5, '0', STR_PAD_LEFT));
 $resultStatusLabel = static function ($status): string {
     return ['pass' => 'ผ่าน', 'fail' => 'ไม่ผ่าน', 'conditional_pass' => 'มีเงื่อนไข', 'not_applicable' => 'ไม่เกี่ยวข้อง', '' => 'ยังไม่ระบุ'][$status] ?? 'ยังไม่ระบุ';
@@ -214,7 +214,7 @@ $resultStatusLabel = static function ($status): string {
         <header class="doc-header">
             <div>
                 <p class="doc-kicker">Procurement / Inspection</p>
-                <h1>ใบส่งมอบและตรวจรับงานบริการ</h1>
+                <h1>ใบส่งมอบและตรวจรับงาน</h1>
                 <p class="doc-subtitle">Work Handover &amp; Service Acceptance</p>
             </div>
             <div class="doc-id">

@@ -51,7 +51,7 @@ $dynamicStepLabels = [
     'inspector_1' => 'ผู้ตรวจรับ ครั้งที่ 1',
     'inspector_2' => 'ผู้ตรวจรับ ครั้งที่ 2',
     'procurement' => 'จัดซื้อยืนยัน',
-    'md' => 'MD อนุมัติ',
+    'md' => 'OA&HR Manager อนุมัติ',
     'gmacc' => 'GMACC ยืนยันบัญชี',
     'revision' => 'เริ่มรอบแก้ไข',
     'completed' => 'เสร็จสิ้น',
@@ -62,7 +62,7 @@ $dynamicFlowSteps = [
     'inspector_1' => ['label' => 'ผู้ตรวจรับ 1', 'icon' => 'fa-helmet-safety', 'assignment' => 'inspector_1_name'],
     'inspector_2' => ['label' => 'ผู้ตรวจรับ 2', 'icon' => 'fa-user-check', 'assignment' => 'inspector_2_name'],
     'procurement' => ['label' => 'จัดซื้อ', 'icon' => 'fa-file-invoice', 'assignment' => 'procurement_name'],
-    'md' => ['label' => 'MD', 'icon' => 'fa-stamp', 'assignment' => 'md_name'],
+    'md' => ['label' => 'OA&HR Manager', 'icon' => 'fa-stamp', 'assignment' => 'md_name'],
     'gmacc' => ['label' => 'GMACC', 'icon' => 'fa-calculator', 'assignment' => 'gmacc_name'],
 ];
 $dynamicCanActCurrentStep = in_array($dynamicNextStep, array_keys($dynamicFlowSteps), true)
@@ -238,7 +238,7 @@ if ($dynamicChecklist) {
                     <label class="text-sm font-bold text-slate-700">ผู้ตรวจรับ 1<select name="inspector_1_user_id" class="mt-2 w-full bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['inspector_1_user_id']) ?></select></label>
                     <label class="text-sm font-bold text-slate-700">ผู้ตรวจรับ 2<select name="inspector_2_user_id" class="mt-2 w-full bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['inspector_2_user_id']) ?></select></label>
                     <label class="text-sm font-bold text-slate-700">เจ้าหน้าที่จัดซื้อ<select name="procurement_user_id" class="mt-2 w-full bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['procurement_user_id']) ?></select></label>
-                    <label class="text-sm font-bold text-slate-700">ผู้อนุมัติ MD<select name="md_user_id" class="mt-2 w-full bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['md_user_id']) ?></select></label>
+                    <label class="text-sm font-bold text-slate-700">OA&amp;HR Manager<select name="md_user_id" class="mt-2 w-full bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['md_user_id']) ?></select></label>
                     <label class="text-sm font-bold text-slate-700 md:col-span-2">GMACC (หัวหน้าบัญชี)<select name="gmacc_user_id" class="mt-2 w-full md:w-1/2 bg-slate-50 border-0 rounded-xl px-3 py-3"><?= $dynamicUserOptions($dynamicAssignmentValues['gmacc_user_id']) ?></select></label>
                 </div>
             </div>
@@ -281,7 +281,7 @@ if ($dynamicChecklist) {
             <?php
             $dynamicComparisonReviewLabel = [
                 'procurement' => 'Procurement Review',
-                'md' => 'MD Review',
+                'md' => 'OA&HR Manager Review',
                 'gmacc' => 'GMACC Review',
             ][$dynamicNextStep];
             $dynamicConflictCount = count(array_filter($dynamicComparisonSummary['items'], static function (array $item): bool {

@@ -117,8 +117,12 @@ $dynamic_context = $mdContext;
 ob_start();
 include __DIR__ . '/../inspection_dynamic_form.php';
 $assignedMdHtml = ob_get_clean();
-if (strpos($assignedMdHtml, 'id="procurementDecisionPanel"') === false || strpos($assignedMdHtml, 'MD Review') === false) {
-    fwrite(STDERR, "MD step did not receive the inspector comparison panel\n");
+if (strpos($assignedMdHtml, 'id="procurementDecisionPanel"') === false || strpos($assignedMdHtml, 'OA&amp;HR Manager Review') === false) {
+    fwrite(STDERR, "OA&HR Manager step did not receive the inspector comparison panel\n");
+    exit(1);
+}
+if (strpos($assignedMdHtml, 'OA&amp;HR Manager อนุมัติ') === false) {
+    fwrite(STDERR, "OA&HR Manager current workflow label was not rendered\n");
     exit(1);
 }
 

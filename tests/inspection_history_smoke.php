@@ -6,7 +6,7 @@ $expectedStatuses = [
     'awaiting_inspector_1' => 'รอผู้ตรวจรับ 1',
     'awaiting_inspector_2' => 'รอผู้ตรวจรับ 2',
     'awaiting_procurement' => 'รอจัดซื้อพิจารณา',
-    'awaiting_md' => 'รอ MD อนุมัติ',
+    'awaiting_md' => 'รอ OA&HR Manager อนุมัติ',
     'awaiting_gmacc' => 'รอ GMACC ยืนยัน',
     'correction_required' => 'ต้องแก้ไข',
     'returned' => 'ถูกตีกลับ',
@@ -18,6 +18,11 @@ foreach ($expectedStatuses as $status => $label) {
         fwrite(STDERR, "status label mapping failed for {$status}\n");
         exit(1);
     }
+}
+
+if (inspection_step_label('md') !== 'OA&HR Manager') {
+    fwrite(STDERR, "OA&HR Manager workflow step label failed\n");
+    exit(1);
 }
 
 $_SESSION['user_id'] = 17;
