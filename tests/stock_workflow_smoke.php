@@ -56,16 +56,22 @@ stock_assert_same(false, $generatedSkuA === $generatedSkuB, 'automatic internal 
 
 stock_assert_same(2.0, stock_issue_quantity(5, 2, 2), 'partial issue must allow the available quantity');
 stock_assert_throws(fn () => stock_issue_quantity(5, 2, 3), 'issue must never exceed available stock');
+stock_assert_throws(fn () => stock_issue_quantity(5, 5, 1.5), 'issue quantity must be a whole number');
 stock_assert_same(2.0, stock_validate_withdrawal_request_quantity(2, 2), 'withdrawal request may use all available stock');
-stock_assert_same(1.5, stock_validate_withdrawal_request_quantity(1.5, 2), 'withdrawal request may use part of available stock');
+stock_assert_throws(fn () => stock_validate_withdrawal_request_quantity(1.5, 2), 'withdrawal request must be a whole number');
 stock_assert_throws(fn () => stock_validate_withdrawal_request_quantity(3, 2), 'withdrawal request must not exceed available stock');
 stock_assert_throws(fn () => stock_validate_withdrawal_request_quantity(1, 0), 'out-of-stock product must not be requested');
+stock_assert_same(2.0, stock_validate_withdrawal_received_quantity(2, 3), 'received withdrawal quantity may be a whole number up to the issued quantity');
+stock_assert_throws(fn () => stock_validate_withdrawal_received_quantity(1.5, 3), 'received withdrawal quantity must be a whole number');
+stock_assert_throws(fn () => stock_validate_withdrawal_received_quantity(4, 3), 'received withdrawal quantity must not exceed the issued quantity');
 stock_assert_same(48.0, stock_convert_purchase_to_stock_quantity(2, 24), 'two cases of 24 must add 48 base units');
 stock_assert_same(2.5, stock_convert_purchase_to_stock_quantity(1, 2.5), 'conversion may produce a fractional base quantity');
 stock_assert_throws(fn () => stock_convert_purchase_to_stock_quantity(1, 0), 'conversion factor must be positive');
 stock_assert_throws(fn () => stock_convert_purchase_to_stock_quantity(0, 24), 'received purchase quantity must be positive');
 stock_assert_throws(fn () => stock_issue_quantity(2, 10, 3), 'issue must never exceed the remaining request');
 stock_assert_throws(fn () => stock_issue_quantity(5, 5, 0), 'issue quantity must be positive');
+stock_assert_same('รอจ่ายพัสดุ', stock_status_label('waiting_issue'), 'withdrawal status must use parcel terminology');
+stock_assert_same('รอยืนยันรับพัสดุ', stock_status_label('waiting_confirmation'), 'receipt confirmation status must use parcel terminology');
 
 stock_assert_same(3.0, stock_po_receivable_remaining(5, 2), 'PO receipt must keep the unreceived quantity');
 stock_assert_throws(fn () => stock_po_receivable_remaining(5, 6), 'PO receipt total must never exceed ordered quantity');

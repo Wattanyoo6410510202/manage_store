@@ -10,11 +10,11 @@ $allowedPages = ['stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 's
 if ($page === '') {
     $cases = [
         ['stock.php', 'procure', 'ภาพรวม Stock'],
-        ['stock_receiving.php', 'procure', 'หมวดหมู่สินค้า'],
-        ['stock_withdrawals.php', 'procure', 'ใบเบิกสินค้า'],
-        ['stock_withdrawals.php', 'gmhr', 'ใบเบิกสินค้า'],
+        ['stock_receiving.php', 'procure', 'หมวดหมู่พัสดุ'],
+        ['stock_withdrawals.php', 'procure', 'ใบเบิกพัสดุ'],
+        ['stock_withdrawals.php', 'gmhr', 'ใบเบิกพัสดุ'],
         ['stock_my_withdrawals.php', 'gmhr', 'สถานะใบเบิกของฉัน'],
-        ['stock_withdrawal_view.php', 'gmhr', 'ประวัติการจ่ายและรับจริง'],
+        ['stock_withdrawal_view.php', 'gmhr', 'ใบเบิก–จ่ายพัสดุ'],
     ];
     foreach ($cases as $case) {
         $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__)
@@ -120,7 +120,7 @@ if ($page === 'stock.php') {
     $conn->begin_transaction();
     $fixtureTransaction = true;
     $hiddenSku = 'RENDER-HIDDEN-' . bin2hex(random_bytes(3));
-    $productId = stock_create_product($conn, (int)$user['sup_id'], (int)$user['id'], $hiddenSku, 'สินค้าทดสอบหน้าใบเบิก', 'ชิ้น');
+    $productId = stock_create_product($conn, (int)$user['sup_id'], (int)$user['id'], $hiddenSku, 'พัสดุทดสอบหน้าใบเบิก', 'ชิ้น');
     $docNo = 'WD-RENDER-' . bin2hex(random_bytes(3));
     $purpose = 'ตรวจหน้าใบเบิก';
     $headerStmt = $conn->prepare('INSERT INTO stock_withdrawals (doc_no, sup_id, requester_id, purpose) VALUES (?, ?, ?, ?)');
@@ -129,6 +129,10 @@ if ($page === 'stock.php') {
     $withdrawalId = (int)$conn->insert_id;
     $headerStmt->close();
     $conn->query("INSERT INTO stock_withdrawal_items (withdrawal_id, product_id, requested_quantity) VALUES ({$withdrawalId}, {$productId}, 5)");
+    $withdrawalItemId = (int)$conn->insert_id;
+    $fixtureUserId = (int)$user['id'];
+    $conn->query("INSERT INTO stock_withdrawal_issues (withdrawal_item_id, issued_quantity, issued_by, issued_at, received_quantity, received_by, received_at, status) VALUES ({$withdrawalItemId}, 2, {$fixtureUserId}, '2026-08-25 16:02:00', 2, {$fixtureUserId}, '2026-08-25 16:05:00', 'confirmed')");
+    $conn->query("INSERT INTO stock_withdrawal_actions (withdrawal_id, withdrawal_item_id, action_type, quantity, actor_id, reason, created_at) VALUES ({$withdrawalId}, {$withdrawalItemId}, 'cancel_remaining', 1, {$fixtureUserId}, 'ทดสอบวันที่โดยไม่แสดงเวลา', '2026-08-25 16:10:00')");
     $_GET['id'] = $withdrawalId;
 } elseif ($page === 'stock_receiving.php') {
     $customer = $conn->query('SELECT id FROM customers ORDER BY id LIMIT 1')->fetch_assoc();
@@ -168,7 +172,7 @@ if (isset($hiddenSku) && strpos($html, $hiddenSku) !== false) {
     fwrite(STDERR, "FAIL: {$page} must not expose the internal product code\n");
     exit(1);
 }
-if (strpos($html, 'stock_reconciliation.php') !== false || strpos($html, 'กระทบยอดสินค้า') !== false) {
+if (strpos($html, 'stock_reconciliation.php') !== false || strpos($html, 'กระทบยอดพัสดุ') !== false) {
     fwrite(STDERR, "FAIL: {$page} must not expose the reconciliation feature\n");
     exit(1);
 }
@@ -209,11 +213,11 @@ if ($page === 'stock_receiving.php') {
     }
 }
 if ($page === 'stock.php') {
-    if (strpos($html, 'id="stockProductsOverview"') === false || strpos($html, 'สินค้าทั้งหมด') === false) {
+    if (strpos($html, 'id="stockProductsOverview"') === false || strpos($html, 'พัสดุทั้งหมด') === false) {
         fwrite(STDERR, "FAIL: stock overview must focus on the complete product list\n");
         exit(1);
     }
-    foreach (['ใกล้ถึงจุดสั่งซื้อ', 'สินค้าหมด', 'เพิ่มสินค้าใหม่', 'value="create_product"'] as $removedOverviewSection) {
+    foreach (['ใกล้ถึงจุดสั่งซื้อ', 'พัสดุหมด', 'เพิ่มพัสดุใหม่', 'value="create_product"'] as $removedOverviewSection) {
         if (strpos($html, $removedOverviewSection) !== false) {
             fwrite(STDERR, "FAIL: stock overview still renders unrelated section: {$removedOverviewSection}\n");
             exit(1);
@@ -227,7 +231,7 @@ if ($page === 'stock.php') {
         fwrite(STDERR, "FAIL: stock overview must not use the browser datalist popup\n");
         exit(1);
     }
-    if (strpos($html, 'name="sku"') !== false || strpos($html, '>รหัสสินค้า<') !== false) {
+    if (strpos($html, 'name="sku"') !== false || strpos($html, '>รหัสพัสดุ<') !== false) {
         fwrite(STDERR, "FAIL: Stock UI must generate internal product codes without showing an SKU field\n");
         exit(1);
     }
@@ -253,7 +257,7 @@ if ($page === 'stock.php') {
     }
 }
 if ($page === 'stock_withdrawals.php') {
-    if (strpos($html, 'max="3"') === false || strpos($html, 'จำนวนที่ขอเบิกต้องไม่เกินยอดคงเหลือ') === false) {
+    if (strpos($html, 'max="3"') === false || strpos($html, 'จำนวนที่ขอเบิกต้องเป็นจำนวนเต็ม') === false) {
         fwrite(STDERR, "FAIL: withdrawal form must cap requested quantity at current stock\n");
         exit(1);
     }
@@ -303,8 +307,12 @@ if ($page === 'stock_withdrawals.php') {
         fwrite(STDERR, "FAIL: withdrawal page must load combined search, category, and highlight behavior\n");
         exit(1);
     }
-    if (strpos($html, 'max="0.5" step="0.01" value="0.5"') === false) {
-        fwrite(STDERR, "FAIL: a product below one Stock unit must not start above its available quantity\n");
+    if (strpos($html, 'data-available="0"') === false) {
+        fwrite(STDERR, "FAIL: a product below one Stock unit must not be available for withdrawal\n");
+        exit(1);
+    }
+    if (strpos($html, 'step="0.01"') !== false || !preg_match('/data-stock-product-quantity[^>]*min="1"[^>]*step="1"[^>]*inputmode="numeric"/u', $html)) {
+        fwrite(STDERR, "FAIL: withdrawal quantity controls must accept whole numbers only\n");
         exit(1);
     }
     if ($role !== 'procure' && $role !== 'admin' && strpos($html, 'ทดสอบสีสถานะใบเบิก') !== false) {
@@ -349,6 +357,63 @@ if ($page === 'stock_withdrawal_view.php') {
     }
     if ($role !== 'procure' && $role !== 'admin' && strpos($html, 'href="stock_my_withdrawals.php"') === false) {
         fwrite(STDERR, "FAIL: requester withdrawal detail must return to the personal status page\n");
+        exit(1);
+    }
+    if (strpos($html, 'data-stock-withdrawal-document') === false || strpos($html, 'ใบเบิก–จ่ายพัสดุ') === false || strpos($html, 'Stock Withdrawal Voucher') === false) {
+        fwrite(STDERR, "FAIL: withdrawal detail must render the formal stock withdrawal document\n");
+        exit(1);
+    }
+    if (strpos($html, 'data-stock-print-toolbar') === false || strpos($html, 'data-stock-print-action="print"') === false || strpos($html, 'data-stock-print-action="pdf"') === false) {
+        fwrite(STDERR, "FAIL: withdrawal detail must provide print and PDF actions\n");
+        exit(1);
+    }
+    if (strpos($html, '@media print') === false || strpos($html, '@page') === false) {
+        fwrite(STDERR, "FAIL: withdrawal detail must include A4 print styling\n");
+        exit(1);
+    }
+    if (!preg_match('/@page\s*\{[^}]*margin:\s*0\s*;/s', $html) || strpos($html, 'data-stock-print-page') === false || strpos($html, "document.title = '';") === false) {
+        fwrite(STDERR, "FAIL: withdrawal print view must suppress browser header and footer space\n");
+        exit(1);
+    }
+    if (strpos($html, 'data-stock-document-columns') === false || strpos($html, 'stock-document-table-frame') === false) {
+        fwrite(STDERR, "FAIL: withdrawal print table must use an explicit A4-safe column layout\n");
+        exit(1);
+    }
+    if (strpos($html, 'stock-document-signature-footer') === false) {
+        fwrite(STDERR, "FAIL: withdrawal signatures must anchor to the bottom of the printed page\n");
+        exit(1);
+    }
+    foreach (['requester', 'issuer', 'receiver'] as $signatureRole) {
+        if (strpos($html, 'data-stock-signature="' . $signatureRole . '"') === false) {
+            fwrite(STDERR, "FAIL: withdrawal document is missing the {$signatureRole} signature\n");
+            exit(1);
+        }
+    }
+    if (strpos($html, 'data-stock-signature="accounting"') !== false) {
+        fwrite(STDERR, "FAIL: withdrawal document must not include an accounting verifier signature\n");
+        exit(1);
+    }
+    if (strpos($html, 'data-stock-document-items') === false || strpos($html, 'รายการพัสดุ') === false || strpos($html, 'ยอดค้าง') === false) {
+        fwrite(STDERR, "FAIL: withdrawal document must render the formal stock item table\n");
+        exit(1);
+    }
+    if (strpos($html, 'data-stock-document-audit') !== false || strpos($html, 'ประวัติการจ่ายและการรับพัสดุ') !== false) {
+        fwrite(STDERR, "FAIL: withdrawal document must omit the issue and receipt audit section\n");
+        exit(1);
+    }
+    $stockPageStart = strpos($html, '<div class="stock-document-shell');
+    $stockPageEnd = $stockPageStart === false ? false : strpos($html, '</main>', $stockPageStart);
+    $stockPageHtml = ($stockPageStart === false || $stockPageEnd === false) ? '' : substr($html, $stockPageStart, $stockPageEnd - $stockPageStart);
+    if ($stockPageHtml === '') {
+        fwrite(STDERR, "FAIL: withdrawal page content could not be isolated for terminology checks\n");
+        exit(1);
+    }
+    if (strpos($stockPageHtml, 'สินค้า') !== false) {
+        fwrite(STDERR, "FAIL: withdrawal page terminology must use พัสดุ instead of สินค้า\n");
+        exit(1);
+    }
+    if (strpos($stockPageHtml, 'วันที่และเวลา') !== false || strpos($stockPageHtml, 'วัน–เวลา') !== false || preg_match('/\b\d{2}:\d{2}\b/u', $stockPageHtml)) {
+        fwrite(STDERR, "FAIL: withdrawal page dates must not display a time component\n");
         exit(1);
     }
 }

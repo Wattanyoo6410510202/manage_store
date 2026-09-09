@@ -5,9 +5,37 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   function normalizeQuantity(value, available) {
     const numericValue = Number(value);
-    const numericAvailable = Math.max(0, Number(available) || 0);
+    const numericAvailable = Math.max(0, Math.floor(Number(available) || 0));
     if (!Number.isFinite(numericValue) || numericValue <= 0 || numericAvailable <= 0) return 0;
-    return Math.min(numericValue, numericAvailable);
+    return Math.min(Math.floor(numericValue), numericAvailable);
+  }
+
+  function normalizeQuantityInputValue(value, available, minimum = 1) {
+    const rawValue = String(value ?? '').trim();
+    if (rawValue === '') return '';
+    const normalized = normalizeQuantity(rawValue, available);
+    if (normalized > 0) return String(normalized);
+    const wholeAvailable = Math.max(0, Math.floor(Number(available) || 0));
+    const wholeMinimum = Math.max(0, Math.floor(Number(minimum) || 0));
+    return String(Math.min(wholeMinimum, wholeAvailable));
+  }
+
+  function blocksNonIntegerKey(key) {
+    return ['.', ',', 'e', 'E', '+', '-'].includes(String(key));
+  }
+
+  function mountWholeQuantityInputs(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-stock-whole-quantity]').forEach((input) => {
+      if (input.dataset.stockWholeQuantityBound === '1') return;
+      input.dataset.stockWholeQuantityBound = '1';
+      input.addEventListener('keydown', (event) => {
+        if (blocksNonIntegerKey(event.key)) event.preventDefault();
+      });
+      input.addEventListener('input', () => {
+        input.value = normalizeQuantityInputValue(input.value, input.max, input.min);
+      });
+    });
   }
 
   function addCartItem(cart, product, quantity) {
@@ -22,7 +50,7 @@
       id: productId,
       name: String(product.name || ''),
       unit: String(product.unit || ''),
-      available: Math.max(0, Number(product.available) || 0),
+      available: Math.max(0, Math.floor(Number(product.available) || 0)),
       quantity: nextQuantity,
     });
   }
@@ -58,7 +86,7 @@
   }
 
   function formatQuantity(value) {
-    return Number(value).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return Number(value).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   function mountWithdrawalCart(root) {
@@ -110,7 +138,7 @@
       cartCount.textContent = String(totals.lineCount);
       cartCount.classList.toggle('hidden', totals.lineCount === 0);
       emptyState.classList.toggle('hidden', totals.lineCount > 0);
-      if (summary) summary.textContent = totals.lineCount > 0 ? `${totals.lineCount} รายการสินค้า` : 'ยังไม่มีสินค้า';
+      if (summary) summary.textContent = totals.lineCount > 0 ? `${totals.lineCount} รายการพัสดุ` : 'ยังไม่มีพัสดุ';
       if (submitButton) submitButton.disabled = totals.lineCount === 0;
       cartItems.innerHTML = cart.map((item) => `
         <div class="rounded-2xl border border-slate-200 bg-white p-4" data-stock-cart-item="${item.id}">
@@ -125,7 +153,7 @@
             <span class="text-xs font-semibold text-slate-600">จำนวนที่ขอเบิก</span>
             <div class="flex items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
               <button type="button" data-stock-cart-decrement class="h-10 w-10 text-slate-600 transition-colors hover:bg-slate-100" aria-label="ลดจำนวน"><i class="fas fa-minus text-xs"></i></button>
-              <input data-stock-cart-quantity name="quantity[${item.id}]" type="number" min="0.01" max="${item.available}" step="0.01" value="${item.quantity}" class="h-10 w-20 border-x border-slate-200 text-center font-bold text-slate-900 outline-none focus:bg-indigo-50">
+              <input data-stock-cart-quantity name="quantity[${item.id}]" type="number" min="1" max="${item.available}" step="1" inputmode="numeric" value="${item.quantity}" class="h-10 w-20 border-x border-slate-200 text-center font-bold text-slate-900 outline-none focus:bg-indigo-50">
               <button type="button" data-stock-cart-increment class="h-10 w-10 text-slate-600 transition-colors hover:bg-slate-100" aria-label="เพิ่มจำนวน"><i class="fas fa-plus text-xs"></i></button>
             </div>
           </div>
@@ -136,11 +164,17 @@
     root.querySelectorAll('[data-stock-product-row]').forEach((row) => {
       const quantityInput = row.querySelector('[data-stock-product-quantity]');
       const addButton = row.querySelector('[data-stock-add-to-cart]');
+      quantityInput?.addEventListener('keydown', (event) => {
+        if (blocksNonIntegerKey(event.key)) event.preventDefault();
+      });
+      quantityInput?.addEventListener('input', () => {
+        quantityInput.value = normalizeQuantityInputValue(quantityInput.value, row.dataset.available);
+      });
       row.querySelector('[data-stock-product-decrement]')?.addEventListener('click', () => {
-        quantityInput.value = String(Math.max(0.01, Number(quantityInput.value || 1) - 1));
+        quantityInput.value = String(Math.max(1, Math.floor(Number(quantityInput.value || 1)) - 1));
       });
       row.querySelector('[data-stock-product-increment]')?.addEventListener('click', () => {
-        quantityInput.value = String(Math.min(Number(row.dataset.available), Number(quantityInput.value || 0) + 1));
+        quantityInput.value = String(Math.min(Math.floor(Number(row.dataset.available)), Math.floor(Number(quantityInput.value || 0)) + 1));
       });
       addButton?.addEventListener('click', () => {
         const product = {
@@ -182,6 +216,20 @@
       renderCart();
     });
 
+    cartItems.addEventListener('keydown', (event) => {
+      if (event.target.matches('[data-stock-cart-quantity]') && blocksNonIntegerKey(event.key)) {
+        event.preventDefault();
+      }
+    });
+
+    cartItems.addEventListener('input', (event) => {
+      if (!event.target.matches('[data-stock-cart-quantity]')) return;
+      const itemElement = event.target.closest('[data-stock-cart-item]');
+      const item = cart.find((entry) => Number(entry.id) === Number(itemElement.dataset.stockCartItem));
+      if (!item) return;
+      event.target.value = normalizeQuantityInputValue(event.target.value, item.available);
+    });
+
     cartButton.addEventListener('click', openCart);
     backdrop.addEventListener('click', closeCart);
     closeButtons.forEach((button) => button.addEventListener('click', closeCart));
@@ -192,12 +240,21 @@
       if (cart.length === 0) {
         event.preventDefault();
         openCart();
-        announce('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ');
+        announce('กรุณาเพิ่มพัสดุอย่างน้อย 1 รายการ');
       }
     });
 
     renderCart();
   }
 
-  return { addCartItem, setCartItemQuantity, removeCartItem, summarizeCart, mountWithdrawalCart };
+  return {
+    addCartItem,
+    setCartItemQuantity,
+    removeCartItem,
+    summarizeCart,
+    normalizeQuantityInputValue,
+    blocksNonIntegerKey,
+    mountWholeQuantityInputs,
+    mountWithdrawalCart,
+  };
 });

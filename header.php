@@ -292,7 +292,7 @@ if (in_array($user_role_for_count, $budget_approval_roles)) {
     }
 }
 
-// จำนวนใบเบิกที่ยังมีสินค้าเหลือรอผู้ดูแล Stock จ่าย
+// จำนวนใบเบิกที่ยังมีพัสดุเหลือรอผู้ดูแล Stock จ่าย
 $stock_pending_count = 0;
 if (in_array($user_role_for_count, ['procure', 'admin'], true)) {
     require_once __DIR__ . '/stock_repository.php';
@@ -588,12 +588,12 @@ if (!empty($_SESSION['sup_id'])) {
                         <?php if (in_array($user_role, ['procure', 'admin'], true)): ?>
                         <a href="stock_receiving.php"
                             class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_receiving.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-dolly text-[10px]"></i><span class="text-sm font-medium">รับสินค้าเข้า</span>
+                            <i class="fas fa-dolly text-[10px]"></i><span class="text-sm font-medium">รับพัสดุเข้า</span>
                         </a>
                         <?php endif; ?>
                         <a href="stock_withdrawals.php"
                             class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_withdrawals.php' || (stock_can_manage($user_role) && $current_page === 'stock_withdrawal_view.php') ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-cart-plus text-[10px]"></i><span class="text-sm font-medium"><?= stock_can_manage($user_role) ? 'ใบเบิกสินค้า' : 'เบิกสินค้า' ?></span>
+                            <i class="fas fa-cart-plus text-[10px]"></i><span class="text-sm font-medium"><?= stock_can_manage($user_role) ? 'ใบเบิกพัสดุ' : 'เบิกพัสดุ' ?></span>
                         </a>
                         <?php if (!stock_can_manage($user_role)): ?>
                         <a href="stock_my_withdrawals.php"

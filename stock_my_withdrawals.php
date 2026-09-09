@@ -33,7 +33,7 @@ include __DIR__ . '/header.php';
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-slate-800">สถานะใบเบิกของฉัน</h1>
-            <p class="mt-1 text-sm text-slate-500">ติดตามขั้นตอนการจ่ายสินค้าและยืนยันจำนวนที่ได้รับจริง</p>
+            <p class="mt-1 text-sm text-slate-500">ติดตามขั้นตอนการจ่ายพัสดุและยืนยันจำนวนที่ได้รับจริง</p>
         </div>
         <a href="stock_withdrawals.php" class="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"><i class="fas fa-cart-plus mr-2"></i>สร้างใบเบิกใหม่</a>
     </div>
@@ -58,8 +58,8 @@ include __DIR__ . '/header.php';
                 </div>
                 <div data-stock-status-card-metrics class="mt-4 grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-center">
                     <div class="px-2 py-3 sm:px-3"><div class="text-xs font-medium text-slate-500">รายการ</div><div class="mt-1 text-base font-black text-slate-900"><?= (int)$row['item_count'] ?></div></div>
-                    <div class="border-x border-slate-200 px-2 py-3 sm:px-3"><div class="text-xs font-medium text-slate-500">ขอเบิก</div><div class="mt-1 text-base font-black text-slate-900"><?= number_format((float)$row['requested_total'], 2) ?></div></div>
-                    <div class="px-2 py-3 sm:px-3"><div class="text-xs font-medium text-slate-500">รับแล้ว</div><div class="mt-1 text-base font-black text-slate-900"><?= number_format((float)$row['received_total'], 2) ?></div></div>
+                    <div class="border-x border-slate-200 px-2 py-3 sm:px-3"><div class="text-xs font-medium text-slate-500">ขอเบิก</div><div class="mt-1 text-base font-black text-slate-900"><?= stock_format_withdrawal_quantity((float)$row['requested_total']) ?></div></div>
+                    <div class="px-2 py-3 sm:px-3"><div class="text-xs font-medium text-slate-500">รับแล้ว</div><div class="mt-1 text-base font-black text-slate-900"><?= stock_format_withdrawal_quantity((float)$row['received_total']) ?></div></div>
                 </div>
             </div>
         </article>
@@ -68,7 +68,7 @@ include __DIR__ . '/header.php';
         <?php if (!$withdrawals): ?>
         <div class="rounded-2xl border border-slate-100 bg-white px-5 py-12 text-center text-slate-500 shadow-sm">
             <i class="fas fa-clipboard-list mb-3 block text-3xl text-slate-300"></i>
-            <p class="font-semibold text-slate-700">ยังไม่มีใบเบิกสินค้า</p>
+            <p class="font-semibold text-slate-700">ยังไม่มีใบเบิกพัสดุ</p>
             <p class="mt-1 text-sm">เมื่อสร้างใบเบิกแล้ว สถานะจะแสดงในหน้านี้</p>
         </div>
         <?php endif; ?>

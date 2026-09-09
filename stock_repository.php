@@ -25,7 +25,7 @@ function stock_save_product_unit_conversion(
     $purchaseUnit = trim($purchaseUnit);
     stock_convert_purchase_to_stock_quantity(1, $unitsPerPurchaseUnit);
     if ($productId <= 0 || $purchaseUnit === '') {
-        throw new DomainException('กรุณาระบุสินค้าและหน่วยซื้อให้ครบถ้วน');
+        throw new DomainException('กรุณาระบุพัสดุและหน่วยซื้อให้ครบถ้วน');
     }
     $updatedBy = $actorId > 0 ? $actorId : null;
     $stmt = $conn->prepare(
@@ -118,7 +118,7 @@ function stock_create_product(
     $unit = trim($unit);
     $category = trim($category);
     if ($supId <= 0 || $sku === '' || $name === '' || $unit === '' || $minQuantity < 0) {
-        throw new DomainException('กรุณากรอกข้อมูลสินค้าให้ครบถ้วน');
+        throw new DomainException('กรุณากรอกข้อมูลพัสดุให้ครบถ้วน');
     }
 
     $categoryId = null;
@@ -154,12 +154,12 @@ function stock_create_product_from_receipt(
     $sku = trim((string)($input['new_sku'][$poItemId] ?? ''));
     $category = trim((string)($input['new_category'][$poItemId] ?? ''));
     if ($category === '') {
-        throw new DomainException('กรุณาระบุหมวดหมู่ของสินค้าใหม่');
+        throw new DomainException('กรุณาระบุหมวดหมู่ของพัสดุใหม่');
     }
 
     $stockUnit = trim((string)($input['stock_unit'][$poItemId] ?? $itemUnit));
     if ($stockUnit === '') {
-        throw new DomainException('กรุณาระบุหน่วย Stock/หน่วยเบิกของสินค้าใหม่');
+        throw new DomainException('กรุณาระบุหน่วย Stock/หน่วยเบิกของพัสดุใหม่');
     }
 
     return stock_create_product(
@@ -178,7 +178,7 @@ function stock_get_or_create_category(mysqli $conn, int $supId, int $actorId, st
 {
     $name = trim($name);
     if ($supId <= 0 || $name === '') {
-        throw new DomainException('กรุณาระบุหมวดหมู่สินค้า');
+        throw new DomainException('กรุณาระบุหมวดหมู่พัสดุ');
     }
     $creatorId = $actorId > 0 ? $actorId : null;
     $stmt = $conn->prepare(
@@ -197,7 +197,7 @@ function stock_update_product_category(mysqli $conn, int $productId, int $supId,
 {
     $category = trim($category);
     if ($productId <= 0 || $supId <= 0 || $category === '') {
-        throw new DomainException('กรุณาระบุหมวดหมู่สินค้า');
+        throw new DomainException('กรุณาระบุหมวดหมู่พัสดุ');
     }
     $checkStmt = $conn->prepare('SELECT id FROM stock_products WHERE id = ? AND sup_id = ? FOR UPDATE');
     $checkStmt->bind_param('ii', $productId, $supId);
@@ -205,7 +205,7 @@ function stock_update_product_category(mysqli $conn, int $productId, int $supId,
     $exists = $checkStmt->get_result()->fetch_assoc();
     $checkStmt->close();
     if (!$exists) {
-        throw new DomainException('ไม่พบสินค้าในบริษัทที่เลือก');
+        throw new DomainException('ไม่พบพัสดุในบริษัทที่เลือก');
     }
     $categoryId = stock_get_or_create_category($conn, $supId, $actorId, $category);
     $updateStmt = $conn->prepare('UPDATE stock_products SET category = ?, category_id = ? WHERE id = ? AND sup_id = ?');
@@ -231,14 +231,14 @@ function stock_resolve_receipt_product(
         $product = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if (!$product) {
-            throw new DomainException('สินค้าที่เลือกไม่อยู่ในบริษัทปลายทาง');
+            throw new DomainException('พัสดุที่เลือกไม่อยู่ในบริษัทปลายทาง');
         }
         return $selectedProductId;
     }
 
     $name = trim((string)($input['new_product_name'][$poItemId] ?? $defaultName));
     if ($name === '') {
-        throw new DomainException('กรุณาระบุชื่อสินค้า');
+        throw new DomainException('กรุณาระบุชื่อพัสดุ');
     }
     $exactStmt = $conn->prepare('SELECT id FROM stock_products WHERE sup_id = ? AND name = ? AND is_active = 1 LIMIT 1');
     $exactStmt->bind_param('is', $supId, $name);
@@ -264,12 +264,12 @@ function stock_resolve_receipt_product(
     } elseif ($categoryName !== '') {
         stock_get_or_create_category($conn, $supId, $actorId, $categoryName);
     } else {
-        throw new DomainException('กรุณาเลือกหรือเพิ่มหมวดหมู่สินค้า');
+        throw new DomainException('กรุณาเลือกหรือเพิ่มหมวดหมู่พัสดุ');
     }
 
     $stockUnit = trim((string)($input['stock_unit'][$poItemId] ?? ''));
     if ($stockUnit === '') {
-        throw new DomainException('กรุณาระบุหน่วย Stock/หน่วยเบิกของสินค้าใหม่');
+        throw new DomainException('กรุณาระบุหน่วย Stock/หน่วยเบิกของพัสดุใหม่');
     }
 
     return stock_create_product(
@@ -293,7 +293,7 @@ function stock_get_balance(mysqli $conn, int $productId): float
     $stmt->close();
 
     if (!$row) {
-        throw new DomainException('ไม่พบยอด Stock ของสินค้า');
+        throw new DomainException('ไม่พบยอด Stock ของพัสดุ');
     }
 
     return (float)$row['quantity'];
@@ -324,13 +324,13 @@ function stock_apply_movement(
     $lockStmt->close();
 
     if (!$balanceRow || (int)$balanceRow['sup_id'] !== $supId) {
-        throw new DomainException('สินค้าไม่อยู่ในบริษัทที่เลือก');
+        throw new DomainException('พัสดุไม่อยู่ในบริษัทที่เลือก');
     }
 
     $before = (float)$balanceRow['quantity'];
     $after = round($before + $quantity, 2);
     if ($after < -0.00001) {
-        throw new DomainException('จำนวนสินค้าใน Stock ไม่เพียงพอ');
+        throw new DomainException('จำนวนพัสดุใน Stock ไม่เพียงพอ');
     }
     $after = max(0, $after);
 
@@ -383,7 +383,7 @@ function stock_apply_reconciliation_adjustment(
     $row = $lockStmt->get_result()->fetch_assoc();
     $lockStmt->close();
     if (!$row || (int)$row['sup_id'] !== $supId) {
-        throw new DomainException('สินค้าไม่อยู่ในบริษัทของรายงานกระทบยอด');
+        throw new DomainException('พัสดุไม่อยู่ในบริษัทของรายงานกระทบยอด');
     }
     if (abs((float)$row['quantity'] - $expectedBalance) > 0.00001) {
         throw new DomainException('ยอด Stock เปลี่ยนหลังตรวจนับ กรุณาให้จัดซื้อนับและส่งใหม่');

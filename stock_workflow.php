@@ -62,7 +62,7 @@ function stock_validate_movement_quantity(string $movementType, float $quantity)
 function stock_generate_internal_sku(int $supId): string
 {
     if ($supId <= 0) {
-        throw new DomainException('ไม่พบบริษัทสำหรับสร้างรหัสสินค้า');
+        throw new DomainException('ไม่พบบริษัทสำหรับสร้างรหัสพัสดุ');
     }
     return sprintf('STK-%d-%s-%s', $supId, date('ymdHis'), strtoupper(bin2hex(random_bytes(3))));
 }
@@ -72,14 +72,17 @@ function stock_issue_quantity(float $remainingRequested, float $available, float
     if ($requestedIssue <= 0) {
         throw new DomainException('จำนวนที่จ่ายต้องมากกว่า 0');
     }
+    if (abs($requestedIssue - round($requestedIssue)) > 0.00001) {
+        throw new DomainException('จำนวนที่จ่ายต้องเป็นจำนวนเต็ม');
+    }
     if ($requestedIssue > $remainingRequested + 0.00001) {
         throw new DomainException('จำนวนที่จ่ายเกินจำนวนที่ยังค้างในใบเบิก');
     }
     if ($requestedIssue > $available + 0.00001) {
-        throw new DomainException('จำนวนสินค้าใน Stock ไม่เพียงพอ');
+        throw new DomainException('จำนวนพัสดุใน Stock ไม่เพียงพอ');
     }
 
-    return round($requestedIssue, 2);
+    return (float)round($requestedIssue);
 }
 
 function stock_validate_withdrawal_request_quantity(float $requested, float $available): float
@@ -87,17 +90,37 @@ function stock_validate_withdrawal_request_quantity(float $requested, float $ava
     if ($requested <= 0) {
         throw new DomainException('จำนวนที่ขอเบิกต้องมากกว่า 0');
     }
+    if (abs($requested - round($requested)) > 0.00001) {
+        throw new DomainException('จำนวนที่ขอเบิกต้องเป็นจำนวนเต็ม');
+    }
     if ($available <= 0 || $requested > $available + 0.00001) {
         throw new DomainException('จำนวนที่ขอเบิกเกินยอดคงเหลือใน Stock');
     }
 
-    return round($requested, 2);
+    return (float)round($requested);
+}
+
+function stock_validate_withdrawal_received_quantity(float $received, float $issued): float
+{
+    if ($received < 0 || $received > $issued + 0.00001) {
+        throw new DomainException('จำนวนที่ยืนยันรับไม่ถูกต้อง');
+    }
+    if (abs($received - round($received)) > 0.00001) {
+        throw new DomainException('จำนวนที่ยืนยันรับต้องเป็นจำนวนเต็ม');
+    }
+
+    return (float)round($received);
+}
+
+function stock_format_withdrawal_quantity(float $quantity): string
+{
+    return number_format($quantity, 0);
 }
 
 function stock_convert_purchase_to_stock_quantity(float $purchaseQuantity, float $unitsPerPurchaseUnit): float
 {
     if ($purchaseQuantity <= 0) {
-        throw new DomainException('จำนวนรับสินค้าต้องมากกว่า 0');
+        throw new DomainException('จำนวนรับพัสดุต้องมากกว่า 0');
     }
     if ($unitsPerPurchaseUnit <= 0) {
         throw new DomainException('จำนวนหน่วย Stock ต่อหน่วยซื้อต้องมากกว่า 0');
@@ -113,7 +136,7 @@ function stock_convert_purchase_to_stock_quantity(float $purchaseQuantity, float
 function stock_po_receivable_remaining(float $ordered, float $received): float
 {
     if ($ordered < 0 || $received < 0 || $received > $ordered + 0.00001) {
-        throw new DomainException('ยอดรับสินค้าจาก PO ไม่ถูกต้อง');
+        throw new DomainException('ยอดรับพัสดุจาก PO ไม่ถูกต้อง');
     }
 
     return round(max(0, $ordered - $received), 2);
@@ -182,8 +205,8 @@ function stock_can_view_reconciliation(string $role, int $actorSupId, int $repor
 function stock_status_label(string $status): string
 {
     return [
-        'waiting_issue' => 'รอจ่ายสินค้า',
-        'waiting_confirmation' => 'รอยืนยันรับสินค้า',
+        'waiting_issue' => 'รอจ่ายพัสดุ',
+        'waiting_confirmation' => 'รอยืนยันรับพัสดุ',
         'discrepancy' => 'พบผลต่างรอตรวจสอบ',
         'partially_fulfilled' => 'รับแล้วบางส่วน',
         'completed' => 'เสร็จสิ้น',
