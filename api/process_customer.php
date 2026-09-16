@@ -7,6 +7,7 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 require_once '../config.php';
+require_once '../customer_tax_defaults.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $response = ['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการประมวลผล'];
@@ -26,18 +27,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
             $phone = trim($_POST['phone'] ?? ''); // เพิ่มใหม่
             $email = trim($_POST['email'] ?? ''); // เพิ่มใหม่
             $address = trim($_POST['address'] ?? '');
+            $taxDefaults = customer_tax_defaults_from_input($_POST);
 
             if (empty($customer_name)) throw new Exception("กรุณากรอกชื่อลูกค้า");
 
             if ($action === 'add') {
                 // INSERT ข้อมูล (เพิ่ม phone และ email เข้าไปใน SQL)
-                $sql = "INSERT INTO customers (customer_name, tax_id, contact_person, phone, email, address, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO customers (customer_name, tax_id, contact_person, phone, email, address, entity_type, default_vat_mode, default_wht_enabled, default_wht_percent, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $conn->prepare($sql);
                 // "ssssssss" หมายถึง String 8 ตัว
-                $stmt->bind_param("ssssssss", $customer_name, $tax_id, $contact_person, $phone, $email, $address, $user, $user);
+                $stmt->bind_param(
+                    'ssssssssidss',
+                    $customer_name,
+                    $tax_id,
+                    $contact_person,
+                    $phone,
+                    $email,
+                    $address,
+                    $taxDefaults['entity_type'],
+                    $taxDefaults['default_vat_mode'],
+                    $taxDefaults['default_wht_enabled'],
+                    $taxDefaults['default_wht_percent'],
+                    $user,
+                    $user
+                );
                 
                 if ($stmt->execute()) {
-                    $response = ['status' => 'success', 'message' => 'เพิ่มข้อมูลลูกค้าสำเร็จ', 'id' => $conn->insert_id];
+                    $response = ['status' => 'success', 'message' => 'เพิ่มข้อมูล Vendor สำเร็จ', 'id' => $conn->insert_id, 'vendor' => $taxDefaults];
                     $_SESSION['flash_msg'] = 'add_success';
                 } else {
                     throw new Exception("ไม่สามารถเพิ่มข้อมูลได้: " . $conn->error);
@@ -47,13 +63,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
                 $id = intval($_POST['customer_id'] ?? 0);
                 if ($id <= 0) throw new Exception("ID ไม่ถูกต้อง");
 
-                $sql = "UPDATE customers SET customer_name=?, tax_id=?, contact_person=?, phone=?, email=?, address=?, updated_by=? WHERE id=?";
+                $sql = "UPDATE customers SET customer_name=?, tax_id=?, contact_person=?, phone=?, email=?, address=?, entity_type=?, default_vat_mode=?, default_wht_enabled=?, default_wht_percent=?, updated_by=? WHERE id=?";
                 $stmt = $conn->prepare($sql);
                 // "sssssssi" หมายถึง String 7 ตัว และ Integer 1 ตัว (id)
-                $stmt->bind_param("sssssssi", $customer_name, $tax_id, $contact_person, $phone, $email, $address, $user, $id);
+                $stmt->bind_param(
+                    'ssssssssidsi',
+                    $customer_name,
+                    $tax_id,
+                    $contact_person,
+                    $phone,
+                    $email,
+                    $address,
+                    $taxDefaults['entity_type'],
+                    $taxDefaults['default_vat_mode'],
+                    $taxDefaults['default_wht_enabled'],
+                    $taxDefaults['default_wht_percent'],
+                    $user,
+                    $id
+                );
                 
                 if ($stmt->execute()) {
-                    $response = ['status' => 'success', 'message' => 'อัปเดตข้อมูลลูกค้าสำเร็จ'];
+                    $response = ['status' => 'success', 'message' => 'อัปเดตข้อมูล Vendor สำเร็จ', 'vendor' => $taxDefaults];
                     $_SESSION['flash_msg'] = 'update_success';
                 } else {
                     throw new Exception("ไม่สามารถอัปเดตข้อมูลได้: " . $conn->error);
