@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
             $address = trim($_POST['address'] ?? '');
             $taxDefaults = customer_tax_defaults_from_input($_POST);
 
-            if (empty($customer_name)) throw new Exception("กรุณากรอกชื่อลูกค้า");
+            if (empty($customer_name)) throw new Exception("กรุณากรอกชื่อ Vendor");
 
             if ($action === 'add') {
                 // INSERT ข้อมูล (เพิ่ม phone และ email เข้าไปใน SQL)
