@@ -37,7 +37,7 @@ include('assets/alert.php');
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fas fa-users text-indigo-500"></i> เลือกลูกค้าสำหรับทำรายการ
+                    <i class="fas fa-users text-indigo-500"></i> เลือก Vendor สำหรับทำรายการ
                 </h2>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
                 <button id="btnDeleteSelected" onclick="deleteSelected()"
@@ -54,7 +54,7 @@ include('assets/alert.php');
                             <th class="px-4 py-3 border-0 text-center w-10">
                                 <input type="checkbox" id="selectAll" class="rounded border-slate-300">
                             </th>
-                            <th class="px-4 py-3 border-0">ลูกค้า/บริษัท</th>
+                            <th class="px-4 py-3 border-0">Vendor/บริษัท</th>
                             <th class="px-4 py-3 border-0">เลขภาษี</th>
                             <th class="px-4 py-3 border-0 text-center">จัดการ</th>
                         </tr>
@@ -63,6 +63,12 @@ include('assets/alert.php');
                         <?php
                         $query = mysqli_query($conn, "SELECT * FROM customers ORDER BY id DESC;");
                         while ($row = mysqli_fetch_assoc($query)):
+                            $entityLabel = ($row['entity_type'] ?? 'juristic') === 'individual' ? 'บุคคลธรรมดา' : 'นิติบุคคล';
+                            $vatLabels = ['none' => 'ไม่คิด VAT', 'exclusive' => 'VAT นอก', 'inclusive' => 'VAT ใน'];
+                            $vatLabel = $vatLabels[$row['default_vat_mode'] ?? 'none'] ?? 'ไม่คิด VAT';
+                            $whtLabel = !empty($row['default_wht_enabled'])
+                                ? 'WHT ' . number_format((float)$row['default_wht_percent'], 2) . '%'
+                                : 'ไม่หัก WHT';
                             $json_data = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
                             ?>
                             <tr class="hover:bg-slate-50 transition-colors cursor-pointer customer-row"
@@ -77,6 +83,11 @@ include('assets/alert.php');
                                     </div>
                                     <div class="text-[11px] text-slate-400 contact-display">
                                         <?= htmlspecialchars($row['contact_person'] ?: '-') ?>
+                                    </div>
+                                    <div class="mt-1 flex flex-wrap gap-1 text-[10px] font-medium">
+                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600"><?= $entityLabel ?></span>
+                                        <span class="rounded-full bg-blue-50 px-2 py-0.5 text-blue-600"><?= $vatLabel ?></span>
+                                        <span class="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700"><?= $whtLabel ?></span>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-slate-500 font-mono text-xs tax-display">
@@ -110,7 +121,7 @@ include('assets/alert.php');
             id="customerFormSection">
             <div class="p-5 border-b border-slate-100 bg-slate-50/50">
                 <h2 id="formTitle" class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fas fa-user-plus text-indigo-500"></i> เพิ่มลูกค้า
+                    <i class="fas fa-user-plus text-indigo-500"></i> เพิ่ม Vendor
                 </h2>
             </div>
             <form id="customerForm" class="p-5 space-y-4">
@@ -118,7 +129,7 @@ include('assets/alert.php');
                 <input type="hidden" name="action" id="formAction" value="add">
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5">ชื่อบริษัท/ลูกค้า <span
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5">ชื่อ Vendor <span
                             class="text-red-500">*</span></label>
                     <input type="text" name="customer_name" id="customer_name" required
                         class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -133,6 +144,39 @@ include('assets/alert.php');
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1.5">ผู้ติดต่อ</label>
                         <input type="text" name="contact_person" id="contact_person"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">ประเภท Vendor</label>
+                        <select name="entity_type" id="entity_type"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="juristic">นิติบุคคล</option>
+                            <option value="individual">บุคคลธรรมดา</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">VAT เริ่มต้น</label>
+                        <select name="default_vat_mode" id="default_vat_mode"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="none">ไม่คิด VAT</option>
+                            <option value="exclusive">VAT นอก</option>
+                            <option value="inclusive">VAT ใน</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 items-end">
+                    <label class="flex items-center gap-2 pb-2 text-xs font-bold text-slate-600 cursor-pointer">
+                        <input type="checkbox" name="default_wht_enabled" id="default_wht_enabled" value="1"
+                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        หัก WHT เริ่มต้น
+                    </label>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">WHT (%)</label>
+                        <input type="number" name="default_wht_percent" id="default_wht_percent" min="0" max="100" step="0.01" value="3.00"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
                 </div>

@@ -29,6 +29,7 @@ $(document).ready(function () {
       .then((res) => res.json())
       .then((res) => {
         if (res.status === "success") {
+          const vendor = res.vendor || {};
           const rowData = {
             id: action === "add" ? res.id : customerId,
             customer_name: $("#customer_name").val(),
@@ -37,6 +38,10 @@ $(document).ready(function () {
             phone: $("#phone").val() || "-",
             email: $("#email").val() || "-",
             address: $("#address").val(),
+            entity_type: vendor.entity_type || "juristic",
+            default_vat_mode: vendor.default_vat_mode || "none",
+            default_wht_enabled: Number(vendor.default_wht_enabled) === 1 ? 1 : 0,
+            default_wht_percent: Number(vendor.default_wht_percent ?? 3).toFixed(2),
           };
 
           const actionBtns = `
@@ -54,6 +59,7 @@ $(document).ready(function () {
                             <div class="text-[12px] text-slate-400">
                                 <i class="fas fa-user mr-1"></i>${rowData.contact_person} | <i class="fas fa-phone mr-1"></i>${rowData.phone}
                             </div>
+                            ${vendorTaxBadges(rowData)}
                         `;
 
           if (action === "add") {
@@ -127,7 +133,32 @@ $(document).ready(function () {
   $(document).on("change", ".customer-checkbox", function () {
     updateDeleteUI();
   });
+
+  $("#default_wht_enabled").on("change", updateWhtPercentState);
+  updateWhtPercentState();
 });
+
+function vendorTaxBadges(data) {
+  const entityLabel = data.entity_type === "individual" ? "บุคคลธรรมดา" : "นิติบุคคล";
+  const vatLabels = { none: "ไม่คิด VAT", exclusive: "VAT นอก", inclusive: "VAT ใน" };
+  const vatLabel = vatLabels[data.default_vat_mode] || "ไม่คิด VAT";
+  const whtLabel = Number(data.default_wht_enabled) === 1
+    ? `WHT ${Number(data.default_wht_percent).toFixed(2)}%`
+    : "ไม่หัก WHT";
+
+  return `<div class="mt-1 flex flex-wrap gap-1 text-[10px] font-medium">
+    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">${entityLabel}</span>
+    <span class="rounded-full bg-blue-50 px-2 py-0.5 text-blue-600">${vatLabel}</span>
+    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">${whtLabel}</span>
+  </div>`;
+}
+
+function updateWhtPercentState() {
+  const enabled = $("#default_wht_enabled").prop("checked");
+  $("#default_wht_percent")
+    .attr("aria-disabled", String(!enabled))
+    .toggleClass("opacity-50 cursor-not-allowed pointer-events-none", !enabled);
+}
 
 /**
  * ฟังก์ชันหลักในการคุม UI ปุ่มลบ (แก้ไขให้เสถียรขึ้น)
@@ -205,7 +236,7 @@ function renderAlert(type) {
 }
 
 function deleteCustomer(id) {
-  if (!confirm("ยืนยันการลบลูกค้ารายนี้?")) return;
+  if (!confirm("ยืนยันการลบ Vendor รายนี้?")) return;
   fetch(`api/process_customer.php?action=delete&id=${id}`)
     .then((res) => res.json())
     .then((res) => {
@@ -229,7 +260,7 @@ function deleteSelected() {
   if (ids.length === 0) return;
   if (
     !confirm(
-      `⚠️ ยืนยันลบลูกค้าที่เลือกทั้งหมด ${ids.length} รายการ?\nการกระทำนี้ไม่สามารถย้อนกลับได้`,
+      `⚠️ ยืนยันลบ Vendor ที่เลือกทั้งหมด ${ids.length} รายการ?\nการกระทำนี้ไม่สามารถย้อนกลับได้`,
     )
   )
     return;
@@ -257,7 +288,7 @@ function deleteSelected() {
 
 function editCustomer(data) {
   $("#formTitle").html(
-    '<i class="fas fa-user-edit text-orange-500"></i> แก้ไขข้อมูลลูกค้า',
+    '<i class="fas fa-user-edit text-orange-500"></i> แก้ไขข้อมูล Vendor',
   );
   $("#formAction").val("edit");
   $("#customer_id").val(data.id);
@@ -269,6 +300,11 @@ function editCustomer(data) {
   $("#phone").val(data.phone === "-" ? "" : data.phone);
   $("#email").val(data.email === "-" ? "" : data.email);
   $("#address").val(data.address);
+  $("#entity_type").val(data.entity_type || "juristic");
+  $("#default_vat_mode").val(data.default_vat_mode || "none");
+  $("#default_wht_enabled").prop("checked", Number(data.default_wht_enabled) === 1);
+  $("#default_wht_percent").val(Number(data.default_wht_percent ?? 3).toFixed(2));
+  updateWhtPercentState();
 
   $("#cancelBtn").removeClass("hidden");
   $("#customerFormSection")[0].scrollIntoView({ behavior: "smooth" });
@@ -277,10 +313,15 @@ function editCustomer(data) {
 function resetForm() {
   $("#customerForm")[0].reset();
   $("#formTitle").html(
-    '<i class="fas fa-user-plus text-indigo-500"></i> เพิ่มลูกค้า',
+    '<i class="fas fa-user-plus text-indigo-500"></i> เพิ่ม Vendor',
   );
   $("#formAction").val("add");
   $("#customer_id").val("");
+  $("#entity_type").val("juristic");
+  $("#default_vat_mode").val("none");
+  $("#default_wht_enabled").prop("checked", false);
+  $("#default_wht_percent").val("3.00");
+  updateWhtPercentState();
   $("#cancelBtn").addClass("hidden");
 }
 
@@ -328,7 +369,7 @@ function createDoc(type) {
 
   // --- Logic ปกติสำหรับ Quotation / PO (ต้องเลือก) ---
   if (selectedCheckboxes.length === 0) {
-    alert("กรุณาเลือกลูกค้าในตารางก่อนทำรายการครับ");
+    alert("กรุณาเลือก Vendor ในตารางก่อนทำรายการครับ");
     return;
   }
   if (selectedCheckboxes.length > 1) {

@@ -50,8 +50,8 @@ function startTutorial() {
       {
         element: '#customerTable_wrapper',
         popover: {
-          title: 'ตารางรายชื่อลูกค้า',
-          description: 'แสดงรายชื่อลูกค้าทั้งหมดในระบบ คุณสามารถคลิกที่แถวเพื่อเลือกเข้าทำรายการ',
+          title: 'ตารางรายชื่อ Vendor',
+          description: 'แสดงรายชื่อ Vendor ทั้งหมดในระบบ คุณสามารถคลิกที่แถวเพื่อเลือกเข้าทำรายการ',
           side: "top",
           align: 'start'
         }
@@ -59,8 +59,8 @@ function startTutorial() {
       {
         element: '#customerFormSection',
         popover: {
-          title: 'จัดการข้อมูลลูกค้า',
-          description: 'ส่วนสำหรับเพิ่มหรือแก้ไขข้อมูลลูกค้า',
+          title: 'จัดการข้อมูล Vendor',
+          description: 'ส่วนสำหรับเพิ่มหรือแก้ไขข้อมูล Vendor',
           side: "left",
           align: 'start'
         }
