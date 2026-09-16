@@ -33,4 +33,18 @@ if (strpos($api, "'vendor' => \$taxDefaults") !== false || strpos($api, "'vendor
     throw new RuntimeException('process_customer.php must return the complete server-processed vendor');
 }
 
+$project = file_get_contents(__DIR__ . '/../add_project.php');
+foreach ([
+    'data-entity-type=',
+    'data-vat-mode=',
+    'data-wht-enabled=',
+    'data-wht-percent=',
+    'assets/js/vendor-tax-defaults.js',
+    'name="wht_percent"',
+] as $needle) {
+    if (strpos($project, $needle) === false) {
+        throw new RuntimeException("project form missing {$needle}");
+    }
+}
+
 echo "vendor tax form: PASS\n";

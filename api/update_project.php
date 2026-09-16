@@ -12,14 +12,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $project_name = mysqli_real_escape_string($conn, $_POST['project_name']);
     $customer_id = mysqli_real_escape_string($conn, $_POST['customer_id']);
     $contract_value = floatval($_POST['contract_value']);
-    $total_vat_amount = floatval($_POST['total_vat_amount']);
-    $total_wht_amount = floatval($_POST['total_wht_amount'] ?? 0);
-    $net_contract_value = floatval($_POST['net_contract_value']);
-    
-    // เพิ่มการรับค่า VAT Type (0 = VAT ใน, 1 = VAT นอก)
-    $has_vat = isset($_POST['vat_type_status']) ? intval($_POST['vat_type_status']) : 1;
-    // ถ้าไม่ได้ติ๊กเปิด VAT 7% เลย อาจจะเก็บเป็น NULL หรือ 1 ตามต้องการ
-    // แต่ถ้าเปิด VAT สวิตช์ vat_type_status จะเป็นตัวบอกว่าเป็น 0 หรือ 1
+    if (!array_key_exists('wht_percent', $_POST)) {
+        $wht_percent = 3.00;
+    } elseif (is_array($_POST['wht_percent']) || !is_numeric($_POST['wht_percent'])) {
+        http_response_code(422);
+        echo 'เปอร์เซ็นต์หัก ณ ที่จ่ายต้องเป็นตัวเลขระหว่าง 0 ถึง 100';
+        exit;
+    } else {
+        $wht_percent = (float)$_POST['wht_percent'];
+        if ($wht_percent < 0 || $wht_percent > 100) {
+            http_response_code(422);
+            echo 'เปอร์เซ็นต์หัก ณ ที่จ่ายต้องเป็นตัวเลขระหว่าง 0 ถึง 100';
+            exit;
+        }
+    }
+
+    $is_vat_enabled = isset($_POST['include_vat']) && $_POST['include_vat'] === 'yes';
+    $is_vat_included = isset($_POST['vat_type_status']) && (int)$_POST['vat_type_status'] === 0;
+    $has_vat = null;
+    if ($is_vat_enabled) {
+        $has_vat = $is_vat_included ? 0 : 1;
+    }
+
+    $actual_base = $contract_value;
+    $total_vat_amount = 0;
+    $total_wht_amount = 0;
+    if ($is_vat_enabled) {
+        if ($is_vat_included) {
+            $actual_base = $contract_value / 1.07;
+            $total_vat_amount = $contract_value - $actual_base;
+        } else {
+            $total_vat_amount = $contract_value * 0.07;
+        }
+    }
+
+    $is_wht_enabled = isset($_POST['include_wht']) && $_POST['include_wht'] === 'yes';
+    if ($is_wht_enabled) {
+        $total_wht_amount = $actual_base * ($wht_percent / 100);
+    }
+
+    $net_contract_value = ($is_vat_enabled && $is_vat_included)
+        ? $contract_value - $total_wht_amount
+        : $contract_value + $total_vat_amount - $total_wht_amount;
+    $has_vat_sql = $has_vat === null ? 'NULL' : (string)$has_vat;
     
     $start_date = !empty($_POST['start_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['start_date']) . "'" : "NULL";
     $end_date = !empty($_POST['end_date']) ? "'" . mysqli_real_escape_string($conn, $_POST['end_date']) . "'" : "NULL";
@@ -87,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     project_name = '$project_name',
                     customer_id = '$customer_id',
                     contract_value = '$contract_value',
-                    has_vat = '$has_vat', 
+                    has_vat = $has_vat_sql,
                     total_vat_amount = '$total_vat_amount',
                     total_wht_amount = '$total_wht_amount',
                     net_contract_value = '$net_contract_value',
@@ -99,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     bank_account_name = '$bank_account_name',
                     project_remarks = '$project_remarks',
                     supplier_id = '$supplier_id',
+                    wht_percent = '$wht_percent',
                     check_work_url = '$check_work_url',
                     contract_no = '$contract_no',
                     contract_date = $contract_date,

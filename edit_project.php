@@ -20,6 +20,7 @@ $customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER 
 $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
 $bank_options = thai_bank_options();
 $existing_bank_name = trim((string)($pj['bank_name'] ?? ''));
+$stored_wht_percent = isset($pj['wht_percent']) ? (float)$pj['wht_percent'] : 3.00;
 if ($existing_bank_name !== '' && !in_array($existing_bank_name, $bank_options, true)) {
     array_unshift($bank_options, $existing_bank_name);
 }
@@ -97,8 +98,9 @@ function calculateNetValue() {
         }
     }
 
-    whtAmount = isWht ? (actualBase * 0.03) : 0;
-    let netValue = isVatIn ? (inputValue - whtAmount) : (inputValue + vatAmount - whtAmount);
+    const whtPercent = Math.min(100, Math.max(0, parseFloat(document.getElementById('wht_percent')?.value) || 0));
+    whtAmount = isWht ? actualBase * (whtPercent / 100) : 0;
+    let netValue = (isVat && isVatIn) ? (inputValue - whtAmount) : (inputValue + vatAmount - whtAmount);
 
     const fmt = (num) => num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -403,7 +405,7 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
         <span class="mr-2 text-[12px] font-bold text-slate-400">VAT 7%</span>
         <input type="checkbox" id="vat_toggle" name="include_vat" value="yes"
             onchange="calculateNetValue()" class="hidden peer"
-            <?php if (isset($pj['total_vat_amount']) && floatval($pj['total_vat_amount']) > 0) echo 'checked'; ?>>
+            <?php if ($pj['has_vat'] !== null) echo 'checked'; ?>>
         <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
     </label>
 
@@ -413,16 +415,17 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
         <input type="checkbox" id="vat_include_check" name="vat_type_status" value="0"
             onchange="calculateNetValue()" class="hidden peer"
             <?php // ถ้า has_vat ใน DB เป็น 0 ให้ติ๊กสวิตช์นี้
-                if (isset($pj['has_vat']) && $pj['has_vat'] == 0 && $pj['has_vat'] !== null) echo 'checked'; 
+                if ($pj['has_vat'] !== null && (int)$pj['has_vat'] === 0) echo 'checked';
             ?>>
         <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-cyan-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
     </label>
 
     <label class="inline-flex items-center cursor-pointer">
-        <span class="mr-2 text-[12px] font-bold text-slate-400">WHT 3%</span>
+        <span class="mr-2 text-[12px] font-bold text-slate-400">WHT <span id="wht_percent_label"><?= htmlspecialchars(number_format($stored_wht_percent, 2, '.', ''), ENT_QUOTES, 'UTF-8') ?></span>%</span>
         <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
             onchange="calculateNetValue()" class="hidden peer"
             <?php if (isset($pj['total_wht_amount']) && floatval($pj['total_wht_amount']) > 0) echo 'checked'; ?>>
+        <input type="hidden" name="wht_percent" id="wht_percent" value="<?= htmlspecialchars(number_format($stored_wht_percent, 2, '.', ''), ENT_QUOTES, 'UTF-8') ?>">
         <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-rose-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
     </label>
 </div>
@@ -440,7 +443,7 @@ document.addEventListener('DOMContentLoaded', calculateNetValue);
                         </div>
 
                         <div id="wht_row" class="flex justify-between transition-all">
-                            <span class="text-slate-400">หัก ณ ที่จ่าย (3%):</span>
+                            <span class="text-slate-400">หัก ณ ที่จ่าย:</span>
                             <span id="display_wht" class="text-rose-400">- 0.00</span>
                         </div>
 

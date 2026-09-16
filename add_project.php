@@ -5,7 +5,7 @@ require_once __DIR__ . '/bank_options.php';
 include('header.php');
 
 // ดึงรายชื่อลูกค้า
-$customers = mysqli_query($conn, "SELECT id, customer_name FROM customers ORDER BY customer_name ASC");
+$customers = mysqli_query($conn, "SELECT id, customer_name, entity_type, default_vat_mode, default_wht_enabled, default_wht_percent FROM customers ORDER BY customer_name ASC");
 
 // เพิ่ม: ดึงรายชื่อผู้รับจ้าง / ร้านค้า (Suppliers)
 $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
@@ -56,15 +56,21 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-1">Supplier</label>
+                                <label class="block text-sm font-bold text-slate-700 mb-1">Vendor</label>
                                 <select name="customer_id" id="customer_select"
                                     class="w-full border border-slate-200 rounded-xl p-2.5 outline-none ">
-                                    <option value="">-- เลือก Supplier --</option>
+                                    <option value="">-- เลือก Vendor --</option>
                                     <?php
                                     mysqli_data_seek($customers, 0);
                                     while ($c = mysqli_fetch_assoc($customers)):
                                         ?>
-                                        <option value="<?= $c['id'] ?>"><?= $c['customer_name'] ?></option>
+                                        <option
+                                            value="<?= (int)$c['id'] ?>"
+                                            data-entity-type="<?= htmlspecialchars($c['entity_type'], ENT_QUOTES, 'UTF-8') ?>"
+                                            data-vat-mode="<?= htmlspecialchars($c['default_vat_mode'], ENT_QUOTES, 'UTF-8') ?>"
+                                            data-wht-enabled="<?= (int)$c['default_wht_enabled'] ?>"
+                                            data-wht-percent="<?= htmlspecialchars(number_format((float)$c['default_wht_percent'], 2, '.', ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        ><?= $c['customer_name'] ?></option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
@@ -92,12 +98,22 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                             </div>
                         </div>
 
+                        <script src="assets/js/vendor-tax-defaults.js"></script>
                         <script>
                             $(document).ready(function () {
                                 $('#customer_select').select2({
-                                    placeholder: '-- เลือก Supplier --',
+                                    placeholder: '-- เลือก Vendor --',
                                     allowClear: true,
                                     width: '100%'
+                                });
+
+                                $('#customer_select').on('change', function () {
+                                    const selectedOption = this.options[this.selectedIndex];
+                                    const defaults = window.VendorTaxDefaults.fromDataset(
+                                        selectedOption ? selectedOption.dataset : {}
+                                    );
+                                    window.VendorTaxDefaults.applyToProjectForm(document, defaults);
+                                    calculateNetValue();
                                 });
                             });
                         </script>
@@ -287,10 +303,10 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                             </label>
 
                             <label class="inline-flex items-center cursor-pointer">
-                                <span class="mr-2 text-[12px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย
-                                    (3%)</span>
+                                <span class="mr-2 text-[12px] font-bold text-slate-400 uppercase">หัก ณ ที่จ่าย</span>
                                 <input type="checkbox" id="wht_toggle" name="include_wht" value="yes"
                                     class="hidden peer" onchange="calculateNetValue()">
+                                <input type="hidden" name="wht_percent" id="wht_percent" value="3.00">
                                 <div
                                     class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 relative">
                                 </div>
@@ -310,7 +326,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         </div>
 
                         <div id="wht_row" class="flex justify-between transition-all duration-300">
-                            <span class="text-slate-400">หัก ณ ที่จ่าย (3%):</span>
+                            <span class="text-slate-400">หัก ณ ที่จ่าย (<span id="wht_percent_label">3</span>%):</span>
                             <input type="hidden" name="total_wht_amount" id="total_wht_amount">
                             <span id="display_wht" class="text-rose-400">- 0.00</span>
                         </div>
@@ -507,8 +523,9 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
             }
         }
 
-        // 4. คำนวณ หัก ณ ที่จ่าย (3%) จากฐานจริง (actualBase) เสมอ
-        whtAmount = isWht ? (actualBase * 0.03) : 0;
+        // 4. คำนวณ หัก ณ ที่จ่าย จากฐานจริง (actualBase) เสมอ
+        const whtPercent = Math.min(100, Math.max(0, parseFloat(document.getElementById('wht_percent')?.value) || 0));
+        whtAmount = isWht ? actualBase * (whtPercent / 100) : 0;
 
         // 5. คำนวณยอดสุทธิที่ต้องจ่ายจริง
         // ถ้าเป็น VAT ใน: ยอดกรอก - WHT

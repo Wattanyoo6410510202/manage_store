@@ -32,7 +32,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $bank_account_no = mysqli_real_escape_string($conn, $_POST['bank_account_no']);
     $bank_account_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
-    $wht_percent = floatval($_POST['wht_percent'] ?? 3);
+    if (!array_key_exists('wht_percent', $_POST)) {
+        $wht_percent = 3.00;
+    } elseif (is_array($_POST['wht_percent']) || !is_numeric($_POST['wht_percent'])) {
+        http_response_code(422);
+        echo 'เปอร์เซ็นต์หัก ณ ที่จ่ายต้องเป็นตัวเลขระหว่าง 0 ถึง 100';
+        exit;
+    } else {
+        $wht_percent = (float)$_POST['wht_percent'];
+        if ($wht_percent < 0 || $wht_percent > 100) {
+            http_response_code(422);
+            echo 'เปอร์เซ็นต์หัก ณ ที่จ่ายต้องเป็นตัวเลขระหว่าง 0 ถึง 100';
+            exit;
+        }
+    }
 
     $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
     $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
@@ -47,18 +60,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // เช็คว่าเปิดใช้งาน VAT หรือไม่ (Checkbox หลัก)
     $is_vat_enabled = (isset($_POST['include_vat']) && $_POST['include_vat'] === 'yes');
 
-    /**
-     * รับค่าสถานะ VAT: 0 = VAT ใน, 1 = VAT นอก
-     * ใช้เทคนิคส่งค่าจาก Frontend (Hidden + Checkbox)
-     */
-    $has_vat = isset($_POST['vat_type_status']) ? intval($_POST['vat_type_status']) : 1;
+    $is_vat_included = isset($_POST['vat_type_status']) && (int)$_POST['vat_type_status'] === 0;
+    $has_vat = null;
+    if ($is_vat_enabled) {
+        $has_vat = $is_vat_included ? 0 : 1;
+    }
 
     $actual_base = $contract_value;
     $total_vat_amount = 0;
     $total_wht_amount = 0;
 
     if ($is_vat_enabled) {
-        if ($has_vat === 0) {
+        if ($is_vat_included) {
             // กรณี 0: VAT ใน (ยอดที่กรอกคือยอดสุทธิรวม VAT แล้ว)
             $actual_base = $contract_value / 1.07;
             $total_vat_amount = $contract_value - $actual_base;
@@ -67,12 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $actual_base = $contract_value;
             $total_vat_amount = $contract_value * 0.07;
         }
-    } else {
-        /**
-         * หากไม่เปิดใช้ VAT เลย ให้บันทึกเป็นค่าที่สื่อว่าไม่มี VAT
-         * จารสามารถเลือกบันทึกเป็น 0 หรือ NULL ก็ได้ (ในที่นี้ขอใช้ NULL ตามโครงสร้างเดิมจาร)
-         */
-        $has_vat = "NULL";
     }
 
     // คำนวณ หัก ณ ที่จ่าย (WHT) จากฐานเงินต้นก่อนภาษีเสมอ
@@ -82,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // คำนวณยอดสุทธิ (Net Value) ที่ต้องทำสัญญา/จ่ายจริง
-    if ($is_vat_enabled && $has_vat === 0) {
+    if ($is_vat_enabled && $is_vat_included) {
         // VAT ใน: ยอดจ่ายจริงคือ [ยอดที่กรอก] - [หัก ณ ที่จ่าย]
         $net_contract_value = $contract_value - $total_wht_amount;
     } else {
@@ -90,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $net_contract_value = $contract_value + $total_vat_amount - $total_wht_amount;
     }
     // ----------------------------------------------
+    $has_vat_sql = $has_vat === null ? 'NULL' : (string)$has_vat;
 
     // 4. สร้างเลขที่โครงการอัตโนมัติ (ขยับขึ้นมาเพื่อให้ได้เลขก่อนอัปโหลดไฟล์)
     // 3. จัดการไฟล์แนบ (แยกเป็นโฟลเดอร์ตามเลขที่โครงการ)
@@ -123,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ) VALUES (
                 '$project_name', '$contractor_name', '$bank_name', '$bank_account_no', '$bank_account_name',
                 '$project_no', '$customer_id', '$contract_value', '$total_vat_amount', '$total_wht_amount', 
-                '$net_contract_value', $has_vat, '$start_date', '$end_date', '$attachment_name', 
+                '$net_contract_value', $has_vat_sql, '$start_date', '$end_date', '$attachment_name',
                 '$attachment_contract', '$attachment_boq',
                 '$retention_percent', $supplier_id,
                 '$wht_percent', '$check_work_url', '$project_remarks', $created_by, NOW(), 'on_hold',
