@@ -31,17 +31,14 @@ $(document).ready(function () {
         if (res.status === "success") {
           const vendor = res.vendor || {};
           const rowData = {
-            id: action === "add" ? res.id : customerId,
-            customer_name: $("#customer_name").val(),
-            tax_id: $("#tax_id").val() || "-",
-            contact_person: $("#contact_person").val() || "-",
-            phone: $("#phone").val() || "-",
-            email: $("#email").val() || "-",
-            address: $("#address").val(),
-            entity_type: vendor.entity_type || "juristic",
-            default_vat_mode: vendor.default_vat_mode || "none",
-            default_wht_enabled: Number(vendor.default_wht_enabled) === 1 ? 1 : 0,
-            default_wht_percent: Number(vendor.default_wht_percent ?? 3).toFixed(2),
+            ...vendor,
+            id: vendor.id ?? (action === "add" ? res.id : customerId),
+            customer_name: vendor.customer_name || "-",
+            tax_id: vendor.tax_id || "-",
+            contact_person: vendor.contact_person || "-",
+            phone: vendor.phone || "-",
+            email: vendor.email || "-",
+            address: vendor.address || "",
           };
 
           const actionBtns = `

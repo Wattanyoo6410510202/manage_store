@@ -2,6 +2,7 @@
 $index = file_get_contents(__DIR__ . '/../index.php');
 $js = file_get_contents(__DIR__ . '/../assets/js/index.js');
 $tutorial = file_get_contents(__DIR__ . '/../assets/js/tutorial.js');
+$api = file_get_contents(__DIR__ . '/../api/process_customer.php');
 
 $requiredFields = [
     'name="entity_type"',
@@ -26,6 +27,10 @@ foreach (['entity_type', 'default_vat_mode', 'default_wht_enabled', 'default_wht
     if (strpos($js, $key) === false) {
         throw new RuntimeException("index.js does not preserve {$key}");
     }
+}
+
+if (strpos($api, "'vendor' => \$taxDefaults") !== false || strpos($api, "'vendor' => \$vendor") === false) {
+    throw new RuntimeException('process_customer.php must return the complete server-processed vendor');
 }
 
 echo "vendor tax form: PASS\n";

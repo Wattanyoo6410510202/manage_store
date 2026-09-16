@@ -13,6 +13,24 @@ header('Content-Type: application/json; charset=utf-8');
 $response = ['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการประมวลผล'];
 $user = $_SESSION['username'] ?? 'System';
 
+function fetch_customer_vendor(mysqli $conn, int $id): array {
+    $stmt = $conn->prepare("SELECT * FROM customers WHERE id = ? LIMIT 1");
+    if (!$stmt) {
+        throw new Exception('Unable to read the saved Vendor');
+    }
+
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $vendor = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$vendor) {
+        throw new Exception('Saved Vendor was not found');
+    }
+
+    return $vendor;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
@@ -53,7 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
                 );
                 
                 if ($stmt->execute()) {
-                    $response = ['status' => 'success', 'message' => 'เพิ่มข้อมูล Vendor สำเร็จ', 'id' => $conn->insert_id, 'vendor' => $taxDefaults];
+                    $vendorId = (int)$conn->insert_id;
+                    $vendor = fetch_customer_vendor($conn, $vendorId);
+                    $response = ['status' => 'success', 'message' => 'เพิ่มข้อมูล Vendor สำเร็จ', 'id' => $vendorId, 'vendor' => $vendor];
                     $_SESSION['flash_msg'] = 'add_success';
                 } else {
                     throw new Exception("ไม่สามารถเพิ่มข้อมูลได้: " . $conn->error);
@@ -83,7 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['action'])) {
                 );
                 
                 if ($stmt->execute()) {
-                    $response = ['status' => 'success', 'message' => 'อัปเดตข้อมูล Vendor สำเร็จ', 'vendor' => $taxDefaults];
+                    $vendor = fetch_customer_vendor($conn, $id);
+                    $response = ['status' => 'success', 'message' => 'อัปเดตข้อมูล Vendor สำเร็จ', 'vendor' => $vendor];
                     $_SESSION['flash_msg'] = 'update_success';
                 } else {
                     throw new Exception("ไม่สามารถอัปเดตข้อมูลได้: " . $conn->error);
