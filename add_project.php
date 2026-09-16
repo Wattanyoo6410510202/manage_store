@@ -101,13 +101,16 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         <script src="assets/js/vendor-tax-defaults.js"></script>
                         <script>
                             $(document).ready(function () {
-                                $('#customer_select').select2({
-                                    placeholder: '-- เลือก Vendor --',
-                                    allowClear: true,
-                                    width: '100%'
-                                });
+                                const customerSelect = $('#customer_select');
+                                if (typeof customerSelect.select2 === 'function') {
+                                    customerSelect.select2({
+                                        placeholder: '-- เลือก Vendor --',
+                                        allowClear: true,
+                                        width: '100%'
+                                    });
+                                }
 
-                                $('#customer_select').on('change', function () {
+                                customerSelect.on('change', function () {
                                     const selectedOption = this.options[this.selectedIndex];
                                     const defaults = window.VendorTaxDefaults.fromDataset(
                                         selectedOption ? selectedOption.dataset : {}
