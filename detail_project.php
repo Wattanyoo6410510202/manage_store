@@ -15,7 +15,7 @@ if (!$pj) {
 // 2. คำนวณยอดเบิกสะสม (ดึงมาครบทั้ง ฐานเงินต้น, VAT, และ WHT)
 $collected_sql = mysqli_query($conn, "
     SELECT 
-        SUM(total_request_amount) as total_base, 
+        SUM(amount) as total_base,
         SUM(vat_amount) as total_vat, 
         SUM(wht_amount) as total_wht,
         SUM(other_deduction_amount) as total_other,

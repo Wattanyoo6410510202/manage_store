@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once '../project_authorization.php';
+require_once '../milestone_tax_calculation.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -32,6 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // --- ส่วนที่จารต้องการเพิ่ม: บันทึกว่า VAT นอก (1) หรือ VAT ใน (0) ---
     // รับค่าจาก <input type="hidden" name="has_vat" id="vat_type_status">
     $has_vat = isset($_POST['has_vat']) ? intval($_POST['has_vat']) : 1; 
+    $use_deduction = isset($_POST['use_deduction']) && intval($_POST['use_deduction']) === 1;
+    if (!$use_deduction) {
+        $retention_percent = 0.0;
+    }
+
+    // Recalculate retention and net request from the gross milestone amount.
+    $retention_amount = milestone_retention_amount($amount, $vat_amount, $has_vat, $retention_percent);
+    $gross_amount = milestone_gross_amount($amount, $vat_amount, $has_vat);
+    $total_request_amount = round($gross_amount - $wht_amount - $retention_amount, 2);
 
     // เช็ค % เพื่อความถูกต้องใน DB
     $vat_percent = ($vat_amount > 0) ? 7.00 : 0.00;

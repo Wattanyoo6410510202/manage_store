@@ -1,4 +1,10 @@
 let table;
+const vendorRows = new Map();
+
+function escapeVendorText(value) {
+  const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value ?? '').replace(/[&<>"']/g, character => entities[character]);
+}
 
 $(document).ready(function () {
   // 1. Initialize DataTable
@@ -18,6 +24,14 @@ $(document).ready(function () {
     table.columns.adjust();
   });
 
+  $(document).on("click", ".edit-customer", function () {
+    const vendor = vendorRows.get(Number(this.dataset.customerId));
+    if (vendor) editCustomer(vendor);
+  });
+  $(document).on("click", ".delete-customer", function () {
+    deleteCustomer(Number(this.dataset.customerId));
+  });
+
   // 2. Form Submission (Add/Edit)
   $("#customerForm").on("submit", function (e) {
     e.preventDefault();
@@ -30,31 +44,39 @@ $(document).ready(function () {
       .then((res) => {
         if (res.status === "success") {
           const vendor = res.vendor || {};
+          const vendorId = Number(vendor.id ?? (action === "add" ? res.id : customerId));
+          if (!Number.isSafeInteger(vendorId) || vendorId <= 0) {
+            throw new Error("Invalid Vendor ID");
+          }
           const rowData = {
-            ...vendor,
-            id: vendor.id ?? (action === "add" ? res.id : customerId),
+            id: vendorId,
             customer_name: vendor.customer_name || "-",
             tax_id: vendor.tax_id || "-",
             contact_person: vendor.contact_person || "-",
             phone: vendor.phone || "-",
             email: vendor.email || "-",
             address: vendor.address || "",
+            entity_type: vendor.entity_type || "juristic",
+            default_vat_mode: vendor.default_vat_mode || "none",
+            default_wht_enabled: Number(vendor.default_wht_enabled) === 1 ? 1 : 0,
+            default_wht_percent: Number(vendor.default_wht_percent ?? 3),
           };
+          vendorRows.set(vendorId, rowData);
 
           const actionBtns = `
                         <div class="flex justify-center gap-1">
-                            <button onclick='editCustomer(${JSON.stringify(rowData)})' class="w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                            <button type="button" data-customer-id="${vendorId}" class="edit-customer w-8 h-8 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-lg">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="deleteCustomer(${rowData.id})" class="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg">
+                            <button type="button" data-customer-id="${vendorId}" class="delete-customer w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>`;
 
           const nameDisplay = `
-                            <div class="font-bold text-slate-700">${rowData.customer_name}</div>
+                            <div class="font-bold text-slate-700">${escapeVendorText(rowData.customer_name)}</div>
                             <div class="text-[12px] text-slate-400">
-                                <i class="fas fa-user mr-1"></i>${rowData.contact_person} | <i class="fas fa-phone mr-1"></i>${rowData.phone}
+                                <i class="fas fa-user mr-1"></i>${escapeVendorText(rowData.contact_person)} | <i class="fas fa-phone mr-1"></i>${escapeVendorText(rowData.phone)}
                             </div>
                             ${vendorTaxBadges(rowData)}
                         `;
@@ -63,9 +85,9 @@ $(document).ready(function () {
             // 1. สร้างแถวข้อมูลใหม่
             const newRowNode = table.row
               .add([
-                `<input type="checkbox" value="${res.id}" class="customer-checkbox rounded border-slate-300">`,
+                `<input type="checkbox" value="${vendorId}" class="customer-checkbox rounded border-slate-300">`,
                 nameDisplay,
-                rowData.tax_id,
+                escapeVendorText(rowData.tax_id),
                 actionBtns,
               ])
               .node();
@@ -75,7 +97,7 @@ $(document).ready(function () {
               .addClass(
                 "hover:bg-slate-50 transition-colors cursor-pointer customer-row bg-emerald-50",
               ) // เพิ่มสีเขียวอ่อนชั่วคราวให้รู้ว่ามาใหม่
-              .attr("data-id", res.id);
+              .attr("data-id", vendorId);
 
             // 3. ย้ายแถวไปไว้บนสุดของ <tbody>
             $(table.table().body()).prepend(newRowNode);
@@ -89,13 +111,13 @@ $(document).ready(function () {
             }, 2000);
           } else {
             // โค้ดส่วน Edit เดิมของคุณ (อันนี้ไม่ต้องเปลี่ยน)
-            const targetRow = $(`tr[data-id="${customerId}"]`);
+            const targetRow = $(`tr[data-id="${vendorId}"]`);
             table
               .row(targetRow)
               .data([
-                `<input type="checkbox" value="${customerId}" class="customer-checkbox rounded border-slate-300">`,
+                `<input type="checkbox" value="${vendorId}" class="customer-checkbox rounded border-slate-300">`,
                 nameDisplay,
-                rowData.tax_id,
+                escapeVendorText(rowData.tax_id),
                 actionBtns,
               ])
               .draw(false);
@@ -238,6 +260,7 @@ function deleteCustomer(id) {
     .then((res) => res.json())
     .then((res) => {
       if (res.status === "success") {
+        vendorRows.delete(Number(id));
         table
           .row($(`tr[data-id="${id}"]`))
           .remove()
@@ -271,6 +294,7 @@ function deleteSelected() {
     .then((res) => {
       if (res.status === "success") {
         ids.forEach((id) => {
+          vendorRows.delete(Number(id));
           table.row($(`tr[data-id="${id}"]`)).remove();
         });
         table.draw(false);

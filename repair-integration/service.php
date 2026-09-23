@@ -18,6 +18,160 @@ function storeBridgeWrite(mysqli $conn, string $sql, array $params): void
     $stmt->close();
 }
 
+function storeBridgePrItems(array $rawItems): array
+{
+    if ($rawItems === [] || count($rawItems) > 100) {
+        throw new DomainException('รายการ PR ต้องมี 1 ถึง 100 รายการ');
+    }
+    $items = [];
+    foreach (array_values($rawItems) as $index => $rawItem) {
+        if (!is_array($rawItem)) {
+            throw new DomainException('รายการ PR ไม่ถูกต้อง');
+        }
+        $description = trim((string) ($rawItem['item_desc'] ?? ''));
+        $partNumber = trim((string) ($rawItem['part_number'] ?? ''));
+        $unit = trim((string) ($rawItem['unit'] ?? 'ชิ้น')) ?: 'ชิ้น';
+        $supplierNote = trim((string) ($rawItem['supplier_note'] ?? ''));
+        $quantity = $rawItem['quantity'] ?? null;
+        $unitCost = $rawItem['unit_cost'] ?? 0;
+        if ($description === '' || strlen($description) > 1000 || strlen($partNumber) > 100
+            || strlen($unit) > 50 || strlen($supplierNote) > 255
+            || !is_scalar($quantity) || !is_numeric((string) $quantity) || (float) $quantity <= 0
+            || !is_finite((float) $quantity) || !is_scalar($unitCost) || !is_numeric((string) $unitCost)
+            || (float) $unitCost < 0 || !is_finite((float) $unitCost)) {
+            throw new DomainException('ข้อมูลรายการ PR ไม่ถูกต้อง');
+        }
+        $items[] = [
+            'item_desc' => $description,
+            'part_number' => $partNumber,
+            'quantity' => (float) $quantity,
+            'unit' => $unit,
+            'unit_cost' => (float) $unitCost,
+            'supplier_note' => $supplierNote,
+        ];
+    }
+    return $items;
+}
+
+function storeBridgePrDispatch(mysqli $conn, array $input, int $actorId, int $supId): array
+{
+    $action = (string) ($input['action'] ?? '');
+    $key = (string) ($input['operation_key'] ?? '');
+    $requestId = (int) ($input['request_id'] ?? $input['repair_request_id'] ?? 0);
+    $sourceActor = (int) ($input['source_actor_id'] ?? 0);
+    $number = trim((string) ($input['request_number'] ?? $input['repair_number'] ?? ''));
+    if (!preg_match('/^[a-f0-9]{32,64}$/D', $key) || $requestId <= 0 || $sourceActor <= 0
+        || $number === '' || strlen($number) > 50) {
+        throw new DomainException('ข้อมูลอ้างอิง PR ไม่ถูกต้อง');
+    }
+
+    // Reads are authorized by the signed company/actor check in storeBridgeDispatch.
+    // Do not require the same mapped store user that originally created the PR: a
+    // different head/admin account must still be able to refresh or inspect it.
+    $linkWhere = 'operation_key=? AND repair_request_id=? AND sup_id=? AND source_actor_id=?';
+    $linkParams = [$key, $requestId, $supId, $sourceActor];
+    if ($action === 'pr_lookup') {
+        $row = storeBridgeRows($conn, 'SELECT pr_id, pr_doc_no, pr_status FROM repair_bridge_prs WHERE ' . $linkWhere, $linkParams)[0] ?? null;
+        return $row === null ? ['found' => false] : array_merge(['found' => true], $row);
+    }
+    if ($action === 'pr_status') {
+        $row = storeBridgeRows($conn, 'SELECT pr_id, pr_doc_no, pr_status FROM repair_bridge_prs WHERE ' . $linkWhere, $linkParams)[0] ?? null;
+        if ($row === null) { return ['found' => false]; }
+        if ((int) ($row['pr_id'] ?? 0) > 0) {
+            $native = storeBridgeRows($conn, 'SELECT id, doc_no, status, received_status FROM pr WHERE id=?', [(int) $row['pr_id']])[0] ?? null;
+            if ($native) {
+                $row['pr_doc_no'] = $native['doc_no'];
+                $row['pr_status'] = $native['status'];
+                $row['received_status'] = $native['received_status'];
+            }
+        }
+        $row['status'] = $row['pr_status'] ?? null;
+        return array_merge(['found' => true], $row);
+    }
+    if ($action === 'pr_list') {
+        $rows = storeBridgeRows($conn,
+            'SELECT pr_id, pr_doc_no, pr_status, procurement_request_id, created_at FROM repair_bridge_prs WHERE repair_request_id=? AND sup_id=? ORDER BY id DESC',
+            [$requestId, $supId]);
+        return ['prs' => $rows];
+    }
+    if ($action !== 'pr_create') {
+        throw new DomainException('ไม่รองรับคำขอ PR นี้');
+    }
+
+    $procurementId = (int) ($input['procurement_request_id'] ?? 0);
+    $kind = trim((string) ($input['kind'] ?? ''));
+    $diagnosis = trim((string) ($input['diagnosis'] ?? ''));
+    $items = storeBridgePrItems($input['items'] ?? []);
+    $estimatedCost = $input['estimated_cost'] ?? null;
+    if ($procurementId <= 0 || !in_array($kind, ['parts_purchase', 'external_service', 'replace_equipment'], true)
+        || $diagnosis === '' || strlen($diagnosis) > 5000
+        || ($estimatedCost !== null && (!is_scalar($estimatedCost) || !is_numeric((string) $estimatedCost) || (float) $estimatedCost < 0))) {
+        throw new DomainException('ข้อมูลคำร้อง PR ไม่ถูกต้อง');
+    }
+    $digest = hash('sha256', json_encode([
+        'actor_id' => $actorId, 'sup_id' => $supId, 'request_id' => $requestId,
+        'request_number' => $number, 'source_actor_id' => $sourceActor, 'procurement_request_id' => $procurementId,
+        'kind' => $kind, 'diagnosis' => $diagnosis, 'estimated_cost' => $estimatedCost === null ? null : (float) $estimatedCost,
+        'priority' => (string) ($input['priority'] ?? 'medium'), 'items' => $items,
+    ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+    $conn->begin_transaction();
+    try {
+        storeBridgeWrite($conn,
+            'INSERT INTO repair_bridge_prs (operation_key,payload_hash,repair_request_id,repair_number,procurement_request_id,source_actor_id,store_actor_id,sup_id) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',
+            [$key, $digest, $requestId, $number, $procurementId, $sourceActor, $actorId, $supId]);
+        $link = storeBridgeRows($conn, 'SELECT * FROM repair_bridge_prs WHERE operation_key=? FOR UPDATE', [$key])[0] ?? null;
+        if (!$link || !hash_equals((string) $link['payload_hash'], $digest)) {
+            throw new DomainException('คำขอ PR เดิมถูกเปลี่ยนข้อมูล กรุณาใช้คำขอเดิม');
+        }
+        if ((int) ($link['pr_id'] ?? 0) > 0) {
+            $conn->commit();
+            return ['pr_id' => (int) $link['pr_id'], 'doc_no' => (string) $link['pr_doc_no'], 'status' => (string) ($link['pr_status'] ?? 'pending')];
+        }
+
+        $actor = storeBridgeRows($conn, 'SELECT id, sup_id, name FROM users WHERE id=? FOR UPDATE', [$actorId])[0] ?? null;
+        if (!$actor || (int) $actor['sup_id'] !== $supId) {
+            throw new DomainException('บัญชีเว็บขอซื้อไม่ได้อยู่ในบริษัทของงานซ่อม');
+        }
+        $subtotal = 0.0;
+        foreach ($items as $item) { $subtotal += $item['quantity'] * $item['unit_cost']; }
+        $temporaryDocNo = 'PR-TMP-' . strtoupper(substr($key, 0, 16));
+        $insert = $conn->prepare(
+            'INSERT INTO pr (doc_no,doc_date,due_date,supplier_id,store_id,customer_id,is_internal,reference_no,requested_by,notes,subtotal,vat,grand_total,created_by,status,received_status,priority) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        );
+        $today = date('Y-m-d');
+        $null = null;
+        $internal = 1;
+        $zeroVat = 0.0;
+        $priority = (string) ($input['priority'] ?? 'medium');
+        $notes = 'งานซ่อม ' . $number . ' — ' . $diagnosis;
+        $requestedBy = (string) ($actor['name'] ?? ('RepairENG #' . $sourceActor));
+        $status = 'pending';
+        $received = 'pending';
+        $insert->bind_param('sss' . 'i' . 'sii' . 'sss' . 'ddd' . 'i' . 'sss', $temporaryDocNo, $today, $null, $supId, $null, $supId, $internal, $number, $requestedBy, $notes, $subtotal, $zeroVat, $subtotal, $actorId, $status, $received, $priority);
+        $insert->execute();
+        $prId = (int) $conn->insert_id;
+        $insert->close();
+        $docNo = 'PR-' . ((int) date('y') + 43) . date('m') . str_pad((string) $prId, 4, '0', STR_PAD_LEFT);
+        storeBridgeWrite($conn, 'UPDATE pr SET doc_no=? WHERE id=?', [$docNo, $prId]);
+        $itemInsert = $conn->prepare('INSERT INTO pr_items (pr_id,item_desc,item_qty,item_unit,item_price,item_discount,item_total) VALUES (?,?,?,?,?,?,?)');
+        $zeroDiscount = 0.0;
+        foreach ($items as $item) {
+            $description = $item['part_number'] === '' ? $item['item_desc'] : $item['part_number'] . ' — ' . $item['item_desc'];
+            $itemTotal = $item['quantity'] * $item['unit_cost'];
+            $itemInsert->bind_param('isdsddd', $prId, $description, $item['quantity'], $item['unit'], $item['unit_cost'], $zeroDiscount, $itemTotal);
+            $itemInsert->execute();
+        }
+        $itemInsert->close();
+        storeBridgeWrite($conn, 'UPDATE repair_bridge_prs SET pr_id=?, pr_doc_no=?, pr_status=? WHERE id=?', [$prId, $docNo, 'pending', (int) $link['id']]);
+        $conn->commit();
+        return ['pr_id' => $prId, 'doc_no' => $docNo, 'status' => 'pending'];
+    } catch (Throwable $e) {
+        $conn->rollback();
+        throw $e;
+    }
+}
+
 function storeBridgeDispatch(mysqli $conn, array $input): array
 {
     $action = (string)($input['action'] ?? '');
@@ -36,6 +190,9 @@ function storeBridgeDispatch(mysqli $conn, array $input): array
         return ['products'=>storeBridgeRows($conn,
             'SELECT p.id, p.sku, p.name, p.unit, COALESCE(b.quantity,0) AS quantity FROM stock_products p
              LEFT JOIN stock_balances b ON b.product_id=p.id WHERE p.sup_id=? AND p.is_active=1 ORDER BY p.name',[$supId])];
+    }
+    if (in_array($action, ['pr_create', 'pr_lookup', 'pr_list', 'pr_status'], true)) {
+        return storeBridgePrDispatch($conn, $input, $actorId, $supId);
     }
     $requestId = (int)($input['request_id'] ?? 0);
     if ($requestId <= 0) { throw new DomainException('ไม่พบเลขงานซ่อม'); }

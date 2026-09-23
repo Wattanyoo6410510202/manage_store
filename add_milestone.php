@@ -18,8 +18,8 @@ if (!$pj) {
 $sql_count = "SELECT COUNT(*) as total FROM project_milestones WHERE project_id = $project_id";
 $count = mysqli_fetch_assoc(mysqli_query($conn, $sql_count))['total'] + 1;
 
-// 3. คำนวณหายอดรวมที่เบิกไปแล้ว (Gross Amount)
-$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
+// 3. คำนวณหามูลค่างานที่เบิกไปแล้ว (ก่อนหัก WHT/หักอื่น)
+$collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total FROM project_milestones WHERE project_id = $project_id"))['total'] ?: 0;
 ?>
 
 <div>
@@ -258,9 +258,9 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_request_am
             }
         }
 
-        // 4. คำนวณเงินประกัน (Retention) - คิดจากฐานเงิน actualBase
+        // 4. คำนวณเงินประกัน (Retention) จากยอดรวมหลัง VAT
         if (useDeduction) {
-            deductionAmount = actualBase * (retPercent / 100);
+            deductionAmount = totalBeforeHax * (retPercent / 100);
         }
 
         // 5. คำนวณ หัก ณ ที่จ่าย (WHT 3%) - คิดจากฐานเงิน actualBase

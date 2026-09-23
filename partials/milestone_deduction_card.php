@@ -8,7 +8,7 @@ $deductionNoteValue = (string)($deductionNoteValue ?? '');
         <label for="use_deduction" class="text-[12px] font-bold uppercase text-slate-500 cursor-pointer">
             เงินประกัน / หักอื่นๆ
         </label>
-        <input type="checkbox" id="use_deduction" onchange="calculateMoney()" <?= $deductionChecked ? 'checked' : '' ?>
+        <input type="checkbox" id="use_deduction" name="use_deduction" value="1" onchange="calculateMoney()" <?= $deductionChecked ? 'checked' : '' ?>
             class="h-4 w-4 cursor-pointer rounded border-slate-300 text-amber-500 focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
     </div>
 

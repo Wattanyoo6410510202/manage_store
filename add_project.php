@@ -5,7 +5,7 @@ require_once __DIR__ . '/bank_options.php';
 include('header.php');
 
 // ดึงรายชื่อลูกค้า
-$customers = mysqli_query($conn, "SELECT id, customer_name, entity_type, default_vat_mode, default_wht_enabled, default_wht_percent FROM customers ORDER BY customer_name ASC");
+$customers = mysqli_query($conn, "SELECT id, customer_name, contact_person, entity_type, default_vat_mode, default_wht_enabled, default_wht_percent FROM customers ORDER BY customer_name ASC");
 
 // เพิ่ม: ดึงรายชื่อผู้รับจ้าง / ร้านค้า (Suppliers)
 $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER BY company_name ASC");
@@ -66,6 +66,8 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                                         ?>
                                         <option
                                             value="<?= (int)$c['id'] ?>"
+                                            data-customer-name="<?= htmlspecialchars($c['customer_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                            data-contact-name="<?= htmlspecialchars($c['contact_person'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                             data-entity-type="<?= htmlspecialchars($c['entity_type'], ENT_QUOTES, 'UTF-8') ?>"
                                             data-vat-mode="<?= htmlspecialchars($c['default_vat_mode'], ENT_QUOTES, 'UTF-8') ?>"
                                             data-wht-enabled="<?= (int)$c['default_wht_enabled'] ?>"
@@ -112,6 +114,12 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
 
                                 customerSelect.on('change', function () {
                                     const selectedOption = this.options[this.selectedIndex];
+                                    const contractorName = document.getElementById('contractor_name');
+                                    if (contractorName) {
+                                        const contactName = selectedOption?.dataset?.contactName?.trim() || '';
+                                        const customerName = selectedOption?.dataset?.customerName || '';
+                                        contractorName.value = contactName || customerName;
+                                    }
                                     const defaults = window.VendorTaxDefaults.fromDataset(
                                         selectedOption ? selectedOption.dataset : {}
                                     );
@@ -180,7 +188,7 @@ $suppliers = mysqli_query($conn, "SELECT id, company_name FROM suppliers ORDER B
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-slate-700 mb-1">ชื่อผู้รับจ้าง /
                                 บริษัทผู้รับจ้าง</label>
-                            <input type="text" name="contractor_name"
+                            <input type="text" name="contractor_name" id="contractor_name"
                                 class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"
                                 placeholder="เช่น นาย.... ....">
                         </div>

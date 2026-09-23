@@ -533,9 +533,6 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
                             <option value="7">7%</option>
                             <option value="0">0%</option>
-                            <option value="10">10%</option>
-                            <option value="5">5%</option>
-                            <option value="3">3%</option>
                         </select>
                     </div>
                     <div>
@@ -799,6 +796,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                                 <select name="item_unit[]"
                                     class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400 cursor-pointer">
                                     <option value="">- หน่วย -</option>
+                                    <option value="งาน">งาน</option>
                                     <option value="ชิ้น">ชิ้น</option>
                                     <option value="ตัว">ตัว</option>
                                     <option value="อัน">อัน</option>
@@ -915,6 +913,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
             <select name="item_unit[]"
                 class="w-full bg-transparent border-b border-slate-100 text-center text-xs font-bold outline-none focus:border-indigo-400 cursor-pointer">
                 <option value="">- หน่วย -</option>
+                <option value="งาน">งาน</option>
                 <option value="ชิ้น">ชิ้น</option>
                 <option value="ตัว">ตัว</option>
                 <option value="อัน">อัน</option>

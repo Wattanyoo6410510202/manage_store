@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    // Match DECIMAL(5,2) before deriving any tax amounts or persisting the rate.
+    $wht_percent = round($wht_percent, 2);
+
     $is_vat_enabled = isset($_POST['include_vat']) && $_POST['include_vat'] === 'yes';
     $is_vat_included = isset($_POST['vat_type_status']) && (int)$_POST['vat_type_status'] === 0;
     $has_vat = null;

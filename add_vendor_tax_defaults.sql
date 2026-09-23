@@ -14,7 +14,10 @@
 --            ELSE '0'
 --        END AS computed_has_vat
 -- FROM projects
--- WHERE COALESCE(total_vat_amount, 0) <> 0;
+-- WHERE COALESCE(total_vat_amount, 0) <> 0
+--   AND has_vat IS NOT NULL AND has_vat NOT IN ('0', '1');
+-- Only noncanonical legacy strings are classified. Existing NULL/0/1 modes
+-- are authoritative, even when stored amounts are zero or inconsistent.
 
 ALTER TABLE customers
     ADD COLUMN IF NOT EXISTS entity_type ENUM('juristic','individual') NOT NULL DEFAULT 'juristic' AFTER customer_name,
@@ -30,6 +33,7 @@ SET has_vat = CASE
     WHEN has_vat = '' THEN '0'
     WHEN ABS(total_vat_amount - (contract_value * 0.07)) <= 0.02 THEN '1'
     ELSE '0'
-END;
+END
+WHERE has_vat IS NOT NULL AND has_vat NOT IN ('0', '1');
 
 ALTER TABLE projects MODIFY has_vat TINYINT(1) NULL DEFAULT NULL;

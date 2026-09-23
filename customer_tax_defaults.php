@@ -15,8 +15,8 @@ function customer_tax_defaults_from_input(array $input): array {
         throw new InvalidArgumentException('อัตราหัก ณ ที่จ่ายต้องเป็นตัวเลข');
     }
 
-    $whtPercent = round((float)$rawPercent, 2);
-    if ($whtPercent < 0 || $whtPercent > 100) {
+    $whtPercent = (float)$rawPercent;
+    if (!is_finite($whtPercent) || $whtPercent < 0 || $whtPercent > 100) {
         throw new InvalidArgumentException('อัตราหัก ณ ที่จ่ายต้องอยู่ระหว่าง 0 ถึง 100');
     }
 
@@ -24,6 +24,6 @@ function customer_tax_defaults_from_input(array $input): array {
         'entity_type' => $entityType,
         'default_vat_mode' => $vatMode,
         'default_wht_enabled' => $whtEnabled,
-        'default_wht_percent' => $whtPercent,
+        'default_wht_percent' => round($whtPercent, 2),
     ];
 }

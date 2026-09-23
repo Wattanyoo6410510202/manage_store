@@ -47,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    // Match DECIMAL(5,2) before deriving any tax amounts or persisting the rate.
+    $wht_percent = round($wht_percent, 2);
+
     $supplier_id = !empty($_POST['supplier_id']) ? intval($_POST['supplier_id']) : "NULL";
     $check_work_url = mysqli_real_escape_string($conn, $_POST['check_work_url'] ?? '');
     $contract_no = mysqli_real_escape_string($conn, $_POST['contract_no'] ?? '');

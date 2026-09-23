@@ -29,12 +29,19 @@ foreach ([
     ['default_vat_mode' => 'inside'],
     ['default_wht_percent' => '-1'],
     ['default_wht_percent' => '101'],
+    ['default_wht_percent' => '-0.004'],
+    ['default_wht_percent' => '100.004'],
+    ['default_wht_percent' => NAN],
 ] as $invalid) {
     try {
         customer_tax_defaults_from_input($invalid);
         throw new RuntimeException('invalid payload must throw');
     } catch (InvalidArgumentException $expected) {
     }
+}
+
+foreach (['0' => 0.0, '100' => 100.0, '3.004' => 3.0, '3.006' => 3.01] as $raw => $expected) {
+    assert_same($expected, customer_tax_defaults_from_input(['default_wht_percent' => $raw])['default_wht_percent'], 'valid percentage boundary/precision');
 }
 
 echo "vendor tax defaults: PASS\n";

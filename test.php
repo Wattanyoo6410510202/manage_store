@@ -5,7 +5,7 @@ include('assets/alert.php');
 
 // ดึงข้อมูลโปรเจกต์
 $sql = "SELECT p.*, created_by,
-        (SELECT SUM(net_amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
+        (SELECT SUM(amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
         -- เพิ่มบรรทัดนี้ครับจาร เพื่อรวบ ID งวดงานทั้งหมด
         (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
         FROM projects p ORDER BY p.id DESC";

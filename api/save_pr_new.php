@@ -41,6 +41,10 @@ $requested_by = $_POST['requested_by'] ?? '';
 $contact_tel  = $_POST['contact_tel'] ?? '';
 $notes        = $_POST['notes'] ?? '';
 $vat_percent  = floatval($_POST['vat_percent'] ?? 7);
+if (!in_array($vat_percent, [0.0, 7.0], true)) {
+    http_response_code(422);
+    die('VAT must be 0% or 7%');
+}
 $wht_percent  = floatval($_POST['wht_percent'] ?? 0);
 $is_internal  = ($customer_id === 0) ? 1 : 0;
 $expense_cat_id    = (int)($_POST['expense_cat_id'] ?? 0);

@@ -23,7 +23,7 @@ $res_pj = mysqli_query($conn, $sql_pj);
 $pj = mysqli_fetch_assoc($res_pj);
 
 // 3. คำนวณหายอดรวมที่เบิกไปแล้ว (ไม่นับงวดปัจจุบันที่กำลังแก้ เพื่อเอามาคำนวณ balance ใหม่)
-$sql_collected = "SELECT SUM(total_request_amount) as total FROM project_milestones WHERE project_id = $project_id AND id != $id";
+$sql_collected = "SELECT SUM(amount) as total FROM project_milestones WHERE project_id = $project_id AND id != $id";
 $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?: 0;
 ?>
 
@@ -281,12 +281,12 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
             }
         }
 
-        // 4. คำนวณ หัก ณ ที่จ่าย (WHT 3%) และ เงินประกัน (Retention) จากฐานเงินจริง
+        // 4. คำนวณ หัก ณ ที่จ่าย (WHT 3%) จากฐานเงินจริง และเงินประกันจากยอดรวมหลัง VAT
         if (useWht) {
             whtAmount = actualBase * 0.03;
         }
         if (useDeduction) {
-            deductionAmount = actualBase * (retPercent / 100);
+            deductionAmount = totalBeforeHax * (retPercent / 100);
         }
 
         // 5. คำนวณยอดจ่ายสุทธิ และ ยอดคงเหลือโครงการ

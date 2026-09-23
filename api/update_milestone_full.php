@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once '../project_authorization.php';
+require_once '../milestone_tax_calculation.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -20,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // --- รับค่าประเภท VAT (0=ใน, 1=นอก) ---
     $has_vat = isset($_POST['has_vat']) ? intval($_POST['has_vat']) : 1;
+    $use_deduction = isset($_POST['use_deduction']) && intval($_POST['use_deduction']) === 1;
+    if (!$use_deduction) {
+        $retention_percent = 0.0;
+    }
 
     // --- ส่วนที่เกี่ยวกับเงินประกัน / หักอื่นๆ ---
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
@@ -29,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // ยอดสุทธิและยอดคงเหลือจาก JS
     $total_request_amount = floatval($_POST['total_request_amount']);
+    // Recalculate retention and net request from the gross milestone amount.
+    $retention_amount = milestone_retention_amount($amount, $vat_amount, $has_vat, $retention_percent);
+    $gross_amount = milestone_gross_amount($amount, $vat_amount, $has_vat);
+    $total_request_amount = round($gross_amount - $wht_amount - $retention_amount, 2);
     $net_amount = $total_request_amount; 
     $remaining_balance = floatval($_POST['remaining_balance']);
 
