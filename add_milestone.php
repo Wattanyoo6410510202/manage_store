@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once 'milestone_tax_calculation.php';
 include('header.php');
 
 $project_id = intval($_GET['project_id']);
@@ -13,6 +14,13 @@ if (!$pj) {
     echo "<script>alert('ไม่พบข้อมูลโครงการ'); window.location.href='projects.php';</script>";
     exit;
 }
+
+$project_has_vat = $pj['has_vat'] === null ? null : (int) $pj['has_vat'];
+$project_retention_base = project_gross_amount(
+    (float) $pj['contract_value'],
+    (float) ($pj['total_vat_amount'] ?? 0),
+    $project_has_vat
+);
 
 // 2. นับงวดงานถัดไป
 $sql_count = "SELECT COUNT(*) as total FROM project_milestones WHERE project_id = $project_id";
@@ -228,6 +236,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
         // 1. ดึงค่าพื้นฐาน
         let amount = parseFloat(document.getElementById('amount').value) || 0;
         let contractValue = <?= (float) $pj['contract_value'] ?>;
+        let projectRetentionBase = <?= (float) $project_retention_base ?>;
         let collectedBefore = <?= (float) $collected ?>;
 
         // 2. เช็คสถานะ Toggle
@@ -237,11 +246,11 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
         let useDeduction = document.getElementById('use_deduction').checked;
         let retPercent = parseFloat(document.getElementById('retention_percent').value) || 0;
 
-        let actualBase = amount; // ฐานเงินที่จะเอาไปคิด WHT และ Retention
+        let actualBase = amount; // ฐานเงินของงวดสำหรับคิด WHT
         let vatAmount = 0;
         let whtAmount = 0;
         let deductionAmount = 0;
-        let totalBeforeHax = amount; // ยอดรวมก่อนหักภาษี ณ ที่จ่าย และเงินประกัน
+        let totalBeforeHax = amount; // ยอดรวมของงวดก่อนหักภาษี ณ ที่จ่าย และเงินประกัน
 
         // 3. คำนวณ VAT 7%
         if (useVat) {
@@ -258,9 +267,9 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
             }
         }
 
-        // 4. คำนวณเงินประกัน (Retention) จากยอดรวมหลัง VAT
+        // 4. คำนวณเงินประกันจากมูลค่างานรวม VAT ตอนสร้างโครงการ
         if (useDeduction) {
-            deductionAmount = totalBeforeHax * (retPercent / 100);
+            deductionAmount = projectRetentionBase * (retPercent / 100);
         }
 
         // 5. คำนวณ หัก ณ ที่จ่าย (WHT 3%) - คิดจากฐานเงิน actualBase

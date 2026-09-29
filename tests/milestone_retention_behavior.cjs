@@ -18,11 +18,12 @@ function extractCalculateMoney(source) {
   throw new Error("calculateMoney function is not balanced");
 }
 
-function runCalculation(page, { vatIncluded }) {
+function runCalculation(page, { milestoneVatIncluded, projectRetentionBase }) {
   let source = fs.readFileSync(page, "utf8");
   source = extractCalculateMoney(source)
     .replace(/<\?=\s*\(float\)\s*\$pj\['contract_value'\]\s*\?>/g, "100000")
-    .replace(/<\?=\s*\(float\)\s*\$(?:collected|collectedOther)\s*\?>/g, "0");
+    .replace(/<\?=\s*\(float\)\s*\$(?:collected|collectedOther)\s*\?>/g, "0")
+    .replace(/let projectRetentionBase = <\?=.*?\?>;/g, `let projectRetentionBase = ${projectRetentionBase};`);
 
   const elements = new Map();
   const add = (id, value = "", checked = false) => {
@@ -33,7 +34,7 @@ function runCalculation(page, { vatIncluded }) {
 
   add("amount", 10000);
   add("use_vat", "", true);
-  add("vat_include_check", "", vatIncluded);
+  add("vat_include_check", "", milestoneVatIncluded);
   add("use_wht", "", false);
   add("use_deduction", "", true);
   add("retention_percent", 5);
@@ -67,8 +68,16 @@ function runCalculation(page, { vatIncluded }) {
 }
 
 for (const page of ["add_milestone.php", "edit_milestone.php"]) {
-  assert.deepEqual(runCalculation(page, { vatIncluded: true }), { retention: 500, totalRequest: 9500 }, `${page}: VAT inclusive retention uses gross amount`);
-  assert.deepEqual(runCalculation(page, { vatIncluded: false }), { retention: 535, totalRequest: 10165 }, `${page}: VAT exclusive retention uses gross amount`);
+  assert.deepEqual(
+    runCalculation(page, { milestoneVatIncluded: true, projectRetentionBase: 107000 }),
+    { retention: 5350, totalRequest: 4650 },
+    `${page}: retention uses the VAT-exclusive project total, not the milestone amount`,
+  );
+  assert.deepEqual(
+    runCalculation(page, { milestoneVatIncluded: false, projectRetentionBase: 100000 }),
+    { retention: 5000, totalRequest: 5700 },
+    `${page}: retention uses the VAT-inclusive project value without adding project VAT twice`,
+  );
 }
 
-console.log("milestone retention gross-base behavior: PASS");
+console.log("milestone retention project-value behavior: PASS");

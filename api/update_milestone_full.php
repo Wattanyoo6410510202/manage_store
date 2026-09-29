@@ -21,21 +21,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // --- รับค่าประเภท VAT (0=ใน, 1=นอก) ---
     $has_vat = isset($_POST['has_vat']) ? intval($_POST['has_vat']) : 1;
-    $use_deduction = isset($_POST['use_deduction']) && intval($_POST['use_deduction']) === 1;
-    if (!$use_deduction) {
-        $retention_percent = 0.0;
-    }
-
     // --- ส่วนที่เกี่ยวกับเงินประกัน / หักอื่นๆ ---
     $retention_percent = floatval($_POST['retention_percent'] ?? 0);
     $retention_amount = floatval($_POST['retention_amount'] ?? 0);
     $other_deduction_amount = floatval($_POST['other_deduction_amount'] ?? 0);
     $deduction_note = mysqli_real_escape_string($conn, $_POST['deduction_note'] ?? '');
+    $use_deduction = isset($_POST['use_deduction']) && intval($_POST['use_deduction']) === 1;
+    if (!$use_deduction) {
+        $retention_percent = 0.0;
+    }
 
     // ยอดสุทธิและยอดคงเหลือจาก JS
     $total_request_amount = floatval($_POST['total_request_amount']);
-    // Recalculate retention and net request from the gross milestone amount.
-    $retention_amount = milestone_retention_amount($amount, $vat_amount, $has_vat, $retention_percent);
+    $project_result = mysqli_query(
+        $conn,
+        "SELECT contract_value, total_vat_amount, has_vat FROM projects WHERE id = $project_id LIMIT 1"
+    );
+    $project_data = $project_result ? mysqli_fetch_assoc($project_result) : null;
+    if (!$project_data) {
+        http_response_code(404);
+        echo 'ไม่พบโครงการสำหรับคำนวณเงินประกัน';
+        exit;
+    }
+
+    // Retention uses the project value and the VAT configuration saved with the project.
+    $project_has_vat = $project_data['has_vat'] === null ? null : (int) $project_data['has_vat'];
+    $retention_amount = project_retention_amount(
+        (float) $project_data['contract_value'],
+        (float) ($project_data['total_vat_amount'] ?? 0),
+        $project_has_vat,
+        $retention_percent
+    );
     $gross_amount = milestone_gross_amount($amount, $vat_amount, $has_vat);
     $total_request_amount = round($gross_amount - $wht_amount - $retention_amount, 2);
     $net_amount = $total_request_amount; 

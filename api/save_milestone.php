@@ -38,8 +38,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $retention_percent = 0.0;
     }
 
-    // Recalculate retention and net request from the gross milestone amount.
-    $retention_amount = milestone_retention_amount($amount, $vat_amount, $has_vat, $retention_percent);
+    $project_result = mysqli_query(
+        $conn,
+        "SELECT contract_value, total_vat_amount, has_vat FROM projects WHERE id = $project_id LIMIT 1"
+    );
+    $project_data = $project_result ? mysqli_fetch_assoc($project_result) : null;
+    if (!$project_data) {
+        http_response_code(404);
+        echo 'ไม่พบโครงการสำหรับคำนวณเงินประกัน';
+        exit;
+    }
+
+    // Retention uses the project value and the VAT configuration saved with the project.
+    $project_has_vat = $project_data['has_vat'] === null ? null : (int) $project_data['has_vat'];
+    $retention_amount = project_retention_amount(
+        (float) $project_data['contract_value'],
+        (float) ($project_data['total_vat_amount'] ?? 0),
+        $project_has_vat,
+        $retention_percent
+    );
     $gross_amount = milestone_gross_amount($amount, $vat_amount, $has_vat);
     $total_request_amount = round($gross_amount - $wht_amount - $retention_amount, 2);
 
