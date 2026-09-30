@@ -169,7 +169,7 @@ if ($inspection_only_access && $is_construction_group) {
 }
 
 // 5. กลุ่ม "ตั้งค่า"
-$is_setup_active = in_array($current_page, ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php']);
+$is_setup_active = in_array($current_page, ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php', 'program_settings.php']);
 
 // ==========================================
 // [เพิ่มใหม่] บล็อกการเข้าหน้าทางตรง (URL Security)
@@ -226,7 +226,7 @@ if ($current_page == 'pending_budget.php') {
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
 $cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
-$cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
+$cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php', 'program_settings.php'];
 $cat_budget = ['my_budget.php', 'pending_budget.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
 // อื่นๆ คือ cat_system
@@ -805,6 +805,14 @@ if (!empty($_SESSION['sup_id'])) {
                         class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'objective_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
                         <i class="fas fa-bullseye w-5 text-indigo-400"></i>
                         <span class="font-medium">ตั้งค่าวัตถุประสงค์</span>
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($user_role === 'admin'): ?>
+                    <a href="program_settings.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'program_settings.php' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-th w-5 text-indigo-400"></i>
+                        <span class="font-medium">โปรแกรมในบริษัท</span>
                     </a>
                 <?php endif; ?>
 
