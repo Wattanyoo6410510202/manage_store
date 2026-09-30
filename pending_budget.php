@@ -52,9 +52,24 @@ if (isset($_GET['action'])) {
         $result2 = mysqli_query($conn, $sql_adjusts);
         $adjusts = mysqli_fetch_all($result2, MYSQLI_ASSOC);
 
+        // 3. ใบขออนุมัติโครงการ (budget_projects)
+        $proj_status_condition = $status === 'history' ? "bp.status IN ('approved', 'rejected')" : "bp.status = 'pending'";
+        $sql_projects = "SELECT bp.id, bp.project_no, bp.name, bp.project_type, bp.department, bp.amount, bp.request_date,
+                         bp.file_path, bp.status, bp.approved_by_gmacc, bp.approved_by_mgr,
+                         bt.name as budget_name, s.company_name, u.name as requester_name,
+                         (SELECT COUNT(*) FROM budget_project_signers x WHERE x.project_id = bp.id) as signer_count
+                         FROM budget_projects bp
+                         JOIN budget_types bt ON bp.budget_type_id = bt.id
+                         JOIN suppliers s ON bt.sup_id = s.id
+                         LEFT JOIN users u ON bp.created_by = u.id
+                         WHERE $proj_status_condition
+                         ORDER BY bp.created_at DESC";
+        $projects = mysqli_fetch_all(mysqli_query($conn, $sql_projects), MYSQLI_ASSOC);
+
         echo json_encode([
             'budgets' => $budgets,
-            'adjusts' => $adjusts
+            'adjusts' => $adjusts,
+            'projects' => $projects
         ]);
         exit;
     }
@@ -101,7 +116,36 @@ if (isset($_GET['action'])) {
             exit;
         }
 
-        if ($type === 'adjust') {
+        if ($type === 'project') {
+            // โครงการที่กำหนดผู้ลงนามไว้ อนุมัติผ่านการเซ็นออนไลน์เท่านั้น
+            $has_signers = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM budget_project_signers WHERE project_id = $id"));
+            if ((int)$has_signers['total'] > 0) {
+                echo json_encode(['status' => 'error', 'msg' => 'โครงการนี้อนุมัติผ่านการเซ็นออนไลน์ในหน้าเอกสาร']);
+                exit;
+            }
+            // === อนุมัติโครงการ ===
+            $update_sql = "";
+            if ($role === 'gmacc') {
+                $update_sql = "approved_by_gmacc = $user_id, approved_at_gmacc = NOW()";
+            } elseif ($role === 'mgr') {
+                $update_sql = "approved_by_mgr = $user_id, approved_at_mgr = NOW()";
+            } elseif ($role === 'admin') {
+                $update_sql = "approved_by_gmacc = COALESCE(approved_by_gmacc, $user_id),
+                               approved_at_gmacc = COALESCE(approved_at_gmacc, NOW()),
+                               approved_by_mgr = COALESCE(approved_by_mgr, $user_id),
+                               approved_at_mgr = COALESCE(approved_at_mgr, NOW())";
+            }
+
+            if (empty($update_sql)) {
+                echo json_encode(['status' => 'error', 'msg' => 'คุณไม่มีสิทธิ์อนุมัติ']);
+                exit;
+            }
+
+            mysqli_query($conn, "UPDATE budget_projects SET $update_sql WHERE id = $id AND status = 'pending'");
+            mysqli_query($conn, "UPDATE budget_projects SET status = 'approved'
+                                 WHERE id = $id AND status = 'pending' AND approved_by_gmacc IS NOT NULL AND approved_by_mgr IS NOT NULL");
+            echo json_encode(['status' => 'success']);
+        } elseif ($type === 'adjust') {
             // === อนุมัติการปรับงบประมาณ ===
             $update_sql = "";
             if ($role === 'gmacc') {
@@ -175,6 +219,30 @@ if (isset($_GET['action'])) {
         }
         exit;
     }
+
+    // ===== REJECT: ไม่อนุมัติโครงการ =====
+    if ($_GET['action'] == 'reject_project') {
+        $id = intval($_POST['id'] ?? 0);
+        $role = $_SESSION['role'] ?? '';
+        $user_id = intval($_SESSION['user_id'] ?? 0);
+        $reason = trim((string)($_POST['reason'] ?? ''));
+
+        if ($id <= 0 || !in_array($role, ['gmacc', 'mgr', 'admin'], true)) {
+            echo json_encode(['status' => 'error', 'msg' => 'คุณไม่มีสิทธิ์ดำเนินการ']);
+            exit;
+        }
+        $has_signers = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM budget_project_signers WHERE project_id = $id"));
+        if ((int)$has_signers['total'] > 0) {
+            echo json_encode(['status' => 'error', 'msg' => 'โครงการนี้พิจารณาผ่านการเซ็นออนไลน์ในหน้าเอกสาร']);
+            exit;
+        }
+        $stmt = mysqli_prepare($conn, "UPDATE budget_projects SET status = 'rejected', reject_reason = ?, rejected_by = ?, rejected_at = NOW()
+                                       WHERE id = ? AND status = 'pending'");
+        mysqli_stmt_bind_param($stmt, 'sii', $reason, $user_id, $id);
+        mysqli_stmt_execute($stmt);
+        echo json_encode(['status' => 'success']);
+        exit;
+    }
 }
 
 include('header.php');
@@ -182,13 +250,14 @@ include('header.php');
 
 <div class="container p-0">
     <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold text-slate-800">รายการรออนุมัติงบประมาณ</h2>
+        <h2 class="text-xl font-bold text-slate-800">รายการรออนุมัติ</h2>
     </div>
 
     <!-- Tab: งบใหม่ / ปรับเพิ่ม / ประวัติ -->
     <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4 w-fit">
         <button onclick="switchTab('new')" id="tab-new" class="px-4 py-2 text-sm font-bold rounded-lg bg-white text-indigo-600 shadow-sm transition-all">งบประมาณใหม่</button>
         <button onclick="switchTab('adjust')" id="tab-adjust" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">ปรับเพิ่มงบเดิม</button>
+        <button onclick="switchTab('project')" id="tab-project" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">โครงการ</button>
         <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 text-sm font-bold rounded-lg text-slate-500 hover:text-slate-800 transition-all">รายการย้อนหลัง</button>
     </div>
 
@@ -227,7 +296,27 @@ include('header.php');
             <tbody id="adjustTableBody" class="divide-y divide-slate-50"></tbody>
         </table>
     </div>
+
+    <!-- ===== ตารางใบขออนุมัติโครงการ ===== -->
+    <div id="table-project" class="hidden bg-white rounded-3xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-100">
+                <tr>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">เลขที่ / วันที่</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ชื่อโครงการ</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">อ้างอิงงบประมาณ</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">ค่าใช้จ่าย</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ผู้ขอ</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">สถานะ</th>
+                    <th class="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">จัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="projectTableBody" class="divide-y divide-slate-50"></tbody>
+        </table>
+    </div>
 </div>
+
+<?php include __DIR__ . '/budget_project_detail_modal.php'; ?>
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script>
@@ -251,10 +340,10 @@ function switchTab(tab) {
         $('#tab-history').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
     }
 
-    $('#tab-new, #tab-adjust').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
+    $('#tab-new, #tab-adjust, #tab-project').removeClass('bg-white text-indigo-600 shadow-sm').addClass('text-slate-500');
     $(`#tab-${currentTab}`).addClass('bg-white text-indigo-600 shadow-sm').removeClass('text-slate-500');
 
-    $('#table-new, #table-adjust').addClass('hidden');
+    $('#table-new, #table-adjust, #table-project').addClass('hidden');
     $(`#table-${currentTab}`).removeClass('hidden');
     
     fetchPending();
@@ -362,6 +451,87 @@ function fetchPending() {
             });
         }
         $('#adjustTableBody').html(aHtml);
+
+        // --- ใบขออนุมัติโครงการ ---
+        let pHtml = '';
+        const projects = data.projects || [];
+        if (projects.length === 0) {
+            pHtml = `<tr><td colspan="7" class="p-12 text-center text-slate-400 font-medium">ไม่มีรายการ${currentStatus === 'history' ? 'ในประวัติ' : 'โครงการที่รออนุมัติ'}</td></tr>`;
+        } else {
+            projects.forEach(item => {
+                pHtml += `
+                <tr class="hover:bg-slate-50 transition text-sm">
+                    <td class="p-4">
+                        <div class="font-bold text-slate-700">${escapeProjectHtml(item.project_no || '-')}</div>
+                        <div class="text-[10px] text-slate-400">${escapeProjectHtml(item.request_date)}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-bold text-slate-700">${escapeProjectHtml(item.name)}</div>
+                        <div class="text-[10px] text-slate-400">${item.project_type === 'additional' ? 'โครงการเพิ่มเติม' : 'โครงการใหม่'}${item.department ? ' · แผนก ' + escapeProjectHtml(item.department) : ''}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-slate-600 font-bold">${escapeProjectHtml(item.budget_name)}</div>
+                        <div class="text-[10px] text-slate-400">${formatSupplierDisplayName(item.company_name)}</div>
+                    </td>
+                    <td class="p-4 text-right font-mono font-bold text-indigo-600">${parseFloat(item.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td class="p-4 text-slate-500">${escapeProjectHtml(item.requester_name || '-')}</td>
+                    <td class="p-4 text-center">${budgetProjectStatusBadge(item)}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="viewProject(${item.id}, projectActionButtons)" class="text-[10px] bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition shadow-sm font-bold"><i class="fas fa-eye mr-1"></i>${currentStatus === 'pending' ? 'ตรวจสอบ' : 'รายละเอียด'}</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        $('#projectTableBody').html(pHtml);
+    });
+}
+
+function escapeProjectHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+// ปุ่มอนุมัติ/ไม่อนุมัติใน modal รายละเอียดโครงการ
+function projectActionButtons(p) {
+    if (p.status !== 'pending') return '';
+    if (Object.keys(p.signers || {}).length) {
+        return `<span class="text-xs text-slate-500 self-center">โครงการนี้อนุมัติผ่านการเซ็นออนไลน์ — กด "พิมพ์ / เซ็น"</span>`;
+    }
+    let html = '';
+    const canApprove = (USER_ROLE === 'gmacc' && !p.approved_by_gmacc)
+        || (USER_ROLE === 'mgr' && !p.approved_by_mgr)
+        || USER_ROLE === 'admin';
+    if (['gmacc', 'mgr', 'admin'].includes(USER_ROLE)) {
+        html += `<button onclick="rejectProject(${p.id})" class="px-4 py-2 rounded-xl text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100"><i class="fas fa-times-circle mr-1"></i>ไม่อนุมัติ</button>`;
+    }
+    if (canApprove) {
+        const label = USER_ROLE === 'gmacc' ? 'บัญชีอนุมัติ' : (USER_ROLE === 'mgr' ? 'MGR อนุมัติ' : 'Admin อนุมัติ');
+        html += `<button onclick="approveProject(${p.id})" class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700"><i class="fas fa-check-circle mr-1"></i>${label}</button>`;
+    }
+    return html;
+}
+
+function approveProject(id) {
+    if (!confirm('ยืนยันการอนุมัติโครงการ?')) return;
+    $.post('?action=approve', { id: id, type: 'project' }, function(res) {
+        if (res.status === 'success') {
+            closeProjectDetail();
+            fetchPending();
+        } else {
+            alert(res.msg);
+        }
+    });
+}
+
+function rejectProject(id) {
+    const reason = prompt('เหตุผลที่ไม่อนุมัติ');
+    if (reason === null) return;
+    $.post('?action=reject_project', { id: id, reason: reason }, function(res) {
+        if (res.status === 'success') {
+            closeProjectDetail();
+            fetchPending();
+        } else {
+            alert(res.msg);
+        }
     });
 }
 

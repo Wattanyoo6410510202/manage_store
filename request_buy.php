@@ -604,10 +604,20 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                                         <label
                                             class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ
                                             (Budget Type) <span id="budget_amount_display" class="text-indigo-600 font-bold ml-2"></span></label>
-                                        <select name="budget_type_id" id="budget_type_id" onchange="showBudgetAmount()"
+                                        <select name="budget_type_id" id="budget_type_id" onchange="loadBudgetProjects()"
                                             class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
                                             <option value="">-- รอเลือกผู้ขาย --</option>
                                         </select>
+                                    </div>
+                                    <div id="budget_project_wrap" class="hidden">
+                                        <label
+                                            class="text-[12px] font-black text-slate-800 uppercase block mb-1">โครงการ
+                                            (Project)</label>
+                                        <select name="budget_project_id" id="budget_project_id" onchange="showBudgetAmount()"
+                                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                                            <option value="">-- ไม่ใช่ค่าใช้จ่ายของโครงการ --</option>
+                                        </select>
+                                        <p class="text-[10px] text-slate-400 mt-1">ถ้าเป็นค่าใช้จ่ายของโครงการ ให้เลือกโครงการ ระบบจะหักจากเงินที่โครงการกันไว้</p>
                                     </div>
                                     <div>
                                         <label
@@ -1045,16 +1055,10 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
             budgetInput.value = grandtotal.toFixed(2);
         }
 
-        // ลำดับความสำคัญ: 1. ค่าที่กรอกในช่องงบ 2. ค่าจาก dropdown
-        let budget = parseFloat(budgetInput.value) || 0;
-        
-        if (budget === 0 && budgetSelect.options[budgetSelect.selectedIndex] && budgetSelect.options[budgetSelect.selectedIndex].dataset.amount) {
-            budget = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.amount);
-            const spent = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.spent || 0);
-            budget = budget - spent;
-        }
+        // เทียบกับงบคงเหลือของโครงการที่เลือก หรือของประเภทงบ (null = ไม่ได้เลือกงบ ไม่ต้องตรวจ)
+        const budget = getAvailableBudget();
 
-        if (budget > 0) {
+        if (budget !== null) {
             if (grandtotal > budget) {
                 document.getElementById('grandtotal_display').classList.add('text-red-600');
                 document.getElementById('grandtotal_display').classList.remove('text-indigo-600');
@@ -1310,11 +1314,8 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
 
                     // ถ้ามีข้อมูลและเป็น budget_type_id ให้เรียก showBudgetAmount เพื่อแสดงยอดเงินทันที
                     if (target.id === 'budget_type_id') {
-                        if (data.length > 0) {
-                            showBudgetAmount();
-                        } else {
-                            document.getElementById('budget_amount_display').innerText = '';
-                        }
+                        // ทั้งกรณีมี/ไม่มีงบ ให้โหลดโครงการใหม่ (ไม่มีงบ = ซ่อนช่องโครงการ)
+                        loadBudgetProjects();
                     }
                 })
                 .catch(err => {
@@ -1326,19 +1327,12 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
 
     // ฟังก์ชันแสดงยอดเงินงบประมาณ
     function showBudgetAmount() {
-        const select = document.getElementById('budget_type_id');
         const display = document.getElementById('budget_amount_display');
-        const selectedOption = select.options[select.selectedIndex];
-        
-        if (selectedOption && selectedOption.dataset.amount) {
-            const budget = parseFloat(selectedOption.dataset.amount);
-            const spent = parseFloat(selectedOption.dataset.spent || 0);
-            const remaining = budget - spent;
-            
-            display.innerText = '(คงเหลือ: ' + remaining.toLocaleString(undefined, {minimumFractionDigits: 2}) + ')';
-        } else {
-            display.innerText = '';
-        }
+        const remaining = getAvailableBudget();
+        const projectSelect = document.getElementById('budget_project_id');
+        const prefix = projectSelect && projectSelect.value ? 'คงเหลือโครงการ' : 'คงเหลือ';
+        display.innerText = remaining === null ? '' : `(${prefix}: ${remaining.toLocaleString(undefined, {minimumFractionDigits: 2})})`;
+        if (typeof calculateTotal === 'function') calculateTotal();
     }
 
     // ฟังก์ชันรีเซ็ต Dropdown เมื่อไม่ได้เลือกบริษัท
@@ -1348,6 +1342,7 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
             const el = document.getElementById(id);
             if (el) el.innerHTML = '<option value="">-- รอเลือกผู้ขาย --</option>';
         });
+        loadBudgetProjects();
         resetStoreDropdown();
     }
 
@@ -1589,22 +1584,54 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
     }
 
     function validateBudget() {
-        const budgetSelect = document.getElementById('budget_type_id');
-        const budgetInput = document.querySelector('input[name="budget_amount"]');
         const grandtotal = parseFloat(document.getElementById('grandtotal_display').innerText.replace(/,/g, '')) || 0;
-        
-        let budget = parseFloat(budgetInput.value) || 0;
-        if (budget === 0 && budgetSelect.options[budgetSelect.selectedIndex] && budgetSelect.options[budgetSelect.selectedIndex].dataset.amount) {
-            budget = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.amount);
-            const spent = parseFloat(budgetSelect.options[budgetSelect.selectedIndex].dataset.spent || 0);
-            budget = budget - spent;
-        }
+        const budget = getAvailableBudget();
 
-        if (budget > 0 && grandtotal > budget) {
-            alert('ยอดรวมสุทธิเกินงบประมาณที่กำหนด! ไม่สามารถบันทึกได้');
+        if (budget !== null && grandtotal > budget + 0.001) {
+            const projectSelect = document.getElementById('budget_project_id');
+            const where = projectSelect && projectSelect.value ? 'งบคงเหลือของโครงการ' : 'งบคงเหลือ (หลังหักยอดที่กันให้โครงการ)';
+            alert(`ยอดรวมสุทธิเกิน${where} ${budget.toLocaleString(undefined, {minimumFractionDigits: 2})} บาท ไม่สามารถบันทึกได้`);
             return false;
         }
         return true;
+    }
+
+    // ยอดที่ออก PR ได้: โครงการที่เลือก > ประเภทงบที่เลือก > null (ไม่ได้เลือกงบ)
+    function getAvailableBudget() {
+        const projectSelect = document.getElementById('budget_project_id');
+        const projectOption = projectSelect && projectSelect.value ? projectSelect.options[projectSelect.selectedIndex] : null;
+        if (projectOption) return parseFloat(projectOption.dataset.remaining || 0);
+
+        const budgetSelect = document.getElementById('budget_type_id');
+        const option = budgetSelect && budgetSelect.value ? budgetSelect.options[budgetSelect.selectedIndex] : null;
+        if (!option || option.dataset.amount === undefined) return null;
+        return parseFloat(option.dataset.amount || 0) - parseFloat(option.dataset.spent || 0);
+    }
+
+    // โหลดโครงการที่อนุมัติแล้วในงบที่เลือก
+    function loadBudgetProjects() {
+        const budgetId = document.getElementById('budget_type_id').value;
+        const wrap = document.getElementById('budget_project_wrap');
+        const select = document.getElementById('budget_project_id');
+        select.innerHTML = '<option value="">-- ไม่ใช่ค่าใช้จ่ายของโครงการ --</option>';
+        wrap.classList.add('hidden');
+        if (!budgetId) { showBudgetAmount(); return Promise.resolve(); }
+        return fetch(`get_pr_support_data.php?action=get_budget_projects&budget_type_id=${budgetId}`)
+            .then(r => r.json())
+            .then(projects => {
+                projects.forEach(p => {
+                    const remaining = parseFloat(p.amount) - parseFloat(p.used || 0);
+                    const label = `${p.project_no ? p.project_no + ' — ' : ''}${p.name} (คงเหลือ ${remaining.toLocaleString(undefined, {minimumFractionDigits: 2})})`;
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.dataset.remaining = remaining;
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                });
+                wrap.classList.toggle('hidden', projects.length === 0);
+                showBudgetAmount();
+            })
+            .catch(() => showBudgetAmount());
     }
 
     function toggleExpenseCard() {

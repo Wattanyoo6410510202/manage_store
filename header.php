@@ -225,8 +225,9 @@ if ($current_page == 'pending_budget.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'pending_budget.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'procurement.php', 'procurement_dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php'];
+$cat_budget = ['my_budget.php', 'pending_budget.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
 // อื่นๆ คือ cat_system
 
@@ -234,6 +235,7 @@ $active_cat = 'system';
 if (in_array($current_page, $cat_main)) $active_cat = 'main';
 if (in_array($current_page, $cat_settings)) $active_cat = 'settings';
 if (in_array($current_page, $cat_construction)) $active_cat = 'construction';
+if (in_array($current_page, $cat_budget)) $active_cat = 'budget';
 
 // ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role และ User ตัวเอง
 $pending_count = 0;
@@ -290,7 +292,26 @@ if (in_array($user_role_for_count, $budget_approval_roles)) {
         $adjust_row = mysqli_fetch_assoc($adjust_res);
         $pending_budget_count += $adjust_row['total'] ?? 0;
     }
+    try {
+        // นับเฉพาะโครงการที่ใช้การอนุมัติแบบเดิม (ไม่มีผู้ลงนามออนไลน์)
+        $project_res = mysqli_query($conn, "SELECT COUNT(*) as total FROM budget_projects bp WHERE bp.status = 'pending'
+                                            AND NOT EXISTS (SELECT 1 FROM budget_project_signers s WHERE s.project_id = bp.id)");
+        $pending_budget_count += (int)(mysqli_fetch_assoc($project_res)['total'] ?? 0);
+    } catch (mysqli_sql_exception $e) {
+        // ยังไม่ได้รัน add_budget_projects.sql / add_budget_project_signers.sql
+    }
 }
+
+// --- จำนวนใบขออนุมัติโครงการที่ถึงคิวผู้ใช้เซ็น ---
+$pending_sign_count = 0;
+try {
+    require_once __DIR__ . '/budget_projects_lib.php';
+    $pending_sign_count = budget_project_pending_sign_count($conn, (int)$user_id_for_count);
+} catch (mysqli_sql_exception $e) {
+    // ยังไม่ได้รัน add_budget_project_signers.sql
+}
+$can_budget_approval = in_array($user_role_for_count, ['admin', 'gmacc', 'mgr', 'mgr2'], true);
+$budget_menu_count = ($can_budget_approval ? (int)$pending_budget_count : 0) + (int)$pending_sign_count;
 
 // จำนวนใบเบิกที่ยังมีพัสดุเหลือรอผู้ดูแล Stock จ่าย
 $stock_pending_count = 0;
@@ -619,14 +640,6 @@ if (!empty($_SESSION['sup_id'])) {
                 </a>
                 <?php endif; ?>
 
-                <?php if (in_array($user_role, ['admin', 'gmacc', 'mgr', 'mgr2'])): ?>
-                <a href="pending_budget.php"
-                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo ($current_page == 'pending_budget.php') ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
-                    <i class="fas fa-coins w-5 <?php echo ($current_page == 'pending_budget.php') ? 'text-white' : 'text-amber-400'; ?>"></i>
-                    <span class="font-medium">รายการรออนุมัติงบประมาณ <?php echo ($pending_budget_count > 0) ? "($pending_budget_count)" : ""; ?></span>
-                </a>
-                <?php endif; ?>
-
                 <?php if (in_array($user_role, ['acc', 'mgr', 'mgr2', 'procure', 'admin'])): ?>
                 <div class="my-4 border-t border-slate-800/50"></div>
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">แผนก</p>
@@ -699,6 +712,28 @@ if (!empty($_SESSION['sup_id'])) {
                         <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
                         <span class="font-medium">เปรียบเทียบราคา</span>
                     </a>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($active_cat == 'budget'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">งบประมาณและโครงการ</p>
+                <a href="my_budget.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'my_budget.php' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-folder-open w-5 <?php echo $current_page == 'my_budget.php' ? 'text-white' : 'text-amber-400'; ?>"></i>
+                    <span class="font-medium">โครงการของฉัน<?php if ($pending_sign_count > 0): ?> <span class="ml-1 px-1.5 rounded-full bg-indigo-500 text-white text-[10px]" title="รอคุณเซ็น"><?= (int)$pending_sign_count ?></span><?php endif; ?></span>
+                </a>
+                <?php if ($can_budget_approval): ?>
+                <a href="pending_budget.php"
+                    class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'pending_budget.php' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'hover:bg-slate-800'; ?>">
+                    <i class="fas fa-clipboard-check w-5 <?php echo $current_page == 'pending_budget.php' ? 'text-white' : 'text-amber-400'; ?>"></i>
+                    <span class="font-medium">รายการรออนุมัติ<?php if ($pending_budget_count > 0): ?> (<?= (int)$pending_budget_count ?>)<?php endif; ?></span>
+                </a>
+                <?php endif; ?>
+                <?php if (can('setup')): ?>
+                <a href="budget_settings.php" class="flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-slate-800">
+                    <i class="fas fa-sliders w-5 text-amber-400"></i>
+                    <span class="font-medium">ตั้งค่าประเภทงบประมาณ</span>
+                </a>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -827,6 +862,8 @@ if (!empty($_SESSION['sup_id'])) {
                         <option value="projects.php" <?php echo $active_cat == 'construction' ? 'selected' : ''; ?>>🔨 หมวดก่อสร้าง</option>
                         <?php endif; ?>
                         
+                        <option value="my_budget.php" <?php echo $active_cat == 'budget' ? 'selected' : ''; ?>>💰 งบประมาณและโครงการ<?= $budget_menu_count > 0 ? " ($budget_menu_count)" : '' ?></option>
+
                         <?php if ($user_role !== 'staff' && can('setup')): ?>
                         <option value="settings.php" <?php echo $active_cat == 'settings' ? 'selected' : ''; ?>>⚙️ ตั้งค่า</option>
                         <?php endif; ?>
@@ -851,6 +888,13 @@ if (!empty($_SESSION['sup_id'])) {
                     </a>
                     <?php endif; ?>
                     
+                    <a id="nav-budget" href="my_budget.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'budget' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-coins mr-2"></i>งบประมาณและโครงการ
+                        <?php if ($budget_menu_count > 0): ?>
+                        <span class="ml-2 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center"><?= $budget_menu_count ?></span>
+                        <?php endif; ?>
+                    </a>
+
                     <?php if ($user_role !== 'staff' && can('setup')): ?>
                     <a id="nav-settings" href="settings.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-cog mr-2"></i>ตั้งค่า

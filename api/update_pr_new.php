@@ -3,6 +3,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../config.php';
+require_once '../budget_projects_lib.php';
 date_default_timezone_set('Asia/Bangkok');
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
@@ -32,6 +33,7 @@ if ($store_id === 0) $store_id = null;
     
     $expense_cat_id    = (int)($_POST['expense_cat_id'] ?? 0);
     $budget_type_id    = (int)($_POST['budget_type_id'] ?? 0);
+    $budget_project_id = $budget_type_id > 0 ? (int)($_POST['budget_project_id'] ?? 0) : 0;
     $objective_id      = (int)($_POST['objective_id'] ?? 0);
     $budget_limit_type = $_POST['budget_limit_type'] ?? '';
     $budget_amount     = floatval($_POST['budget_amount'] ?? 0);
@@ -121,6 +123,14 @@ if ($store_id === 0) $store_id = null;
         $new_wht_amount = $new_subtotal * ($wht_percent / 100);
         $net_grand_total = ($new_subtotal + $new_vat) - $new_wht_amount;
 
+        // ตรวจงบ/โครงการ (ไม่นับยอดเดิมของ PR ใบนี้)
+        $budget_error = budget_pr_check($conn, $budget_type_id, $budget_project_id, $net_grand_total, $pr_id);
+        if ($budget_error !== null) {
+            mysqli_rollback($conn);
+            echo "<script>alert(" . json_encode($budget_error, JSON_UNESCAPED_UNICODE) . "); window.history.back();</script>";
+            exit;
+        }
+
         $sql_main = "UPDATE pr SET 
                         supplier_id = ?, store_id = ?, customer_id = ?, is_internal = ?, due_date = ?, 
                         priority = ?, reference_no = ?, payment_term = ?, payment_method = ?, installment_period = ?, payment_slip = ?,
@@ -144,6 +154,8 @@ if ($store_id === 0) $store_id = null;
         );
 
         if (!$stmt->execute()) throw new Exception("Error Update Header: " . $stmt->error);
+        $project_value = $budget_project_id > 0 ? $budget_project_id : 'NULL';
+        mysqli_query($conn, "UPDATE pr SET budget_project_id = $project_value WHERE id = $pr_id");
 
         mysqli_query($conn, "DELETE FROM pr_items WHERE pr_id = $pr_id");
         $stmt_item = $conn->prepare("INSERT INTO pr_items (pr_id, item_desc, item_qty, item_unit, item_price, item_discount, item_total) VALUES (?, ?, ?, ?, ?, ?, ?)");

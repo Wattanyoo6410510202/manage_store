@@ -74,7 +74,7 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
 }
 ?>
 
-<form action="api/update_pr_new.php" method="POST" enctype="multipart/form-data">
+<form action="api/update_pr_new.php" method="POST" enctype="multipart/form-data" onsubmit="return validateBudget()">
     <input type="hidden" name="pr_id" value="<?= $pr_id ?>">
     <input type="hidden" name="customer_id" value="<?= htmlspecialchars($pr_data['customer_id']) ?>">
 
@@ -337,9 +337,17 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
                     </div>
                     <div>
                         <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">ประเภทงบประมาณ (Budget Type)</label>
-                        <select name="budget_type_id" id="budget_type_id" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                        <select name="budget_type_id" id="budget_type_id" onchange="loadBudgetProjects('')" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
                             <option value="">-- รอเลือกผู้ขาย --</option>
                         </select>
+                        <span id="budget_amount_display" class="text-[11px] text-indigo-600 font-bold"></span>
+                    </div>
+                    <div id="budget_project_wrap" class="hidden">
+                        <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">โครงการ (Project)</label>
+                        <select name="budget_project_id" id="budget_project_id" onchange="showBudgetAmount()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                            <option value="">-- ไม่ใช่ค่าใช้จ่ายของโครงการ --</option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">ถ้าเป็นค่าใช้จ่ายของโครงการ ให้เลือกโครงการ ระบบจะหักจากเงินที่โครงการกันไว้</p>
                     </div>
                                 <div>
                                     <label class="text-[12px] font-black text-slate-800 uppercase block mb-1">วัตถุประสงค์ (Objective)</label>
@@ -636,20 +644,77 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
             const el = document.getElementById(target.id);
             if (!el) return;
             el.innerHTML = '<option value="">กำลังโหลด...</option>';
-            fetch(`get_pr_support_data.php?action=${target.action}&sup_id=${sup_id}`)
+            fetch(`get_pr_support_data.php?action=${target.action}&sup_id=${sup_id}&exclude_pr_id=${PR_ID}`)
                 .then(response => response.json())
                 .then(data => {
                     let html = '<option value="">-- เลือกรายการ --</option>';
-                    data.forEach(item => { 
+                    data.forEach(item => {
                         const selected = (item.id == target.selected) ? 'selected' : '';
                         const amountAttr = item.current_total_budget ? `data-amount="${item.current_total_budget}"` : 'data-amount="0"';
                         const spentAttr = item.total_spent ? `data-spent="${item.total_spent}"` : 'data-spent="0"';
-                        html += `<option value="${item.id}" ${selected} ${amountAttr} ${spentAttr}>${item.name}</option>`; 
+                        html += `<option value="${item.id}" ${selected} ${amountAttr} ${spentAttr}>${item.name}</option>`;
                     });
                     el.innerHTML = html;
+                    if (target.id === 'budget_type_id') loadBudgetProjects(SELECTED_PROJECT_ID);
                 })
                 .catch(err => { console.error(`Error fetching ${target.action}:`, err); el.innerHTML = '<option value="">โหลดข้อมูลไม่สำเร็จ</option>'; });
         });
+    }
+
+    const PR_ID = <?= (int)$pr_id ?>;
+    const SELECTED_PROJECT_ID = <?= json_encode((string)($pr_data['budget_project_id'] ?? '')) ?>;
+
+    // ยอดที่ออก PR ได้ (ไม่นับยอดเดิมของ PR ใบนี้): โครงการที่เลือก > ประเภทงบ > null
+    function getAvailableBudget() {
+        const projectSelect = document.getElementById('budget_project_id');
+        const projectOption = projectSelect.value ? projectSelect.options[projectSelect.selectedIndex] : null;
+        if (projectOption) return parseFloat(projectOption.dataset.remaining || 0);
+        const budgetSelect = document.getElementById('budget_type_id');
+        const option = budgetSelect.value ? budgetSelect.options[budgetSelect.selectedIndex] : null;
+        if (!option || option.dataset.amount === undefined) return null;
+        return parseFloat(option.dataset.amount || 0) - parseFloat(option.dataset.spent || 0);
+    }
+
+    function showBudgetAmount() {
+        const remaining = getAvailableBudget();
+        const prefix = document.getElementById('budget_project_id').value ? 'คงเหลือโครงการ' : 'คงเหลือ';
+        document.getElementById('budget_amount_display').innerText = remaining === null ? ''
+            : `${prefix}: ${remaining.toLocaleString(undefined, {minimumFractionDigits: 2})} บาท`;
+    }
+
+    function validateBudget() {
+        const grandtotal = parseFloat(document.getElementById('grandtotal_display').innerText.replace(/,/g, '')) || 0;
+        const budget = getAvailableBudget();
+        if (budget !== null && grandtotal > budget + 0.001) {
+            alert(`ยอดรวมสุทธิเกินงบคงเหลือ ${budget.toLocaleString(undefined, {minimumFractionDigits: 2})} บาท ไม่สามารถบันทึกได้`);
+            return false;
+        }
+        return true;
+    }
+
+    function loadBudgetProjects(selectedId) {
+        const budgetId = document.getElementById('budget_type_id').value;
+        const wrap = document.getElementById('budget_project_wrap');
+        const select = document.getElementById('budget_project_id');
+        select.innerHTML = '<option value="">-- ไม่ใช่ค่าใช้จ่ายของโครงการ --</option>';
+        wrap.classList.add('hidden');
+        if (!budgetId) { showBudgetAmount(); return; }
+        fetch(`get_pr_support_data.php?action=get_budget_projects&budget_type_id=${budgetId}&exclude_pr_id=${PR_ID}`)
+            .then(r => r.json())
+            .then(projects => {
+                projects.forEach(p => {
+                    const remaining = parseFloat(p.amount) - parseFloat(p.used || 0);
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.dataset.remaining = remaining;
+                    opt.selected = String(p.id) === String(selectedId);
+                    opt.textContent = `${p.project_no ? p.project_no + ' — ' : ''}${p.name} (คงเหลือ ${remaining.toLocaleString(undefined, {minimumFractionDigits: 2})})`;
+                    select.appendChild(opt);
+                });
+                wrap.classList.toggle('hidden', projects.length === 0);
+                showBudgetAmount();
+            })
+            .catch(() => showBudgetAmount());
     }
 
     function resetRelatedDropdowns() {

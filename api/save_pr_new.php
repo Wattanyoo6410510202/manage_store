@@ -2,6 +2,7 @@
 require_once '../config.php';
 require_once '../pr_approval_authorization.php';
 require_once '../pr_item_validation.php';
+require_once '../budget_projects_lib.php';
 date_default_timezone_set('Asia/Bangkok');
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -49,6 +50,7 @@ $wht_percent  = floatval($_POST['wht_percent'] ?? 0);
 $is_internal  = ($customer_id === 0) ? 1 : 0;
 $expense_cat_id    = (int)($_POST['expense_cat_id'] ?? 0);
 $budget_type_id    = (int)($_POST['budget_type_id'] ?? 0);
+$budget_project_id = $budget_type_id > 0 ? (int)($_POST['budget_project_id'] ?? 0) : 0;
 $objective_id      = (int)($_POST['objective_id'] ?? 0);
 $budget_limit_type = $_POST['budget_limit_type'] ?? '';
 $budget_amount     = floatval($_POST['budget_amount'] ?? 0);
@@ -106,6 +108,15 @@ try {
     $total_wht = $total_subtotal * ($wht_percent / 100);
     $grand_total = ($total_subtotal + $total_vat) - $total_wht;
     $total_after_wht = $grand_total; // เพิ่มการคำนวณค่านี้
+
+    // ตรวจงบ/โครงการ: ยอด PR ต้องไม่เกินงบคงเหลือ (ล็อกแถวงบไว้จนจบ transaction)
+    $budget_error = budget_pr_check($conn, $budget_type_id, $budget_project_id, $grand_total);
+    if ($budget_error !== null) {
+        mysqli_rollback($conn);
+        echo "<script>alert(" . json_encode($budget_error, JSON_UNESCAPED_UNICODE) . "); window.history.back();</script>";
+        exit;
+    }
+
     $status = 'pending';
     $temp_no = "TEMP-" . time();
     $notes_to_save = trim($notes);
@@ -137,6 +148,9 @@ try {
     // บังคับ Update ทับตรงๆ เพื่อให้มั่นใจ 100% ว่าค่าเข้า
     $safe_limit = $conn->real_escape_string($budget_limit_type);
     $conn->query("UPDATE pr SET budget_limit_type = '$safe_limit' WHERE id = $pr_id");
+    if ($budget_project_id > 0) {
+        $conn->query("UPDATE pr SET budget_project_id = $budget_project_id WHERE id = $pr_id");
+    }
     
     $new_doc_no = 'PR-' . ((date('y') + 43) . date('m')) . str_pad($pr_id, 4, '0', STR_PAD_LEFT);
     $conn->query("UPDATE pr SET doc_no = '$new_doc_no' WHERE id = $pr_id");

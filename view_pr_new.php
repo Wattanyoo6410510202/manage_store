@@ -77,15 +77,25 @@ $dynamic_padding = ($num_rows <= 5) ? '5px 8px' : (($num_rows <= 10) ? '3px 10px
 $dynamic_font_size = ($num_rows <= 5) ? '14px' : (($num_rows <= 10) ? '13px' : '12px');
 
 $budget_info = null;
+$budget_project = null;
 if ($data['budget_type_id']) {
-    $bt_id = $data['budget_type_id'];
-    $bt_sql = "SELECT bt.*, 
-                (bt.budget_amount + COALESCE((SELECT SUM(a.amount) FROM budget_adjustments a WHERE a.budget_type_id = bt.id), 0)) as total_budget,
-                (SELECT SUM(p.grand_total) FROM pr p WHERE p.budget_type_id = bt.id AND p.status = 'approved' AND p.deleted_at IS NULL AND p.id != '$id') as spent_before
-                FROM budget_types bt 
-                WHERE bt.id = $bt_id";
-    $bt_res = mysqli_query($conn, $bt_sql);
-    $budget_info = mysqli_fetch_assoc($bt_res);
+    require_once __DIR__ . '/budget_projects_lib.php';
+    $bt_id = (int)$data['budget_type_id'];
+    $pr_id_int = (int)$id;
+    if (!empty($data['budget_project_id'])) {
+        // PR ของโครงการ: เทียบกับเงินที่โครงการกันไว้
+        $bp_id = (int)$data['budget_project_id'];
+        $budget_project = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT bp.id, bp.project_no, bp.name, bp.amount as total_budget, " . budget_project_pr_used_sql($pr_id_int) . " as spent_before
+             FROM budget_projects bp WHERE bp.id = $bp_id"));
+        $budget_info = $budget_project;
+    } else {
+        // PR นอกโครงการ: ยอดคงเหลือ = งบรวม − ที่กันให้โครงการ − PR นอกโครงการใบอื่น
+        $budget_info = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT " . BUDGET_TOTAL_SQL . " as total_budget,
+                    (" . BUDGET_TOTAL_SQL . " - " . budget_free_sql(0, $pr_id_int) . ") as spent_before
+             FROM budget_types bt WHERE bt.id = $bt_id"));
+    }
 }
 
 // จัดการรายการที่จะนำมาแสดงในส่วนท้ายเอกสาร
@@ -249,6 +259,9 @@ function ReadNumber($number) {
             <div style="margin-top: 5px; font-size: 10px; line-height: 1.5;">                            <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ร้านค้า:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['store_name'] ?? '-') ?></span></div>
                                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทค่าใช้จ่าย:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expense_cat_name'] ?? '-') ?></span></div>
                                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ประเภทงบประมาณ:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['budget_type_name'] ?? '-') ?></span></div>
+                                <?php if ($budget_project): ?>
+                                <div><b style="color: #64748b; min-width: 90px; display: inline-block;">โครงการ:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars(trim(($budget_project['project_no'] ? $budget_project['project_no'] . ' — ' : '') . $budget_project['name'])) ?></span></div>
+                                <?php endif; ?>
                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">วัตถุประสงค์:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['objective_name'] ?? '-') ?></span></div>
                 <div><b style="color: #64748b; min-width: 90px; display: inline-block;">ความคาดหวัง:</b> <span style="color: #0f172a; font-weight: 500;"><?= htmlspecialchars($data['expectation'] ?? '-') ?></span></div>
             </div>
@@ -264,7 +277,7 @@ function ReadNumber($number) {
                 <h4 style="margin: 0 0 5px; font-size: 11px; color: <?= $is_over ? '#991b1b' : '#166534' ?>; border-bottom: 1px solid <?= $is_over ? '#fecaca' : '#bbf7d0' ?>; padding-bottom: 3px;">สถานะงบประมาณ</h4>
                 <div style="font-size: 10px;">
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: #64748b;">งบทั้งหมด:</span>
+                        <span style="color: #64748b;"><?= $budget_project ? 'งบโครงการ:' : 'งบทั้งหมด:' ?></span>
                         <span style="font-weight: bold;"><?= number_format($budget_info['total_budget'], 2) ?></span>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-top: 2px;">
