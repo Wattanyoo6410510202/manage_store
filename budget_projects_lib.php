@@ -114,6 +114,9 @@ function budget_project_signers(mysqli $conn, int $project_id): array
     $signers = [];
     foreach ($rows as $row) {
         $row['label'] = BUDGET_PROJECT_SIGNER_ROLES[$row['role_key']]['label'] ?? $row['role_key'];
+        // ไม่ส่ง hash ของลิงก์ออกไปหน้าเว็บ บอกแค่ว่ามีลิงก์ที่ยังใช้ได้อยู่ไหม
+        $row['has_active_link'] = !empty($row['sign_token_hash']) && !empty($row['sign_token_expires']) && strtotime($row['sign_token_expires']) > time();
+        unset($row['sign_token_hash']);
         $signers[$row['role_key']] = $row;
     }
     return $signers;
@@ -177,7 +180,7 @@ function budget_project_unlink_signature_files(array $paths): void
  * บันทึกลายเซ็น (data URL PNG จาก canvas) ของผู้ใช้ในช่อง $role
  * ผู้อนุมัติต้องส่ง $decision = approved|rejected ซึ่งจะเปลี่ยนสถานะโครงการ
  */
-function budget_project_sign(mysqli $conn, int $project_id, string $role, int $user_id, string $data_url, ?string $decision, string $comment): array
+function budget_project_sign(mysqli $conn, int $project_id, string $role, int $user_id, string $data_url, ?string $decision, string $comment, string $via = 'login'): array
 {
     if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $data_url, $m)) {
         return ['status' => 'error', 'msg' => 'รูปแบบลายเซ็นไม่ถูกต้อง'];
@@ -210,8 +213,12 @@ function budget_project_sign(mysqli $conn, int $project_id, string $role, int $u
         $decision_db = $is_approver ? $decision : null;
         $comment_db = trim($comment) !== '' ? trim($comment) : null;
         $signer_id = (int)$signers[$role]['id'];
-        $stmt = mysqli_prepare($conn, "UPDATE budget_project_signers SET signature_path = ?, signed_at = NOW(), decision = ?, comment = ? WHERE id = ?");
-        mysqli_stmt_bind_param($stmt, 'sssi', $path, $decision_db, $comment_db, $signer_id);
+        $via_db = $via === 'link' ? 'link' : 'login';
+        $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+        // เซ็นแล้ว ลิงก์เซ็นใช้ไม่ได้อีก
+        $stmt = mysqli_prepare($conn, "UPDATE budget_project_signers SET signature_path = ?, signed_at = NOW(), decision = ?, comment = ?,
+                                       signed_via = ?, signed_ip = ?, sign_token_hash = NULL, sign_token_expires = NULL WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, 'sssssi', $path, $decision_db, $comment_db, $via_db, $ip, $signer_id);
         mysqli_stmt_execute($stmt);
 
         if ($is_approver && $decision === 'approved') {
@@ -230,6 +237,67 @@ function budget_project_sign(mysqli $conn, int $project_id, string $role, int $u
         if (!empty($path) && is_file(__DIR__ . '/' . $path)) @unlink(__DIR__ . '/' . $path);
         return ['status' => 'error', 'msg' => $e instanceof RuntimeException ? $e->getMessage() : 'บันทึกลายเซ็นไม่สำเร็จ'];
     }
+}
+
+// ===== ลิงก์เซ็นโดยไม่ต้อง login =====
+const BUDGET_PROJECT_SIGN_LINK_DAYS = 7;
+
+/** ผู้สร้างโครงการและ admin สร้างลิงก์เซ็นได้ */
+function budget_project_can_manage_links(array $project, int $user_id, string $role): bool
+{
+    return $role === 'admin' || (int)$project['created_by'] === $user_id;
+}
+
+/** สร้างลิงก์เซ็นใหม่ให้ผู้ลงนามช่อง $role (ลิงก์เดิมของช่องนี้ใช้ไม่ได้ทันที) — คืน token ตัวจริง (เก็บเฉพาะ hash) */
+function budget_project_create_sign_link(mysqli $conn, int $project_id, string $role, int $actor_id, string $actor_role): array
+{
+    $project = mysqli_fetch_assoc(mysqli_query($conn, "SELECT id, status, created_by FROM budget_projects WHERE id = $project_id"));
+    if (!$project) return ['status' => 'error', 'msg' => 'ไม่พบโครงการ'];
+    if (!budget_project_can_manage_links($project, $actor_id, $actor_role)) return ['status' => 'error', 'msg' => 'เฉพาะผู้สร้างโครงการหรือ admin เท่านั้นที่สร้างลิงก์ได้'];
+    if ($project['status'] === 'rejected') return ['status' => 'error', 'msg' => 'โครงการนี้ไม่อนุมัติแล้ว'];
+    $signers = budget_project_signers($conn, $project_id);
+    $signer = $signers[$role] ?? null;
+    if (!$signer) return ['status' => 'error', 'msg' => 'ไม่มีผู้ลงนามในช่องนี้'];
+    if ($signer['signed_at']) return ['status' => 'error', 'msg' => 'ช่องนี้เซ็นแล้ว'];
+
+    $token = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $token);
+    $signer_id = (int)$signer['id'];
+    $days = BUDGET_PROJECT_SIGN_LINK_DAYS;
+    $stmt = mysqli_prepare($conn, "UPDATE budget_project_signers SET sign_token_hash = ?, sign_token_expires = DATE_ADD(NOW(), INTERVAL $days DAY), sign_token_created_by = ? WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, 'sii', $hash, $actor_id, $signer_id);
+    mysqli_stmt_execute($stmt);
+    $expires = mysqli_fetch_assoc(mysqli_query($conn, "SELECT sign_token_expires FROM budget_project_signers WHERE id = $signer_id"))['sign_token_expires'];
+    return ['status' => 'success', 'token' => $token, 'expires' => $expires, 'signer_name' => $signer['user_name'], 'label' => $signer['label']];
+}
+
+/** ยกเลิกลิงก์เซ็นของช่อง $role */
+function budget_project_revoke_sign_link(mysqli $conn, int $project_id, string $role): void
+{
+    $stmt = mysqli_prepare($conn, "UPDATE budget_project_signers SET sign_token_hash = NULL, sign_token_expires = NULL WHERE project_id = ? AND role_key = ?");
+    mysqli_stmt_bind_param($stmt, 'is', $project_id, $role);
+    mysqli_stmt_execute($stmt);
+}
+
+/** หาผู้ลงนามจาก token ในลิงก์ — null ถ้าไม่พบ หมดอายุ หรือเซ็นไปแล้ว */
+function budget_project_signer_by_token(mysqli $conn, string $token): ?array
+{
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) return null;
+    $hash = hash('sha256', $token);
+    $stmt = mysqli_prepare($conn, "SELECT s.*, u.name as user_name FROM budget_project_signers s LEFT JOIN users u ON u.id = s.user_id
+                                   WHERE s.sign_token_hash = ? AND s.sign_token_expires > NOW() AND s.signed_at IS NULL");
+    mysqli_stmt_bind_param($stmt, 's', $hash);
+    mysqli_stmt_execute($stmt);
+    $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    return $row ?: null;
+}
+
+/** URL เต็มของลิงก์เซ็น */
+function budget_project_sign_link_url(string $token): string
+{
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $dir = rtrim(str_replace(chr(92), '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir . '/budget_project_print.php?t=' . $token;
 }
 
 function budget_project_date_or_null($value): ?string

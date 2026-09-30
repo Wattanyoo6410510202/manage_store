@@ -3,12 +3,29 @@
 require 'config.php';
 require_once __DIR__ . '/budget_projects_lib.php';
 
-if (!isset($_SESSION['user'])) {
+// เปิดจากลิงก์เซ็น (?t=token) ไม่ต้อง login — เห็นเฉพาะเอกสารนี้ และเซ็นได้เฉพาะช่องของตัวเอง
+$link_token = (string)($_GET['t'] ?? '');
+$link_signer = null;
+if ($link_token !== '') {
+    header('X-Robots-Tag: noindex, nofollow');
+    header('Referrer-Policy: no-referrer');
+    $link_signer = budget_project_signer_by_token($conn, $link_token);
+    if (!$link_signer) {
+        http_response_code(410);
+        echo '<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ลิงก์ใช้ไม่ได้</title>'
+            . '<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet"></head>'
+            . '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f1f5f9;font-family:Sarabun,sans-serif;color:#334155;padding:16px">'
+            . '<div style="max-width:380px;background:#fff;border-radius:16px;padding:28px;text-align:center;box-shadow:0 10px 30px -12px rgba(15,23,42,.25)">'
+            . '<div style="font-size:40px">🔒</div><h2 style="margin:8px 0">ลิงก์นี้ใช้ไม่ได้แล้ว</h2>'
+            . '<p style="margin:0;color:#64748b">ลิงก์อาจหมดอายุ ถูกยกเลิก หรือเซ็นเอกสารนี้ไปแล้ว กรุณาติดต่อผู้ส่งลิงก์เพื่อขอลิงก์ใหม่</p></div></body></html>';
+        exit;
+    }
+} elseif (!isset($_SESSION['user'])) {
     echo "<script>window.location.href='login.php';</script>";
     exit;
 }
 
-$project = budget_project_fetch($conn, (int)($_GET['id'] ?? 0));
+$project = budget_project_fetch($conn, $link_signer ? (int)$link_signer['project_id'] : (int)($_GET['id'] ?? 0));
 if (!$project) {
     http_response_code(404);
     echo 'ไม่พบโครงการ';
@@ -53,7 +70,19 @@ $rejected = $project['status'] === 'rejected';
 
 // ลายเซ็นออนไลน์
 $signers = $project['signers'];
-$my_roles = budget_project_my_sign_roles($project, $signers, (int)($_SESSION['user_id'] ?? 0));
+if ($link_signer) {
+    // ลิงก์เซ็น: เซ็นได้เฉพาะช่องของลิงก์ และต้องถึงคิวแล้ว
+    $link_role = (string)$link_signer['role_key'];
+    $link_block_reason = budget_project_sign_block_reason($project, $signers, $link_role, (int)$link_signer['user_id']);
+    $my_roles = $link_block_reason === null ? [$link_role] : [];
+} else {
+    $link_block_reason = null;
+    $my_roles = budget_project_my_sign_roles($project, $signers, (int)($_SESSION['user_id'] ?? 0));
+}
+// ผู้สร้างโครงการ / admin จัดการลิงก์เซ็นได้ (ไม่แสดงในโหมดลิงก์)
+$can_manage_links = !$link_signer && $signers && $project['status'] !== 'rejected'
+    && budget_project_can_manage_links($project, (int)($_SESSION['user_id'] ?? 0), (string)($_SESSION['role'] ?? ''))
+    && array_filter($signers, fn($s) => empty($s['signed_at']));
 $next_signers = budget_project_next_signers($project, $signers);
 
 function bpp_signer_name(string $role, array $signers, string $fallback = ''): string
@@ -93,7 +122,7 @@ function bpp_sign_button(string $role, array $my_roles): string
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ใบขออนุมัติโครงการ <?= bpp_e($project['project_no'] ?: $project['name']) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -163,23 +192,93 @@ function bpp_sign_button(string $role, array $my_roles): string
     .sig-slot.my-turn { background: rgba(79,70,229,.08); }
     .sign-btn { margin-top: 3px; border: 0; border-radius: 6px; padding: 3px 10px; background: #4f46e5; color: #fff; font: inherit; font-size: 10pt; font-weight: 700; cursor: pointer; }
     .ack .sign-btn { margin: 0 0 0 6px; }
-    .sign-status { font-size: 12px; color: #475569; background: #fff; border-radius: 8px; padding: 7px 10px; box-shadow: inset 0 0 0 1px #cbd5e1; }
-    .sign-status b { color: #4f46e5; }
-    .pad-wrap { position: relative; border: 1.5px dashed #94a3b8; border-radius: 12px; background: #fff; }
-    #signPad { display: block; width: 100%; aspect-ratio: 3 / 1.2; touch-action: none; cursor: crosshair; border-radius: 12px; }
-    .pad-hint { position: absolute; left: 0; right: 0; bottom: 22%; border-bottom: 1px solid #e2e8f0; margin: 0 8%; pointer-events: none; }
-    .pad-hint span { position: absolute; left: 0; bottom: 4px; font-size: 11px; color: #cbd5e1; }
-    .decision-pick { display: flex; gap: 16px; margin: 12px 0 8px; font-weight: 700; }
-    .decision-pick label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .pad-wrap { position: relative; border: 1.5px dashed #94a3b8; border-radius: 14px; background: #fff; }
+    #signPad { display: block; width: 100%; height: min(34vh, 230px); min-height: 170px; touch-action: none; cursor: crosshair; border-radius: 14px; }
+    .pad-hint { position: absolute; left: 0; right: 0; bottom: 24%; border-bottom: 1.5px solid #e2e8f0; margin: 0 7%; pointer-events: none; }
+    .pad-hint span { position: absolute; left: 0; bottom: 5px; font-size: 11px; color: #cbd5e1; }
+    .pad-note { margin: 0 0 10px; font-size: 12px; color: #64748b; }
+    .decision-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 10px; font-weight: 700; }
+    .decision-pick label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all .15s; }
+    .decision-pick label:has(input[value="approved"]:checked) { border-color: #10b981; background: #ecfdf5; color: #047857; }
+    .decision-pick label:has(input[value="rejected"]:checked) { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+    .decision-pick input { accent-color: currentColor; width: 16px; height: 16px; }
+    body.sheet-open { overflow: hidden; }
+    /* มือถือ: เซ็นแบบ bottom sheet เต็มความกว้าง ปุ่มใหญ่กดง่าย */
+    @media (max-width: 640px) {
+        #signModal { padding: 0 !important; align-items: flex-end !important; }
+        #signModal .modal { width: 100% !important; max-width: none; max-height: 94dvh; border-radius: 22px 22px 0 0; }
+        #signModal .modal-head { position: relative; padding: 22px 18px 10px; border-bottom: 0; }
+        #signModal .modal-head::before { content: ""; position: absolute; top: 8px; left: 50%; width: 42px; height: 5px; margin-left: -21px; border-radius: 99px; background: #e2e8f0; }
+        #signModal .modal-head h3 { font-size: 17px; }
+        #signModal .btn-x { font-size: 18px; }
+        #signModal .modal-body { padding: 4px 16px 8px; }
+        #signPad { height: 38vh; min-height: 200px; }
+        #signModal .modal-foot { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); gap: 10px; border-top: 1px solid #f1f5f9; }
+        #signModal .modal-foot button { flex: 1; padding: 14px; font-size: 15px; border-radius: 14px; }
+        #signModal textarea { font-size: 16px; } /* กัน iOS ซูมตอนพิมพ์ */
+    }
     .modal textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font: inherit; resize: vertical; }
     .blank-row.hide { display: none; }
 
     /* แถบเครื่องมือ + modal ปรับแต่ง (ไม่พิมพ์) */
-    .toolbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 10px; background: rgba(229,231,235,.92); backdrop-filter: blur(4px); font-size: 13px; }
-    .toolbar button, .modal button { border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+    /* แถบเครื่องมือลอยด้านบน */
+    .toolbar-wrap { position: sticky; top: 0; z-index: 10; padding: 12px 16px 6px; background: linear-gradient(#e5e7eb 70%, rgba(229,231,235,0)); }
+    .toolbar { max-width: 900px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 12px; background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 30px -12px rgba(15,23,42,.25); font-size: 13px; color: #334155; }
+    .tb-info { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+    .tb-doc { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 0; }
+    .tb-icon-doc { width: 36px; height: 36px; border-radius: 10px; background: #eef2ff; color: #4f46e5; display: grid; place-items: center; flex-shrink: 0; }
+    .tb-icon-doc svg { width: 19px; height: 19px; }
+    .tb-doc-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+    .tb-title { font-weight: 700; color: #0f172a; white-space: nowrap; }
+    .tb-sub { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tb-status { font-weight: 700; }
+    .tb-status-pending { color: #d97706; }
+    .tb-status-approved { color: #059669; }
+    .tb-status-rejected { color: #dc2626; }
+    .tb-chips { display: flex; gap: 6px; min-width: 0; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; max-width: 320px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chip.fit.ok { background: #ecfdf5; color: #047857; }
+    .chip.fit.over { background: #fef2f2; color: #b91c1c; }
+    .chip-my-turn { background: #4f46e5; color: #fff; }
+    .chip-waiting { background: #fffbeb; color: #b45309; }
+    .chip-done { background: #ecfdf5; color: #047857; }
+    .chip-blocked { background: #f1f5f9; color: #475569; }
+    /* modal ลิงก์เซ็น */
+    .link-row { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+    .link-row-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .link-row-head b { color: #0f172a; }
+    .link-row small { color: #64748b; }
+    .link-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .link-actions button { padding: 6px 10px !important; font-size: 12px; }
+    .link-out { display: none; margin-top: 8px; }
+    .link-out.show { display: block; }
+    .link-out input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font: inherit; font-size: 12px; color: #334155; background: #f8fafc; }
+    .link-out-btns { display: flex; gap: 6px; margin-top: 6px; }
+    .link-out-btns button { flex: 1; }
+    .btn-line { background: #06c755; color: #fff; }
+    .btn-danger-soft { background: #fef2f2; color: #b91c1c; }
+    .link-badge { display: inline-block; margin-top: 2px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+    .link-badge.on { background: #ecfdf5; color: #047857; }
+    .link-badge.off { background: #f1f5f9; color: #64748b; }
+    .link-warn { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 10px; margin: 0 0 10px; }
+    .done-screen { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: #f1f5f9; padding: 16px; }
+    .done-card { max-width: 380px; width: 100%; background: #fff; border-radius: 18px; padding: 28px 22px; text-align: center; box-shadow: 0 10px 30px -12px rgba(15,23,42,.25); }
+    .done-card img { max-width: 100%; max-height: 90px; margin: 12px auto; display: block; }
+    .tb-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .tb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px; padding: 0 14px; border: 0; border-radius: 10px; background: #f1f5f9; color: #334155; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
+    .tb-btn:hover { background: #e2e8f0; }
+    .tb-btn:active { transform: scale(.97); }
+    .tb-btn:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+    .tb-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .tb-primary { background: #4f46e5; color: #fff; box-shadow: 0 4px 12px -4px rgba(79,70,229,.6); }
+    .tb-primary:hover { background: #4338ca; }
+    .tb-icon { width: 38px; padding: 0; background: transparent; color: #64748b; }
+    .tb-icon:hover { background: #fee2e2; color: #dc2626; }
+    .tb-sep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 2px; }
+    .modal button { border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; }
     .btn-primary { background: #4f46e5; color: #fff; }
     .btn-light { background: #fff; color: #334155; box-shadow: inset 0 0 0 1px #cbd5e1; }
-    .fit { margin: 0; padding: 7px 10px; border-radius: 8px; font-weight: 700; font-size: 12px; }
+    p.fit { margin: 0; padding: 7px 10px; border-radius: 8px; font-weight: 700; font-size: 12px; }
     .fit.ok { background: #ecfdf5; color: #047857; }
     .fit.over { background: #fef2f2; color: #b91c1c; }
     .hidden { display: none !important; }
@@ -202,15 +301,21 @@ function bpp_sign_button(string $role, array $my_roles): string
         #controls { grid-template-columns: 1fr; }
         .modal-backdrop { padding: 8px; align-items: flex-end; }
         .modal { width: 100%; max-height: 75vh; }
-        .toolbar { flex-wrap: wrap; gap: 6px; padding: 8px; }
-        .toolbar button { padding: 7px 10px; }
-        .toolbar .fit { order: 5; width: 100%; text-align: center; }
+        .toolbar-wrap { padding: 8px 8px 4px; }
+        .toolbar { flex-wrap: wrap; gap: 8px; padding: 8px; border-radius: 14px; }
+        .tb-info { order: 2; width: 100%; flex-wrap: wrap; gap: 6px; }
+        .tb-doc { display: none; }
+        .tb-chips { width: 100%; }
+        .chip { max-width: 100%; flex: 1 1 auto; justify-content: center; }
+        .tb-actions { order: 1; width: 100%; }
+        .tb-actions .tb-btn:not(.tb-icon) { flex: 1; height: 42px; }
+        .tb-sep { display: none; }
         .layout { padding: 4px 8px 16px; }
     }
     @media print {
         @page { size: A4 portrait; margin: 0; }
         body { background: #fff; }
-        .toolbar, .modal-backdrop, .no-print { display: none !important; }
+        .toolbar-wrap, .modal-backdrop, .no-print { display: none !important; }
         .sig-slot.my-turn { background: none; }
         .layout { display: block; padding: 0; }
         .page-wrap { width: auto !important; height: auto !important; }
@@ -221,22 +326,60 @@ function bpp_sign_button(string $role, array $my_roles): string
 </style>
 </head>
 <body>
-<div class="toolbar">
-    <button type="button" class="btn-primary" onclick="window.print()">🖨 พิมพ์ / บันทึก PDF</button>
-    <button type="button" class="btn-light" onclick="openSettings()">⚙ ปรับแต่ง</button>
-    <span class="fit ok" data-fit></span>
-    <?php if ($signers): ?>
-    <span class="sign-status">
-        <?php if ($my_roles): ?>
-            ✍ ถึงคิวคุณเซ็น: <b><?= bpp_e(implode(', ', array_map(fn($r) => BUDGET_PROJECT_SIGNER_ROLES[$r]['label'], $my_roles))) ?></b>
-        <?php elseif ($next_signers): ?>
-            รอเซ็น: <?= bpp_e(implode(', ', array_map(fn($s) => $s['user_name'] . ' (' . $s['label'] . ')', $next_signers))) ?>
-        <?php else: ?>
-            ลงนามครบแล้ว
-        <?php endif; ?>
-    </span>
-    <?php endif; ?>
-    <button type="button" class="btn-light" onclick="window.close()">ปิด</button>
+<?php
+$sign_state = $my_roles ? 'my-turn' : ($link_block_reason !== null ? 'blocked' : ($next_signers ? 'waiting' : 'done'));
+$status_labels = ['pending' => 'รออนุมัติ', 'approved' => 'อนุมัติแล้ว', 'rejected' => 'ไม่อนุมัติ'];
+?>
+<div class="toolbar-wrap">
+    <div class="toolbar" role="toolbar" aria-label="เครื่องมือเอกสาร">
+        <div class="tb-info">
+            <div class="tb-doc">
+                <span class="tb-icon-doc" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                </span>
+                <div class="tb-doc-text">
+                    <span class="tb-title">ใบขออนุมัติโครงการ</span>
+                    <span class="tb-sub"><?= bpp_e($project['project_no'] ?: $project['name']) ?> · <span class="tb-status tb-status-<?= bpp_e($project['status']) ?>"><?= bpp_e($status_labels[$project['status']] ?? $project['status']) ?></span></span>
+                </div>
+            </div>
+            <div class="tb-chips">
+                <span class="chip fit ok" data-fit></span>
+                <?php if ($signers): ?>
+                <span class="chip chip-<?= $sign_state ?>" title="<?= bpp_e($sign_state === 'waiting' ? implode(', ', array_map(fn($s) => $s['user_name'] . ' (' . $s['label'] . ')', $next_signers)) : '') ?>">
+                    <?php if ($sign_state === 'my-turn'): ?>
+                        ✍ ถึงคิวคุณเซ็น: <?= bpp_e(implode(', ', array_map(fn($r) => BUDGET_PROJECT_SIGNER_ROLES[$r]['label'], $my_roles))) ?>
+                    <?php elseif ($sign_state === 'blocked'): ?>
+                        ⏳ <?= bpp_e($link_block_reason) ?>
+                    <?php elseif ($sign_state === 'waiting'): ?>
+                        ⏳ รอเซ็น: <?= bpp_e(implode(', ', array_map(fn($s) => $s['user_name'] . ' (' . $s['label'] . ')', $next_signers))) ?>
+                    <?php else: ?>
+                        ✓ ลงนามครบแล้ว
+                    <?php endif; ?>
+                </span>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="tb-actions">
+            <?php if ($can_manage_links): ?>
+            <button type="button" class="tb-btn" onclick="openLinkModal()" title="ส่งลิงก์ให้ผู้ลงนามเซ็นโดยไม่ต้อง login">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+                <span>ลิงก์ให้เซ็น</span>
+            </button>
+            <?php endif; ?>
+            <button type="button" class="tb-btn" onclick="openSettings()" title="ปรับแต่งขนาดและระยะห่าง">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                <span>ปรับแต่ง</span>
+            </button>
+            <button type="button" class="tb-btn tb-primary" onclick="window.print()" title="พิมพ์ หรือบันทึกเป็น PDF">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+                <span>พิมพ์ / PDF</span>
+            </button>
+            <span class="tb-sep" aria-hidden="true"></span>
+            <button type="button" class="tb-btn tb-icon" onclick="window.close()" title="ปิด" aria-label="ปิด">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+        </div>
+    </div>
 </div>
 <div class="layout">
 <div class="page-wrap" id="pageWrap">
@@ -357,7 +500,7 @@ function bpp_sign_button(string $role, array $my_roles): string
             <button type="button" class="btn-x" onclick="closeSignPad()" aria-label="ปิด">✕</button>
         </div>
         <div class="modal-body">
-            <p style="margin:0 0 8px">ใช้เมาส์หรือนิ้ววาดลายเซ็นในกรอบด้านล่าง</p>
+            <p class="pad-note">ใช้นิ้วหรือเมาส์วาดลายเซ็นในกรอบด้านล่าง</p>
             <div class="pad-wrap">
                 <canvas id="signPad"></canvas>
                 <div class="pad-hint"><span>ลงชื่อบนเส้นนี้</span></div>
@@ -376,6 +519,46 @@ function bpp_sign_button(string $role, array $my_roles): string
         </div>
     </div>
 </div>
+
+<?php if ($can_manage_links): ?>
+<!-- Modal ลิงก์ให้เซ็นโดยไม่ต้อง login (ไม่พิมพ์) -->
+<div id="linkModal" class="modal-backdrop hidden" style="justify-content:center" onclick="if (event.target === this) closeLinkModal()">
+    <div class="modal" role="dialog" aria-labelledby="linkTitle" style="width:520px">
+        <div class="modal-head">
+            <h3 id="linkTitle">🔗 ลิงก์ให้เซ็นโดยไม่ต้อง login</h3>
+            <button type="button" class="btn-x" onclick="closeLinkModal()" aria-label="ปิด">✕</button>
+        </div>
+        <div class="modal-body">
+            <p class="link-warn">ใครได้ลิงก์ก็เซ็นแทนผู้ลงนามคนนั้นได้ ส่งให้เจ้าตัวโดยตรงเท่านั้น · ลิงก์ใช้ได้ครั้งเดียว หมดอายุใน <?= BUDGET_PROJECT_SIGN_LINK_DAYS ?> วัน · สร้างลิงก์ใหม่แล้วลิงก์เดิมใช้ไม่ได้ทันที</p>
+            <?php foreach ($signers as $role => $s): if (!empty($s['signed_at'])) continue; ?>
+            <div class="link-row" data-role="<?= bpp_e($role) ?>">
+                <div class="link-row-head">
+                    <div>
+                        <b><?= bpp_e($s['user_name']) ?></b> <small><?= bpp_e($s['label']) ?></small><br>
+                        <span class="link-badge <?= $s['has_active_link'] ? 'on' : 'off' ?>" data-badge><?= $s['has_active_link']
+                            ? 'มีลิงก์ใช้ได้ถึง ' . bpp_e(date('j/n/', strtotime($s['sign_token_expires'])) . ((int)date('Y', strtotime($s['sign_token_expires'])) + 543))
+                            : 'ยังไม่มีลิงก์' ?></span>
+                    </div>
+                    <div class="link-actions">
+                        <button type="button" class="btn-primary" onclick="createSignLink(<?= bpp_e(json_encode($role)) ?>)"><?= $s['has_active_link'] ? 'สร้างลิงก์ใหม่' : 'สร้างลิงก์' ?></button>
+                        <?php if ($s['has_active_link']): ?>
+                        <button type="button" class="btn-danger-soft" data-revoke onclick="revokeSignLink(<?= bpp_e(json_encode($role)) ?>)">ยกเลิก</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="link-out">
+                    <input type="text" readonly onclick="this.select()" aria-label="ลิงก์เซ็น">
+                    <div class="link-out-btns">
+                        <button type="button" class="btn-light" onclick="copySignLink(this)">📋 คัดลอกลิงก์</button>
+                        <button type="button" class="btn-line" onclick="shareSignLinkLine(this)">ส่งทาง LINE</button>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Modal ปรับแต่งการพิมพ์ (ไม่พิมพ์) -->
 <div id="settingsModal" class="modal-backdrop hidden" onclick="if (event.target === this) closeSettings()">
@@ -455,7 +638,8 @@ function checkFit() {
     const diffMm = Math.abs(available - used) / pxPerMm;
     const ok = used <= available + 1;
     document.querySelectorAll('[data-fit]').forEach(el => {
-        el.className = 'fit ' + (ok ? 'ok' : 'over');
+        el.classList.remove('ok', 'over');
+        el.classList.add(ok ? 'ok' : 'over');
         el.textContent = ok
             ? `✓ พอดี 1 หน้า A4 (เหลือ ${diffMm.toFixed(0)} mm)`
             : `⚠ เกิน 1 หน้า A4 ไป ${diffMm.toFixed(0)} mm`;
@@ -520,18 +704,21 @@ document.fonts && document.fonts.ready.then(() => { fitToScreen(); checkFit(); }
 
 // ===== ลายเซ็นออนไลน์ =====
 const PROJECT_ID = <?= (int)$project['id'] ?>;
+const LINK_TOKEN = <?= json_encode($link_signer ? $link_token : '') ?>;
 let signRole = null;
 let padHasInk = false;
 const pad = document.getElementById('signPad');
 const padCtx = pad.getContext('2d');
 
+// ขนาด CSS ของ canvas ตอนเปิด (ใช้แปลงพิกัดนิ้ว/เมาส์ ถ้าขนาดจอเปลี่ยนระหว่างเซ็น)
+let padCssSize = {w: 1, h: 1};
 function resizeSignPad() {
     const ratio = window.devicePixelRatio || 1;
-    const rect = pad.getBoundingClientRect();
-    pad.width = rect.width * ratio;
-    pad.height = rect.height * ratio;
+    padCssSize = {w: pad.offsetWidth, h: pad.offsetHeight};
+    pad.width = padCssSize.w * ratio;
+    pad.height = padCssSize.h * ratio;
     padCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    padCtx.lineWidth = 2.2;
+    padCtx.lineWidth = window.matchMedia('(pointer: coarse)').matches ? 2.8 : 2.2;
     padCtx.lineCap = 'round';
     padCtx.lineJoin = 'round';
     padCtx.strokeStyle = '#1e3a8a';
@@ -545,11 +732,13 @@ function openSignPad(role, label) {
     document.getElementById('signComment').value = '';
     document.getElementById('signError')?.remove();
     document.getElementById('signModal').classList.remove('hidden');
+    document.body.classList.add('sheet-open');
     resizeSignPad();
 }
 
 function closeSignPad() {
     document.getElementById('signModal').classList.add('hidden');
+    document.body.classList.remove('sheet-open');
 }
 
 function clearSignPad() {
@@ -561,7 +750,10 @@ let drawing = false;
 let last = null;
 function padPoint(e) {
     const rect = pad.getBoundingClientRect();
-    return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+    return {
+        x: (e.clientX - rect.left) * padCssSize.w / rect.width,
+        y: (e.clientY - rect.top) * padCssSize.h / rect.height,
+    };
 }
 pad.addEventListener('pointerdown', e => {
     drawing = true;
@@ -619,6 +811,7 @@ async function saveSignature() {
     const fd = new FormData();
     fd.append('id', PROJECT_ID);
     fd.append('role', signRole);
+    if (LINK_TOKEN) fd.append('token', LINK_TOKEN);
     fd.append('signature', signature);
     if (signRole === 'approver') {
         fd.append('decision', document.querySelector('input[name="decision"]:checked').value);
@@ -630,6 +823,10 @@ async function saveSignature() {
     try {
         const res = await fetch('budget_project_sign.php', {method: 'POST', body: fd}).then(r => r.json());
         if (res.status === 'success') {
+            if (LINK_TOKEN) {
+                showLinkDone(signature, res.msg);
+                return;
+            }
             location.reload();
             return;
         }
@@ -654,6 +851,94 @@ function alertBox(msg) {
     el.textContent = msg;
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSignPad(); });
+
+// ===== ลิงก์เซ็นโดยไม่ต้อง login =====
+const PROJECT_TITLE = <?= json_encode(trim(($project['project_no'] ? $project['project_no'] . ' · ' : '') . $project['name']), JSON_UNESCAPED_UNICODE) ?>;
+
+function openLinkModal() {
+    document.getElementById('linkModal').classList.remove('hidden');
+}
+function closeLinkModal() {
+    document.getElementById('linkModal')?.classList.add('hidden');
+}
+
+function signLinkRequest(action, role) {
+    const fd = new FormData();
+    fd.append('id', PROJECT_ID);
+    fd.append('role', role);
+    fd.append('action', action);
+    return fetch('budget_project_sign_link.php', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .catch(() => ({status: 'error', msg: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'}));
+}
+
+async function createSignLink(role) {
+    const row = document.querySelector(`.link-row[data-role="${role}"]`);
+    const badge = row.querySelector('[data-badge]');
+    const res = await signLinkRequest('create', role);
+    if (res.status !== 'success') {
+        badge.className = 'link-badge off';
+        badge.textContent = res.msg;
+        return;
+    }
+    const d = new Date(res.expires.replace(' ', 'T'));
+    badge.className = 'link-badge on';
+    badge.textContent = `มีลิงก์ใช้ได้ถึง ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
+    const out = row.querySelector('.link-out');
+    out.querySelector('input').value = res.url;
+    out.classList.add('show');
+    out.querySelector('input').select();
+}
+
+async function revokeSignLink(role) {
+    const row = document.querySelector(`.link-row[data-role="${role}"]`);
+    const badge = row.querySelector('[data-badge]');
+    const res = await signLinkRequest('revoke', role);
+    badge.className = 'link-badge off';
+    badge.textContent = res.status === 'success' ? 'ยกเลิกลิงก์แล้ว' : res.msg;
+    row.querySelector('.link-out').classList.remove('show');
+    row.querySelector('[data-revoke]')?.remove();
+}
+
+async function copySignLink(btn) {
+    const input = btn.closest('.link-out').querySelector('input');
+    try {
+        await navigator.clipboard.writeText(input.value);
+    } catch (e) {
+        input.select();
+        document.execCommand('copy');
+    }
+    btn.textContent = '✓ คัดลอกแล้ว';
+    setTimeout(() => { btn.textContent = '📋 คัดลอกลิงก์'; }, 1500);
+}
+
+function shareSignLinkLine(btn) {
+    const row = btn.closest('.link-row');
+    const url = row.querySelector('.link-out input').value;
+    const name = row.querySelector('b').textContent;
+    const text = `เรียน ${name}\nรบกวนเซ็นใบขออนุมัติโครงการ ${PROJECT_TITLE}\n${url}`;
+    window.open('https://line.me/R/msg/text/?' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+// เซ็นผ่านลิงก์เสร็จ: ลิงก์ใช้ไม่ได้อีก จึงแสดงหน้ายืนยันแทนการโหลดหน้าใหม่
+function showLinkDone(signature, msg) {
+    closeSignPad();
+    const el = document.createElement('div');
+    el.className = 'done-screen';
+    el.innerHTML = `<div class="done-card">
+        <div style="font-size:44px">✅</div>
+        <h2 style="margin:6px 0 4px"></h2>
+        <p style="margin:0;color:#64748b" data-title></p>
+        <img alt="ลายเซ็นของคุณ">
+        <p style="margin:0;color:#94a3b8;font-size:12px">ปิดหน้านี้ได้เลย ขอบคุณครับ</p>
+    </div>`;
+    el.querySelector('h2').textContent = msg;
+    el.querySelector('[data-title]').textContent = 'ใบขออนุมัติโครงการ ' + PROJECT_TITLE;
+    el.querySelector('img').src = signature;
+    document.body.appendChild(el);
+    document.body.classList.add('sheet-open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLinkModal(); });
 </script>
 </body>
 </html>
