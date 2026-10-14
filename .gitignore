@@ -4,3 +4,6 @@ node_modules/
 .env
 # กุญแจเข้ารหัส (ห้าม commit)
 secrets/
+
+# Smart Login SSO (มีกุญแจลับ ห้าม commit)
+sso.php
