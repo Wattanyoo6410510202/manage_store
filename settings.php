@@ -4,7 +4,6 @@ include('header.php');
 include('assets/alert.php');
 ?>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
 <div class="container-fluid p-0">
 
@@ -179,14 +178,11 @@ include('assets/alert.php');
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
     $(document).ready(function () {
         $('#supplierTable').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json' }
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' }
         });
 
         // Preview Logo
@@ -244,7 +240,7 @@ include('assets/alert.php');
         }
 
         $('#form-submit-btn').text('อัปเดตข้อมูล').attr('name', 'update_supplier').addClass('bg-indigo-600').removeClass('bg-slate-900');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('supplier-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function resetSupplierForm() {

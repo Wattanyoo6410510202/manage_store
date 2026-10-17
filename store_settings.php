@@ -4,7 +4,6 @@ include('header.php');
 include('assets/alert.php');
 ?>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
 <div class="container-fluid p-0">
     <div class="flex items-center gap-3 mb-6">
@@ -143,14 +142,11 @@ include('assets/alert.php');
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
     $(document).ready(function () {
         $('#storeTable').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/th.json' }
+            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json' }
         });
     });
 
@@ -166,7 +162,7 @@ include('assets/alert.php');
 
         $('#form-title').text('แก้ไขร้านค้า: ' + data.store_name);
         $('#form-submit-btn').text('อัปเดตร้านค้า').attr('name', 'update_store').removeClass('bg-emerald-600').addClass('bg-indigo-600');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('store-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function resetStoreForm() {

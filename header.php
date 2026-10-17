@@ -879,7 +879,7 @@ if (!empty($_SESSION['sup_id'])) {
                 </div>
 
                 <!-- Desktop Category Tabs -->
-                <div class="hidden min-[769px]:flex h-16 items-center shrink-0">
+                <div class="hidden min-[769px]:flex h-16 items-center min-w-0 overflow-x-auto [scrollbar-width:thin]">
                     <a id="nav-home" href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
@@ -911,7 +911,7 @@ if (!empty($_SESSION['sup_id'])) {
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 shrink-0 pl-3">
                 <button id="btn-tutorial" onclick="startTutorial()" class="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all border border-indigo-100">
                     <i class="fas fa-magic"></i>
                     <span class="text-xs font-bold">สอนหน่อย</span>
