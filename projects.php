@@ -6,6 +6,8 @@ include('assets/alert.php');
 // ดึงข้อมูลโปรเจกต์
 $sql = "SELECT p.*, created_by,
         (SELECT SUM(amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
+        (SELECT MIN(retention_return_due_date) FROM project_milestones WHERE project_id = p.id AND retention_amount > 0 AND retention_return_due_date IS NOT NULL AND retention_returned_at IS NULL) as retention_return_due_date,
+        (SELECT MAX(retention_returned_at) FROM project_milestones WHERE project_id = p.id AND retention_returned_at IS NOT NULL) as retention_returned_at,
         -- เพิ่มบรรทัดนี้ครับจาร เพื่อรวบ ID งวดงานทั้งหมด
         (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
         FROM projects p ORDER BY p.id DESC";
@@ -13,6 +15,8 @@ if (!empty($inspection_only_access)) {
     $inspection_user_id = (int)($_SESSION['user_id'] ?? 0);
     $sql = "SELECT p.*, created_by,
             (SELECT SUM(amount) FROM project_milestones WHERE project_id = p.id AND status = 'paid') as collected_money,
+            (SELECT MIN(retention_return_due_date) FROM project_milestones WHERE project_id = p.id AND retention_amount > 0 AND retention_return_due_date IS NOT NULL AND retention_returned_at IS NULL) as retention_return_due_date,
+            (SELECT MAX(retention_returned_at) FROM project_milestones WHERE project_id = p.id AND retention_returned_at IS NOT NULL) as retention_returned_at,
             (SELECT GROUP_CONCAT(id) FROM project_milestones WHERE project_id = p.id) as all_milestone_ids
             FROM projects p
             WHERE EXISTS (
@@ -30,7 +34,49 @@ if (!empty($inspection_only_access)) {
             ORDER BY p.id DESC";
 }
 $result = mysqli_query($conn, $sql);
+
+$retention_return_alerts = [];
+$alert_sql = "SELECT pm.project_id, p.project_name, pm.milestone_name,
+                     pm.retention_return_due_date,
+                     DATEDIFF(pm.retention_return_due_date, CURRENT_DATE) AS days_remaining
+              FROM project_milestones pm
+              INNER JOIN projects p ON p.id = pm.project_id
+              WHERE pm.retention_amount > 0
+                AND pm.retention_return_due_date IS NOT NULL
+                AND pm.retention_returned_at IS NULL
+                AND pm.retention_return_due_date <= DATE_ADD(CURRENT_DATE, INTERVAL 5 DAY)";
+if (!empty($inspection_only_access)) {
+    $alert_sql .= " AND EXISTS (
+        SELECT 1
+        FROM project_milestones pm_visible
+        INNER JOIN inspection_checklists ic_visible ON ic_visible.milestone_id = pm_visible.id
+        WHERE pm_visible.project_id = pm.project_id
+          AND ic_visible.status IN ('active', 'draft')
+          AND (ic_visible.inspector_1_user_id = $inspection_user_id
+               OR ic_visible.inspector_2_user_id = $inspection_user_id
+               OR ic_visible.procurement_user_id = $inspection_user_id
+               OR ic_visible.md_user_id = $inspection_user_id
+               OR ic_visible.gmacc_user_id = $inspection_user_id)
+    )";
+}
+$alert_sql .= " ORDER BY pm.retention_return_due_date ASC, p.project_name ASC, pm.milestone_name ASC";
+$alert_result = mysqli_query($conn, $alert_sql);
+if ($alert_result) {
+    while ($alert_row = mysqli_fetch_assoc($alert_result)) {
+        $retention_return_alerts[] = [
+            'projectId' => (int)$alert_row['project_id'],
+            'projectName' => (string)$alert_row['project_name'],
+            'milestoneName' => (string)$alert_row['milestone_name'],
+            'dueDate' => (string)$alert_row['retention_return_due_date'],
+            'daysRemaining' => (int)$alert_row['days_remaining'],
+        ];
+    }
+}
 ?>
+
+<script>
+    window.retentionReturnAlerts = <?= json_encode($retention_return_alerts, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+</script>
 
 <div>
     <div
@@ -216,6 +262,26 @@ $result = mysqli_query($conn, $sql);
                                 <i class="far fa-calendar-alt mr-1"></i> จบงาน:
                                 <?= (!empty($row['end_date']) && $row['end_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['end_date'])) : '-' ?>
                             </p>
+                            <?php
+                            $card_retention_due_date = (string)($row['retention_return_due_date'] ?? '');
+                            $card_retention_returned_at = (string)($row['retention_returned_at'] ?? '');
+                            $card_retention_days_remaining = null;
+                            if ($card_retention_due_date !== '') {
+                                $card_retention_days_remaining = (int)floor((strtotime($card_retention_due_date) - strtotime(date('Y-m-d'))) / 86400);
+                            }
+                            ?>
+                            <?php if ($card_retention_due_date !== ''): ?>
+                                <p class="text-[11px] <?= $card_retention_days_remaining < 0 ? 'text-rose-600' : 'text-amber-600' ?> mb-3 font-semibold" data-retention-return-due="<?= htmlspecialchars($card_retention_due_date, ENT_QUOTES, 'UTF-8') ?>">
+                                    <i class="fas fa-shield-alt mr-1"></i> คืนเงินประกัน:
+                                    <?= date('d/m/Y', strtotime($card_retention_due_date)) ?> ·
+                                    <?php if ($card_retention_days_remaining > 0): ?>เหลืออีก <?= $card_retention_days_remaining ?> วัน<?php elseif ($card_retention_days_remaining === 0): ?>ครบกำหนดวันนี้<?php else: ?>เกินกำหนด <?= abs($card_retention_days_remaining) ?> วัน<?php endif; ?>
+                                </p>
+                            <?php elseif ($card_retention_returned_at !== ''): ?>
+                                <p class="text-[11px] text-emerald-600 mb-3 font-semibold">
+                                    <i class="fas fa-check-circle mr-1"></i> คืนเงินประกันแล้ว:
+                                    <?= date('d/m/Y', strtotime($card_retention_returned_at)) ?>
+                                </p>
+                            <?php endif; ?>
                             <div class="space-y-2.5">
                                 <div>
                                     <div class="flex justify-between text-[12px] mb-1">
@@ -423,6 +489,7 @@ $result = mysqli_query($conn, $sql);
 <style>
     .swal2-container { z-index: 99999 !important; }
 </style>
+<script src="assets/js/retention_return_reminder.js"></script>
 <script>
     function setViewMode(mode) {
         localStorage.setItem('project_view_mode', mode);

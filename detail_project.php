@@ -369,12 +369,37 @@ $total_po_approved = $po_total_data['total'] ?? 0;
                                                             class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-lg text-[12px] font-black border border-emerald-100 uppercase tracking-tighter">
                                                             <i class="fas fa-check-double mr-1"></i> ชำระแล้ว
                                                         </span>
-                                                        <button
-                                                            onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
-                                                            class="text-[12px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
-                                                            title="คืนเงินประกัน">
-                                                            <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
-                                                        </button>
+                                                        <?php
+                                                        $milestone_retention_amount = (float)($m['retention_amount'] ?? 0);
+                                                        $milestone_return_due_date = (string)($m['retention_return_due_date'] ?? '');
+                                                        $milestone_returned_at = (string)($m['retention_returned_at'] ?? '');
+                                                        $milestone_return_days = null;
+                                                        if ($milestone_return_due_date !== '') {
+                                                            $milestone_return_days = (int)floor((strtotime($milestone_return_due_date) - strtotime(date('Y-m-d'))) / 86400);
+                                                        }
+                                                        ?>
+                                                        <?php if ($milestone_returned_at !== ''): ?>
+                                                            <span class="text-[11px] font-bold text-emerald-600" title="ยืนยันคืนเงินประกันแล้ว">
+                                                                <i class="fas fa-check-circle mr-1"></i>คืนเงินประกันแล้ว <?= date('d/m/Y', strtotime($milestone_returned_at)) ?>
+                                                            </span>
+                                                        <?php elseif ($milestone_retention_amount > 0): ?>
+                                                            <div class="flex flex-col items-start gap-0.5">
+                                                                <?php if ($milestone_return_due_date !== ''): ?>
+                                                                    <span class="text-[11px] font-bold <?= $milestone_return_days < 0 ? 'text-rose-600' : 'text-amber-600' ?>">
+                                                                        <i class="fas fa-calendar-alt mr-1"></i>คืนเงินประกัน <?= date('d/m/Y', strtotime($milestone_return_due_date)) ?> ·
+                                                                        <?php if ($milestone_return_days > 0): ?>เหลืออีก <?= $milestone_return_days ?> วัน<?php elseif ($milestone_return_days === 0): ?>ครบกำหนดวันนี้<?php else: ?>เกินกำหนด <?= abs($milestone_return_days) ?> วัน<?php endif; ?>
+                                                                    </span>
+                                                                <?php else: ?>
+                                                                    <span class="text-[11px] font-bold text-slate-500">ยังไม่ได้กำหนดวันคืนเงินประกัน</span>
+                                                                <?php endif; ?>
+                                                                <button
+                                                                    onclick="refundRetention(<?= $m['id'] ?>, '<?= addslashes($m['deduction_note'] ?: 'เงินประกัน') ?>')"
+                                                                    class="text-[12px] font-bold bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600 shadow-sm transition-all"
+                                                                    title="คืนเงินประกัน">
+                                                                    <i class="fas fa-undo-alt mr-1"></i> คืนเงินประกัน
+                                                                </button>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </div>
 
                                                 <?php endif; ?>

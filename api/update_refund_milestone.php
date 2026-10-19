@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
 
     try {
         // 1. ดึงข้อมูลเดิมมาคำนวณยอดใหม่ (ใช้ mysqli)
-        $query = "SELECT amount, vat_amount, wht_amount FROM project_milestones WHERE id = ?";
+        $query = "SELECT amount, vat_amount, wht_amount, retention_amount, retention_returned_at, retention_return_due_date
+                  FROM project_milestones WHERE id = ?";
         $stmt = mysqli_prepare($conn, $query);
         mysqli_stmt_bind_param($stmt, "i", $id);
         mysqli_stmt_execute($stmt);
@@ -21,6 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
         $row = mysqli_fetch_assoc($result);
 
         if ($row) {
+            if (!empty($row['retention_returned_at'])) {
+                http_response_code(409);
+                echo json_encode(['status' => 'error', 'message' => 'รายการนี้ยืนยันคืนเงินประกันแล้ว']);
+                exit;
+            }
+            if ((float)$row['retention_amount'] <= 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'รายการนี้ไม่มีเงินประกันคงค้างให้คืน']);
+                exit;
+            }
+
             // สูตรคำนวณใหม่: คืนทุกอย่างเป็นยอดเต็ม
             $new_total_request = $row['amount']; 
             $new_net_amount = $new_total_request + $row['vat_amount'] - $row['wht_amount'];
@@ -32,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
                 other_deduction_amount = 0, 
                 deduction_note = ?, 
                 total_request_amount = ?, 
-                net_amount = ? 
+                net_amount = ?,
+                retention_returned_at = NOW()
                 WHERE id = ?";
             
             $update_stmt = mysqli_prepare($conn, $update_query);
