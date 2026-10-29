@@ -34,6 +34,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     stock_redirect('stock.php?sup_id=' . (int)($_POST['sup_id'] ?? 0));
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_plan') {
+    try {
+        stock_verify_csrf();
+        stock_require_manager($stock_actor);
+        $conn->begin_transaction();
+        stock_update_product_plan_settings(
+            $conn,
+            (int)($_POST['product_id'] ?? 0),
+            (int)($_POST['sup_id'] ?? 0),
+            (string)($_POST['abc_class'] ?? ''),
+            (int)($_POST['lead_time_days'] ?? -1),
+            (float)($_POST['min_quantity'] ?? -1)
+        );
+        $conn->commit();
+        stock_flash('success', 'อัปเดตเกณฑ์ Min/Max แล้ว');
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        stock_flash('error', stock_error_message($exception));
+    }
+    stock_redirect('stock.php?sup_id=' . (int)($_POST['sup_id'] ?? 0));
+}
+
 $companies = stock_companies($conn);
 $products = [];
 if ($selectedSupId > 0) {
@@ -72,12 +94,19 @@ foreach ($products as $product) {
     $productCategories[$category] = true;
 }
 uksort($productCategories, 'strnatcasecmp');
+$plans = stock_list_product_plans($conn, $selectedSupId, $products);
+$planStatusClasses = [
+    'buy' => 'bg-rose-100 text-rose-800',
+    'can_buy' => 'bg-amber-100 text-amber-800',
+    'no_buy' => 'bg-emerald-100 text-emerald-800',
+    'no_plan' => 'bg-slate-100 text-slate-600',
+];
 $flash = stock_take_flash();
 
 include __DIR__ . '/header.php';
 ?>
 
-<div class="max-w-7xl mx-auto p-4 md:p-8 space-y-6" data-stock-ui="procurement">
+<div class="max-w-screen-2xl mx-auto p-4 md:p-8 space-y-6" data-stock-ui="procurement">
     <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
             <h1 class="text-2xl font-black text-slate-800 tracking-tight">ภาพรวม Stock</h1>
@@ -98,6 +127,17 @@ include __DIR__ . '/header.php';
     </div>
 
     <?php stock_render_flash($flash); ?>
+
+    <details class="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm md:px-5">
+        <summary class="cursor-pointer font-bold text-slate-800">หลักการคำนวณ Min / Max</summary>
+        <ul class="mt-3 list-disc space-y-1 pl-5">
+            <li>ใช้เฉลี่ย/เดือน = ยอดเบิกจ่าย <?= STOCK_PLAN_HISTORY_MONTHS ?> เดือนย้อนหลัง ÷ จำนวนเดือน (พัสดุใหม่หารตามอายุจริง)</li>
+            <li>Cover Day = Safety Stock ตาม Class (<?php foreach (STOCK_PLAN_CLASS_DAYS as $planClass => $planDays): ?><?= $planClass ?> <?= $planDays ?> วัน<?= $planClass !== 'C' ? ', ' : '' ?><?php endforeach; ?>) + Lead Time</li>
+            <li>Min = (ใช้เฉลี่ย/เดือน ÷ 30 × Cover Day) + ค้างเบิก — ถ้ากำหนด Min ขั้นต่ำไว้สูงกว่าจะใช้ค่านั้น</li>
+            <li>Max = Min + <?= (int)(STOCK_PLAN_MAX_OVER_RATIO * 100) ?>% · เทียบกับ คงเหลือ + ค้างรับจาก PO: ต่ำกว่า Min = ต้องสั่งซื้อ, ระหว่าง Min–Max = สั่งซื้อได้, ถึง Max = ไม่ต้องซื้อ</li>
+            <li>ควรสั่ง = Max − (คงเหลือ + ค้างรับ)</li>
+        </ul>
+    </details>
 
     <div id="stockProductsOverview" data-stock-overview-filter class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div class="border-b border-slate-100 px-4 py-4 md:px-5">
@@ -123,13 +163,13 @@ include __DIR__ . '/header.php';
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500"><tr><th class="text-left px-4 py-3">พัสดุ</th><th class="text-left px-4 py-3">หมวดหมู่</th><th class="text-right px-4 py-3">คงเหลือ</th><th class="text-right px-4 py-3">จุดสั่งซื้อ</th><th class="text-center px-4 py-3">สถานะ</th></tr></thead>
+                <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500"><tr><th class="text-left px-4 py-3 min-w-[14rem]">พัสดุ</th><th class="text-left px-4 py-3">หมวดหมู่</th><th class="text-right px-4 py-3">คงเหลือ</th><th class="text-right px-4 py-3">ค้างรับ / ค้างเบิก</th><th class="text-right px-4 py-3">ใช้เฉลี่ย/ด.</th><th class="text-left px-4 py-3">Class / Lead Time</th><th class="text-right px-4 py-3">Min</th><th class="text-right px-4 py-3">Max</th><th class="text-right px-4 py-3">ควรสั่ง</th><th class="text-center px-4 py-3">สถานะ</th></tr></thead>
                 <tbody class="divide-y divide-slate-100">
-                <?php foreach ($products as $product): $qty = (float)$product['quantity']; $low = $qty <= (float)$product['min_quantity']; ?>
-                    <tr data-stock-overview-row data-product-name="<?= stock_e($product['name']) ?>" data-category="<?= stock_e(trim((string)($product['category'] ?? ''))) ?>" class="transition-colors hover:bg-slate-50"><td class="px-4 py-3 font-semibold text-slate-900"><span data-stock-overview-name-text><?= stock_e($product['name']) ?></span><div class="text-xs text-slate-500 mt-0.5"><?= stock_e(supplier_display_name($product['company_name'])) ?></div></td><td class="px-4 py-3 text-slate-600"><?php if (stock_can_manage($stock_actor['role'])): ?><form method="post" class="flex min-w-48 gap-2"><input type="hidden" name="csrf" value="<?= stock_e(stock_csrf_token()) ?>"><input type="hidden" name="action" value="update_category"><input type="hidden" name="sup_id" value="<?= $selectedSupId ?>"><input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>"><select name="category" required data-stock-category-select class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><option value="" <?= empty($product['category']) ? 'selected' : '' ?> disabled>เลือกหมวดหมู่</option><?php foreach (array_keys($knownCategories) as $category): ?><option value="<?= stock_e($category) ?>" <?= $product['category'] === $category ? 'selected' : '' ?>><?= stock_e($category) ?></option><?php endforeach; ?></select><button class="rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50">บันทึก</button></form><?php else: ?><?= stock_e($product['category'] ?: 'ไม่ระบุหมวด') ?><?php endif; ?></td><td class="px-4 py-3 text-right font-bold <?= $qty <= 0 ? 'text-rose-700' : 'text-slate-900' ?>"><?= number_format($qty, 2) ?> <?= stock_e($product['unit']) ?></td><td class="px-4 py-3 text-right text-slate-600"><?= number_format((float)$product['min_quantity'], 2) ?></td><td class="px-4 py-3 text-center"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold <?= $low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' ?>"><?= $low ? 'ควรเติม Stock' : 'พร้อมเบิก' ?></span></td></tr>
+                <?php foreach ($products as $product): $qty = (float)$product['quantity']; $plan = $plans[(int)$product['id']]; ?>
+                    <tr data-stock-overview-row data-product-name="<?= stock_e($product['name']) ?>" data-category="<?= stock_e(trim((string)($product['category'] ?? ''))) ?>" class="transition-colors hover:bg-slate-50"><td class="px-4 py-3 font-semibold text-slate-900"><span data-stock-overview-name-text><?= stock_e($product['name']) ?></span><div class="text-xs text-slate-500 mt-0.5"><?= stock_e(supplier_display_name($product['company_name'])) ?></div></td><td class="px-4 py-3 text-slate-600"><?php if (stock_can_manage($stock_actor['role'])): ?><form method="post" class="flex min-w-48 gap-2"><input type="hidden" name="csrf" value="<?= stock_e(stock_csrf_token()) ?>"><input type="hidden" name="action" value="update_category"><input type="hidden" name="sup_id" value="<?= $selectedSupId ?>"><input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>"><select name="category" required data-stock-category-select class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><option value="" <?= empty($product['category']) ? 'selected' : '' ?> disabled>เลือกหมวดหมู่</option><?php foreach (array_keys($knownCategories) as $category): ?><option value="<?= stock_e($category) ?>" <?= $product['category'] === $category ? 'selected' : '' ?>><?= stock_e($category) ?></option><?php endforeach; ?></select><button class="rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50">บันทึก</button></form><?php else: ?><?= stock_e($product['category'] ?: 'ไม่ระบุหมวด') ?><?php endif; ?></td><td class="px-4 py-3 text-right font-bold <?= $qty <= 0 ? 'text-rose-700' : 'text-slate-900' ?>"><?= number_format($qty, 2) ?> <?= stock_e($product['unit']) ?></td><td class="px-4 py-3 text-right text-slate-600 whitespace-nowrap"><?= number_format($plan['on_order'], 2) ?> / <?= number_format($plan['back_order'], 2) ?></td><td class="px-4 py-3 text-right text-slate-600"><?= number_format($plan['avg_monthly_usage'], 2) ?></td><td class="px-4 py-3 text-slate-600"><?php if (stock_can_manage($stock_actor['role'])): ?><form method="post" class="flex items-center gap-1.5" title="Min ขั้นต่ำ: ใช้แทนค่าคำนวณเมื่อสูงกว่า"><input type="hidden" name="csrf" value="<?= stock_e(stock_csrf_token()) ?>"><input type="hidden" name="action" value="update_plan"><input type="hidden" name="sup_id" value="<?= $selectedSupId ?>"><input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>"><select name="abc_class" aria-label="Class" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><?php foreach (array_keys(STOCK_PLAN_CLASS_DAYS) as $planClass): ?><option value="<?= $planClass ?>" title="<?= stock_e(stock_plan_class_label($planClass)) ?>" <?= $product['abc_class'] === $planClass ? 'selected' : '' ?>><?= $planClass ?></option><?php endforeach; ?></select><input type="number" name="lead_time_days" min="0" max="365" step="1" required value="<?= (int)$product['lead_time_days'] ?>" aria-label="Lead Time (วัน)" class="w-14 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-xs shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><span class="text-xs text-slate-400">วัน</span><input type="number" name="min_quantity" min="0" step="0.01" required value="<?= stock_e((float)$product['min_quantity']) ?>" aria-label="Min ขั้นต่ำ" placeholder="Min" class="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-xs shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><button class="rounded-lg border border-indigo-200 px-2 py-1.5 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50">บันทึก</button></form><?php else: ?><span title="<?= stock_e(stock_plan_class_label((string)$product['abc_class'])) ?>"><?= stock_e($product['abc_class']) ?></span> · <?= (int)$product['lead_time_days'] ?> วัน<?php endif; ?><div class="mt-0.5 text-xs text-slate-400">Cover <?= (int)$plan['cover_days_need'] ?> วัน<?= $plan['cover_days'] !== null ? ' · มีพอ ' . number_format($plan['cover_days'], 1) . ' วัน' : '' ?></div></td><td class="px-4 py-3 text-right font-semibold text-slate-700"><?= number_format($plan['min'], 0) ?></td><td class="px-4 py-3 text-right font-semibold text-slate-700"><?= number_format($plan['max'], 0) ?></td><td class="px-4 py-3 text-right font-bold <?= $plan['suggested_order'] > 0 ? 'text-indigo-700' : 'text-slate-400' ?>"><?= $plan['suggested_order'] > 0 ? number_format($plan['suggested_order'], 0) . ' ' . stock_e($product['unit']) : '-' ?></td><td class="px-4 py-3 text-center"><span class="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold <?= $planStatusClasses[$plan['status']] ?>"><?= stock_e(stock_plan_status_label($plan['status'])) ?></span></td></tr>
                 <?php endforeach; ?>
-                <tr data-stock-overview-empty class="hidden"><td colspan="5" class="px-4 py-12 text-center text-slate-500"><i class="fas fa-search mb-3 block text-2xl text-slate-300"></i>ไม่พบพัสดุที่ตรงกับตัวกรอง</td></tr>
-                <?php if (!$products): ?><tr><td colspan="5" class="px-4 py-12 text-center text-slate-500">ยังไม่มีพัสดุในบริษัทนี้</td></tr><?php endif; ?>
+                <tr data-stock-overview-empty class="hidden"><td colspan="10" class="px-4 py-12 text-center text-slate-500"><i class="fas fa-search mb-3 block text-2xl text-slate-300"></i>ไม่พบพัสดุที่ตรงกับตัวกรอง</td></tr>
+                <?php if (!$products): ?><tr><td colspan="10" class="px-4 py-12 text-center text-slate-500">ยังไม่มีพัสดุในบริษัทนี้</td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>

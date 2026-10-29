@@ -141,7 +141,7 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                     class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                             </th>
                             <th class="w-8 text-center">ID</th>
-                            <th>เลขที่เอกสาร</th>
+                            <th>Express REF.</th>
                             <th>Ref. PR</th>
                             <th>หน่วยงาน</th>
                             <th>รายละเอียด</th>
@@ -167,15 +167,8 @@ $suppliers = mysqli_fetch_all($supplier_res, MYSQLI_ASSOC);
                                 </td>
                                 <td class="text-center text-slate-300 font-mono text-[10px]"><?= $i++ ?></td>
                                 <?php $express_ref = trim((string)($row['express_ref_code'] ?? '')); ?>
-                                <?php if ($express_ref !== ''): ?>
-                                <td class="font-bold text-slate-800" title="PO: <?= htmlspecialchars($row['doc_no']) ?>"
-                                    data-search="<?= htmlspecialchars($express_ref . ' ' . $row['doc_no']) ?>">
-                                    <?= htmlspecialchars($express_ref) ?>
-                                    <div class="text-[10px] font-medium text-amber-600"><i class="fas fa-bolt mr-1"></i>มาจาก Express</div>
-                                </td>
-                                <?php else: ?>
-                                <td class="font-bold text-slate-800 "><?= $row['doc_no'] ?></td>
-                                <?php endif; ?>
+                                <td class="font-bold text-slate-800"
+                                    data-search="<?= htmlspecialchars(trim($express_ref . ' ' . $row['doc_no'])) ?>"><?= htmlspecialchars($express_ref) ?></td>
                                 <td>
                                     <?php if (!empty($row['reference_no']) && strpos($row['reference_no'], 'PR-') === 0): 
                                         // ค้นหา ID ของ PR จาก doc_no เพื่อทำลิงก์

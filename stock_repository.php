@@ -475,3 +475,99 @@ function stock_refresh_withdrawal_status(mysqli $conn, int $withdrawalId): strin
 
     return $status;
 }
+
+function stock_list_product_plans(mysqli $conn, int $supId, array $products): array
+{
+    if ($supId <= 0 || !$products) {
+        return [];
+    }
+    $historyMonths = STOCK_PLAN_HISTORY_MONTHS;
+    $stmt = $conn->prepare(
+        "SELECT p.id,
+                LEAST(?, GREATEST(1, CEIL(DATEDIFF(NOW(), p.created_at) / 30))) history_months,
+                COALESCE(usage_totals.used, 0) used,
+                COALESCE(back_orders.back_order, 0) back_order,
+                COALESCE(on_orders.on_order, 0) on_order
+         FROM stock_products p
+         LEFT JOIN (
+             SELECT product_id, SUM(-quantity) used
+             FROM stock_movements
+             WHERE sup_id = ? AND movement_type = 'out_withdrawal' AND created_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
+             GROUP BY product_id
+         ) usage_totals ON usage_totals.product_id = p.id
+         LEFT JOIN (
+             SELECT wi.product_id, SUM(GREATEST(wi.requested_quantity - wi.issued_quantity - wi.cancelled_quantity, 0)) back_order
+             FROM stock_withdrawal_items wi
+             INNER JOIN stock_withdrawals w ON w.id = wi.withdrawal_id
+             WHERE w.status NOT IN ('completed', 'cancelled')
+             GROUP BY wi.product_id
+         ) back_orders ON back_orders.product_id = p.id
+         LEFT JOIN (
+             SELECT ps.product_id,
+                    SUM(GREATEST(pi.item_qty - COALESCE(received.received_quantity, 0), 0) * ps.units_per_purchase_unit) on_order
+             FROM stock_po_item_settings ps
+             INNER JOIN po_items pi ON pi.id = ps.po_item_id
+             INNER JOIN po ON po.id = pi.po_id
+             LEFT JOIN (
+                 SELECT po_item_id, SUM(received_quantity) received_quantity
+                 FROM stock_receipt_items
+                 GROUP BY po_item_id
+             ) received ON received.po_item_id = pi.id
+             WHERE ps.destination = 'stock' AND ps.product_id IS NOT NULL
+               AND po.status = 'approved' AND po.deleted_at IS NULL
+             GROUP BY ps.product_id
+         ) on_orders ON on_orders.product_id = p.id
+         WHERE p.sup_id = ?"
+    );
+    $stmt->bind_param('iiii', $historyMonths, $supId, $historyMonths, $supId);
+    $stmt->execute();
+    $metrics = [];
+    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+        $metrics[(int)$row['id']] = $row;
+    }
+    $stmt->close();
+
+    $plans = [];
+    foreach ($products as $product) {
+        $productId = (int)$product['id'];
+        $metric = $metrics[$productId] ?? ['history_months' => 1, 'used' => 0, 'back_order' => 0, 'on_order' => 0];
+        $plans[$productId] = stock_plan_min_max(
+            (string)$product['abc_class'],
+            (int)$product['lead_time_days'],
+            (float)$metric['used'],
+            (int)$metric['history_months'],
+            (float)$metric['back_order'],
+            (float)$product['quantity'],
+            (float)$metric['on_order'],
+            (float)$product['min_quantity']
+        ) + ['back_order' => (float)$metric['back_order'], 'on_order' => (float)$metric['on_order']];
+    }
+    return $plans;
+}
+
+function stock_update_product_plan_settings(
+    mysqli $conn,
+    int $productId,
+    int $supId,
+    string $class,
+    int $leadTimeDays,
+    float $manualMin
+): void {
+    if (!isset(STOCK_PLAN_CLASS_DAYS[$class]) || $leadTimeDays < 0 || $leadTimeDays > 365 || $manualMin < 0) {
+        throw new DomainException('กรุณาระบุ Class, Lead Time และ Min ขั้นต่ำให้ถูกต้อง');
+    }
+    $checkStmt = $conn->prepare('SELECT id FROM stock_products WHERE id = ? AND sup_id = ? FOR UPDATE');
+    $checkStmt->bind_param('ii', $productId, $supId);
+    $checkStmt->execute();
+    $exists = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if (!$exists) {
+        throw new DomainException('ไม่พบพัสดุในบริษัทที่เลือก');
+    }
+    $stmt = $conn->prepare(
+        'UPDATE stock_products SET abc_class = ?, lead_time_days = ?, min_quantity = ? WHERE id = ? AND sup_id = ?'
+    );
+    $stmt->bind_param('sidii', $class, $leadTimeDays, $manualMin, $productId, $supId);
+    $stmt->execute();
+    $stmt->close();
+}

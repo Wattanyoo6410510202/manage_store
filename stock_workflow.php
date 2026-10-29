@@ -217,3 +217,74 @@ function stock_status_label(string $status): string
         'matched' => 'ยอดตรง',
     ][$status] ?? $status;
 }
+
+// หลักไฟล์ประมาณการสั่งซื้อ: Safety Stock ตาม Class + Lead Time, เกิน Min 20% ขึ้นไปไม่ต้องซื้อ
+const STOCK_PLAN_CLASS_DAYS = ['A' => 35, 'B' => 25, 'C' => 15];
+const STOCK_PLAN_DEFAULT_LEAD_TIME_DAYS = 3;
+const STOCK_PLAN_HISTORY_MONTHS = 6;
+const STOCK_PLAN_MAX_OVER_RATIO = 0.2;
+
+function stock_plan_class_label(string $class): string
+{
+    return [
+        'A' => 'A — ใช้สม่ำเสมอ ปริมาณมากทุกเดือน',
+        'B' => 'B — ใช้ต่อเนื่องแต่มีขึ้น-ลง',
+        'C' => 'C — ใช้ไม่สม่ำเสมอ/ปริมาณน้อย',
+    ][$class] ?? $class;
+}
+
+function stock_plan_min_max(
+    string $class,
+    int $leadTimeDays,
+    float $usageInHistory,
+    int $historyMonths,
+    float $backOrder,
+    float $onHand,
+    float $onOrder,
+    float $manualMin = 0
+): array {
+    if (!isset(STOCK_PLAN_CLASS_DAYS[$class])) {
+        throw new DomainException('Class สินค้าต้องเป็น A, B หรือ C');
+    }
+    if ($leadTimeDays < 0 || $historyMonths <= 0 || min($usageInHistory, $backOrder, $onOrder, $manualMin) < 0) {
+        throw new DomainException('ข้อมูลคำนวณ Min/Max ไม่ถูกต้อง');
+    }
+
+    $avgMonthlyUsage = $usageInHistory / $historyMonths;
+    $coverDaysNeed = STOCK_PLAN_CLASS_DAYS[$class] + $leadTimeDays;
+    $safetyStock = ($avgMonthlyUsage / 30) * $coverDaysNeed;
+    $min = (float)ceil(round(max($safetyStock + $backOrder, $manualMin), 4));
+    $max = (float)ceil(round($min * (1 + STOCK_PLAN_MAX_OVER_RATIO), 4));
+    $available = $onHand + $onOrder;
+
+    if ($min <= 0) {
+        $status = 'no_plan';
+    } elseif ($available < $min) {
+        $status = 'buy';
+    } elseif ($available < $max) {
+        $status = 'can_buy';
+    } else {
+        $status = 'no_buy';
+    }
+
+    return [
+        'avg_monthly_usage' => round($avgMonthlyUsage, 2),
+        'cover_days_need' => $coverDaysNeed,
+        'min' => $min,
+        'max' => $max,
+        'available' => round($available, 2),
+        'cover_days' => $avgMonthlyUsage > 0 ? round($available / ($avgMonthlyUsage / 30), 1) : null,
+        'suggested_order' => in_array($status, ['buy', 'can_buy'], true) ? (float)ceil(round($max - $available, 4)) : 0.0,
+        'status' => $status,
+    ];
+}
+
+function stock_plan_status_label(string $status): string
+{
+    return [
+        'buy' => 'ต้องสั่งซื้อ',
+        'can_buy' => 'สั่งซื้อได้',
+        'no_buy' => 'ไม่ต้องซื้อ',
+        'no_plan' => 'ยังไม่มีประวัติเบิก',
+    ][$status] ?? $status;
+}

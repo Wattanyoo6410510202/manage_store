@@ -98,4 +98,20 @@ stock_assert_same(true, stock_can_view_reconciliation('gmhr', 9, 15), 'GMHR must
 stock_assert_same(true, stock_can_view_reconciliation('procure', 9, 15), 'procurement must see reconciliation from every company');
 stock_assert_same(false, stock_can_view_reconciliation('staff_hr', 9, 9), 'employees must not access reconciliation reports');
 
+// Excel row 20: class B, 6 months 208 units, lead 3 -> safety 32.36 => min 33, max 40
+$plan = stock_plan_min_max('B', 3, 208, 6, 0, 152, 0);
+stock_assert_same(34.67, $plan['avg_monthly_usage'], 'average usage must spread the history over six months');
+stock_assert_same(28, $plan['cover_days_need'], 'class B cover days must add lead time');
+stock_assert_same(33.0, $plan['min'], 'min must round the safety stock up');
+stock_assert_same(40.0, $plan['max'], 'max must allow 20% over min');
+stock_assert_same('no_buy', $plan['status'], 'stock above max must not be bought');
+$plan = stock_plan_min_max('A', 3, 291, 6, 10, 20, 5);
+stock_assert_same(72.0, $plan['min'], 'back order must be added to min');
+stock_assert_same('buy', $plan['status'], 'stock plus on-order below min must be bought');
+stock_assert_same(62.0, $plan['suggested_order'], 'suggested order must refill to max');
+stock_assert_same('can_buy', stock_plan_min_max('C', 3, 150, 6, 0, 16, 0)['status'], 'stock between min and max may be bought');
+stock_assert_same(5.0, stock_plan_min_max('C', 3, 0, 6, 0, 1, 0, 5)['min'], 'manual min must apply without usage history');
+stock_assert_same('no_plan', stock_plan_min_max('C', 3, 0, 6, 0, 1, 0)['status'], 'no usage and no manual min must not plan');
+stock_assert_throws(fn () => stock_plan_min_max('D', 3, 0, 6, 0, 0, 0), 'unknown class must be rejected');
+
 echo "Stock workflow smoke tests passed.\n";
