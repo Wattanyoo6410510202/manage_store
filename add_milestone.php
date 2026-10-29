@@ -138,6 +138,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(amount) as total
                         $deductionChecked = false;
                         $retentionPercentValue = 0;
                         $deductionNoteValue = '';
+                        $retentionReturnDueDateValue = '';
                         include 'partials/milestone_deduction_card.php';
                         ?>
 

@@ -2,13 +2,14 @@
 $deductionChecked = !empty($deductionChecked);
 $retentionPercentValue = isset($retentionPercentValue) ? (float)$retentionPercentValue : 0;
 $deductionNoteValue = (string)($deductionNoteValue ?? '');
+$retentionReturnDueDateValue = (string)($retentionReturnDueDateValue ?? '');
 ?>
 <div class="h-full rounded-xl border border-slate-100 bg-slate-50 p-4 transition-opacity" id="deduction_card">
     <div class="flex items-center justify-between gap-3">
         <label for="use_deduction" class="text-[12px] font-bold uppercase text-slate-500 cursor-pointer">
             เงินประกัน / หักอื่นๆ
         </label>
-        <input type="checkbox" id="use_deduction" name="use_deduction" value="1" onchange="calculateMoney()" <?= $deductionChecked ? 'checked' : '' ?>
+        <input type="checkbox" id="use_deduction" name="use_deduction" value="1" onchange="calculateMoney(); toggleRetentionReturnDate()" <?= $deductionChecked ? 'checked' : '' ?>
             class="h-4 w-4 cursor-pointer rounded border-slate-300 text-amber-500 focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
     </div>
 
@@ -34,5 +35,26 @@ $deductionNoteValue = (string)($deductionNoteValue ?? '');
                 placeholder="เช่น เงินประกันผลงาน"
                 class="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 placeholder:text-slate-400">
         </label>
+
+        <label for="retention_return_due_date" class="block text-xs font-bold text-slate-500">
+            กำหนดคืนเงินประกัน
+            <input type="date" id="retention_return_due_date" name="retention_return_due_date"
+                value="<?= htmlspecialchars($retentionReturnDueDateValue, ENT_QUOTES, 'UTF-8') ?>"
+                <?= $deductionChecked ? 'required' : 'disabled' ?>
+                class="mt-1.5 min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100">
+            <span class="mt-1 block text-[11px] font-medium text-slate-400">เลือกวันที่คาดว่าจะคืนเงินประกัน</span>
+        </label>
     </div>
 </div>
+
+<script>
+    function toggleRetentionReturnDate() {
+        const checkbox = document.getElementById('use_deduction');
+        const dateInput = document.getElementById('retention_return_due_date');
+        if (!checkbox || !dateInput) return;
+        dateInput.disabled = !checkbox.checked;
+        dateInput.required = checkbox.checked;
+    }
+
+    toggleRetentionReturnDate();
+</script>

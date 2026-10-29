@@ -2,6 +2,7 @@
 require_once '../config.php';
 require_once '../project_authorization.php';
 require_once '../milestone_tax_calculation.php';
+require_once '../retention_return_schedule.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -25,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $retention_amount = floatval($_POST['retention_amount'] ?? 0);
     $other_deduction_amount = floatval($_POST['other_deduction_amount'] ?? 0);
     $deduction_note = mysqli_real_escape_string($conn, $_POST['deduction_note'] ?? '');
+    $retention_return_due_date = trim((string)($_POST['retention_return_due_date'] ?? ''));
     
     // ยอดสุทธิและยอดคงเหลือ
     $total_request_amount = floatval($_POST['total_request_amount']);
@@ -37,6 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!$use_deduction) {
         $retention_percent = 0.0;
     }
+    if ($use_deduction && !retention_return_date_is_valid($retention_return_due_date)) {
+        http_response_code(422);
+        echo 'กรุณาเลือกวันที่คืนเงินประกันให้ถูกต้อง';
+        exit;
+    }
+    $retention_return_due_date_sql = $use_deduction
+        ? "'" . mysqli_real_escape_string($conn, $retention_return_due_date) . "'"
+        : 'NULL';
 
     $project_result = mysqli_query(
         $conn,
@@ -83,6 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             amount, 
             retention_percent, 
             retention_amount, 
+            retention_return_due_date,
+            retention_returned_at,
             net_amount, 
             claim_date, 
             work_start_date, -- เพิ่ม field นี้
@@ -105,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             '$amount', 
             '$retention_percent', 
             '$retention_amount', 
+            $retention_return_due_date_sql,
+            NULL,
             '$total_request_amount', 
             '$claim_date', 
             " . ($work_start_date ? "'$work_start_date'" : "NULL") . ", -- บันทึกวันที่เริ่มงาน

@@ -151,6 +151,7 @@ $collected = mysqli_fetch_assoc(mysqli_query($conn, $sql_collected))['total'] ?:
                         $deductionChecked = isset($m_data['retention_amount']) && (float)$m_data['retention_amount'] > 0;
                         $retentionPercentValue = (float)($m_data['retention_percent'] ?? 0);
                         $deductionNoteValue = (string)($m_data['deduction_note'] ?? '');
+                        $retentionReturnDueDateValue = (string)($m_data['retention_return_due_date'] ?? '');
                         include 'partials/milestone_deduction_card.php';
                         ?>
 
