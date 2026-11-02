@@ -893,6 +893,13 @@ file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[12px] fil
                 </div>
             </div>
         </div>
+
+        <?php
+        $pr_quote_stores = $stores;
+        $pr_quote_existing = [];
+        $pr_quote_reason = '';
+        include 'pr_quotes_panel.php';
+        ?>
     </div>
 </form>
 

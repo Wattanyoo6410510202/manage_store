@@ -29,9 +29,11 @@ if ($pending_view === 'pr' && $can_pr_approval) {
             u_app1.name as approver_1_name,
             u_app2.name as approver_2_name,
             u_app3.name as approver_3_name,
-            (SELECT item_desc FROM pr_items 
-             WHERE pr_id = p.id 
-             ORDER BY id ASC LIMIT 1) as first_item_desc
+            u_rej.name as rejected_by_name,
+            (SELECT item_desc FROM pr_items
+             WHERE pr_id = p.id
+             ORDER BY id ASC LIMIT 1) as first_item_desc,
+            (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) as quote_count
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
         LEFT JOIN stores st ON p.store_id = st.id
@@ -43,11 +45,16 @@ if ($pending_view === 'pr' && $can_pr_approval) {
         LEFT JOIN users u_app1 ON p.approved_by_1 = u_app1.id
         LEFT JOIN users u_app2 ON p.approved_by_2 = u_app2.id
         LEFT JOIN users u_app3 ON p.approved_by_3 = u_app3.id
+        LEFT JOIN users u_rej ON p.rejected_by = u_rej.id
         WHERE p.deleted_at IS NULL AND p.is_internal = 1 $where_extra
         ORDER BY p.created_at DESC";
 
     $result = mysqli_query($conn, $sql);
     while ($row = mysqli_fetch_assoc($result)) {
+        // สถานะหัวหน้าสำหรับแสดงผลและตัวกรอง: ถูกปฏิเสธ (ขั้นไหนก็ได้) > อนุมัติแล้ว > รออนุมัติ
+        $row['sup_status'] = trim((string)($row['reject_reason'] ?? '')) !== ''
+            ? 'rejected'
+            : (!empty($row['approved_by_0']) ? 'approved' : 'pending');
         $pr_list[] = $row;
     }
 
@@ -158,6 +165,15 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                         <option value="เบิกแล้ว">เบิกแล้ว</option>
                     </select>
                 </div>
+                <div class="relative col-span-1">
+                    <label class="text-[10px] md:text-[12px] font-bold text-slate-800 uppercase mb-1 block ml-1">สถานะหัวหน้า</label>
+                    <select id="filterSupStatus" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-all">
+                        <option value="">ทั้งหมด</option>
+                        <option value="pending">รออนุมัติ</option>
+                        <option value="approved">อนุมัติแล้ว</option>
+                        <option value="rejected">ปฏิเสธ</option>
+                    </select>
+                </div>
                 <div id="bulkActions" class="hidden p-1.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3 transition-all animate-fade-in col-span-1 justify-between md:justify-start">
                     <span class="text-[11px] font-bold text-red-700 ml-2">เลือก <span id="selectedCount" class="underline">0</span></span>
                     <button onclick="bulkDeletePR()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-[12px] font-bold shadow-sm transition-all flex items-center gap-2">
@@ -202,7 +218,24 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                                 <td class="text-center">
                                     <input type="checkbox" class="pr-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="<?= $row['id'] ?>">
                                 </td>
-                                <td class="font-bold text-slate-800"><?= $row['doc_no'] ?></td>
+                                <td class="font-bold text-slate-800">
+                                    <button type="button" onclick="showPRTimeline(<?= (int)$row['id'] ?>, <?= htmlspecialchars(json_encode($row['doc_no']), ENT_QUOTES, 'UTF-8') ?>)"
+                                        class="text-left font-bold text-indigo-700 hover:text-indigo-900 hover:underline underline-offset-2" title="ดู timeline การดำเนินการ">
+                                        <?= htmlspecialchars($row['doc_no'], ENT_QUOTES, 'UTF-8') ?> <i class="fas fa-stream text-[10px] opacity-60"></i>
+                                    </button>
+                                    <?php if ((int)($row['quote_count'] ?? 0) > 0): ?>
+                                        <div class="mt-1 flex flex-wrap gap-1">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100" title="มีใบเทียบราคา">
+                                                <i class="fas fa-balance-scale mr-1"></i>เทียบ <?= (int)$row['quote_count'] ?> ร้าน
+                                            </span>
+                                            <?php if (trim((string)($row['quote_selection_reason'] ?? '')) !== ''): ?>
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100" title="<?= htmlspecialchars($row['quote_selection_reason'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    ไม่ใช่ร้านที่ถูกสุด
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php
                                     $prio = $row['priority'] ?? 'ปานกลาง';
@@ -286,11 +319,19 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                                 <td class="truncate max-w-[100px] text-[11px] font-medium text-slate-600">
                                     <?= htmlspecialchars($row['creator_real_name'] ?: '-') ?>
                                 </td>
-                                <td class="text-center">
-                                    <?php if (!empty($row['approved_by_0'])): ?>
-                                        <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
-                                    <?php elseif (!empty($row['reject_reason'])): ?>
+                                <td class="text-center" data-search="sup-<?= $row['sup_status'] ?>">
+                                    <?php if ($row['sup_status'] === 'rejected'): ?>
                                         <span class="text-red-500 text-[10px] font-bold"><i class="fas fa-times-circle"></i> ปฏิเสธ</span>
+                                        <button type="button" onclick="showRejectReason(<?= (int)$row['id'] ?>)"
+                                            class="mt-1 block w-full max-w-[160px] mx-auto text-left text-[10px] leading-snug bg-red-50 border border-red-100 text-red-700 rounded-md px-2 py-1 hover:bg-red-100"
+                                            title="<?= htmlspecialchars($row['reject_reason'], ENT_QUOTES, 'UTF-8') ?>">
+                                            <span class="line-clamp-2"><?= htmlspecialchars($row['reject_reason'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php if (!empty($row['rejected_by_name'])): ?>
+                                                <span class="block text-[9px] text-red-400 mt-0.5">โดย <?= htmlspecialchars($row['rejected_by_name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            <?php endif; ?>
+                                        </button>
+                                    <?php elseif ($row['sup_status'] === 'approved'): ?>
+                                        <span class="text-emerald-600 text-[10px] font-bold"><i class="fas fa-check-circle"></i> อนุมัติ</span>
                                     <?php else: ?>
                                         <span class="text-amber-500 text-[10px] font-bold"><i class="fas fa-clock"></i> รอ</span>
                                     <?php endif; ?>
@@ -371,6 +412,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
 </div>
 
 <?php if ($pending_view !== 'inspection'): ?>
+<script src="assets/js/pr_timeline.js?v=<?= @filemtime(__DIR__ . '/assets/js/pr_timeline.js') ?>"></script>
 <script>
     const PR_DATA = <?= json_encode($pr_list, JSON_UNESCAPED_UNICODE) ?>;
     const USER_ID = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
@@ -381,6 +423,28 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
     const AUTO_FILTER_SUPPLIER = <?= json_encode($auto_filter_supplier, JSON_UNESCAPED_UNICODE) ?>;
     
     let prTable;
+
+    const SUP_STATUS_COL = $('#prTable thead th').filter((i, th) => $(th).text().trim() === 'สถานะหัวหน้า').index();
+    const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function showRejectReason(id) {
+        const row = PR_DATA.find((r) => Number(r.id) === Number(id));
+        if (!row) return;
+        const when = row.rejected_at ? new Date(row.rejected_at.replace(' ', 'T')).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+        Swal.fire({
+            icon: 'error',
+            title: 'เหตุผลการปฏิเสธ',
+            html: `<div style="text-align:left;font-size:14px;line-height:1.7">
+                <div><b>เลขที่:</b> ${escHtml(row.doc_no)}</div>
+                <div><b>ปฏิเสธโดย:</b> ${escHtml(row.rejected_by_name || '-')}</div>
+                <div><b>วันที่:</b> ${escHtml(when)}</div>
+                <div style="margin-top:8px;padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;white-space:pre-wrap">${escHtml(row.reject_reason)}</div>
+                <div style="margin-top:6px;font-size:12px;color:#64748b">${Number(row.allow_resubmit) === 1 ? 'อนุญาตให้แก้ไขและส่งใหม่ได้' : ''}</div>
+            </div>`,
+            confirmButtonText: 'ปิด',
+            heightAuto: false
+        });
+    }
 
     $(document).ready(function () {
         // Init DataTables for Desktop
@@ -406,8 +470,12 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
             prTable.column(3).search(this.value).draw(); 
             renderMobileCards();
         });
-        $('#filterStatus').on('change', function () { 
-            prTable.column(8).search(this.value).draw(); 
+        $('#filterStatus').on('change', function () {
+            prTable.column(8).search(this.value).draw();
+            renderMobileCards();
+        });
+        $('#filterSupStatus').on('change', function () {
+            prTable.column(SUP_STATUS_COL).search(this.value ? 'sup-' + this.value : '').draw();
             renderMobileCards();
         });
         $('#minDate, #maxDate, #mobileSearch').on('input change', () => {
@@ -419,7 +487,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             let min = $('#minDate').val();
             let max = $('#maxDate').val();
-            let dateStr = data[8] || "";
+            let dateStr = data[9] || ""; // คอลัมน์ "วันที่" (8 = สถานะจัดซื้อ)
             if (dateStr === "") return true;
             let match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/);
             if (!match) return true;
@@ -440,6 +508,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
         const search = $('#mobileSearch').val().toLowerCase();
         const supplier = $('#filterSupplier').val();
         const statusVal = $('#filterStatus').val();
+        const supStatusVal = $('#filterSupStatus').val();
         const min = $('#minDate').val();
         const max = $('#maxDate').val();
 
@@ -449,6 +518,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
             if (supplier && item.supplier_name !== supplier) return false;
             const mappedStatus = (item.status === 'pending' ? 'รอเบิก' : 'เบิกแล้ว');
             if (statusVal && mappedStatus !== statusVal) return false;
+            if (supStatusVal && item.sup_status !== supStatusVal) return false;
             if (min || max) {
                 const dateVal = item.created_at.split(' ')[0];
                 if (min && dateVal < min) return false;
@@ -503,7 +573,9 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                 <div class="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
                     <div class="flex items-center gap-3">
                         <input type="checkbox" class="pr-checkbox w-5 h-5 rounded border-slate-300 text-indigo-600" value="${row.id}">
-                        <span class="font-black text-slate-800">${row.doc_no}</span>
+                        <button type="button" onclick="showPRTimeline(${Number(row.id)})" class="font-black text-indigo-700 underline underline-offset-2">${escHtml(row.doc_no)} <i class="fas fa-stream text-[10px] opacity-60"></i></button>
+                        ${parseInt(row.quote_count || 0) > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">เทียบ ${parseInt(row.quote_count)} ร้าน</span>` : ''}
+                        ${(row.quote_selection_reason || '').trim() !== '' ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100">ไม่ใช่ร้านที่ถูกสุด</span>` : ''}
                     </div>
                     <div class="status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${s_style.bg} ${s_style.border} ${s_style.text} shadow-sm">
                         <span class="w-1.5 h-1.5 rounded-full ${s_style.dot} animate-pulse"></span>
@@ -539,6 +611,11 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                         </div>
                     </div>
                 </div>
+                ${row.sup_status === 'rejected' ? `
+                <button type="button" onclick="showRejectReason(${Number(row.id)})" class="mx-4 mb-3 block w-[calc(100%-2rem)] text-left text-xs bg-red-50 border border-red-100 text-red-700 rounded-xl px-3 py-2">
+                    <span class="font-black"><i class="fas fa-times-circle mr-1"></i>ปฏิเสธ${row.rejected_by_name ? ' โดย ' + escHtml(row.rejected_by_name) : ''}:</span>
+                    <span class="line-clamp-2">${escHtml(row.reject_reason)}</span>
+                </button>` : ''}
                 <div class="px-4 py-2 bg-slate-50 flex justify-between border-t border-slate-100">
                     <div class="flex items-center gap-4">
                          <div class="flex flex-col items-center gap-1">
@@ -712,9 +789,11 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
     function resetFilter() {
         $('#filterSupplier').val(AUTO_FILTER_SUPPLIER || '');
         $('#filterStatus').val('');
+        $('#filterSupStatus').val('');
         $('#minDate, #maxDate, #mobileSearch').val('');
         prTable.column(3).search(AUTO_FILTER_SUPPLIER || '');
         prTable.column(8).search('');
+        prTable.column(SUP_STATUS_COL).search('');
         prTable.draw();
         renderMobileCards();
     }

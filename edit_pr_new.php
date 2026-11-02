@@ -497,6 +497,15 @@ if (!empty($pr_data['installment_period']) && $pr_data['installment_period'] > 0
                 </div>
             </div>
         </div>
+
+        <?php
+        require_once 'pr_quotes_lib.php';
+        $pr_quote_stores = $stores;
+        $pr_quote_existing = pr_quotes_load($conn, (int)$pr_id);
+        $pr_quote_ref_prices = pr_quotes_load_ref_prices($conn, (int)$pr_id);
+        $pr_quote_reason = (string)($pr_data['quote_selection_reason'] ?? '');
+        include 'pr_quotes_panel.php';
+        ?>
     </div>
 </form>
 

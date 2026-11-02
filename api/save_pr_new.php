@@ -3,6 +3,8 @@ require_once '../config.php';
 require_once '../pr_approval_authorization.php';
 require_once '../pr_item_validation.php';
 require_once '../budget_projects_lib.php';
+require_once '../pr_quotes_lib.php';
+require_once '../pr_timeline_lib.php';
 date_default_timezone_set('Asia/Bangkok');
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
@@ -95,6 +97,20 @@ $attachment_1 = uploadPRFile('attachment_1');
 $attachment_2 = uploadPRFile('attachment_2');
 $payment_slip = uploadPaymentSlip() ?? '';
 
+// ใบเทียบราคา: ถ้าเปิดใช้ ราคาและร้านของร้านที่เลือกจะถูกใช้เป็นราคาของ PR
+try {
+    $quote_data = pr_quotes_parse($_POST, array_keys($items_desc), $items_qty, $items_discount, $vat_percent, $wht_percent);
+} catch (DomainException $exception) {
+    pr_quotes_fail($exception->getMessage());
+}
+$quote_prices = pr_quotes_selected_prices($quote_data);
+if ($quote_prices !== null) {
+    foreach ($quote_prices as $key => $price) {
+        $items_price[$key] = $price;
+    }
+    $store_id = pr_quotes_selected_store_id($quote_data);
+}
+
 // ถ้า store_id = 0 ให้เก็บเป็น NULL
 if ($store_id === 0) $store_id = null;
 
@@ -108,6 +124,11 @@ try {
     $total_wht = $total_subtotal * ($wht_percent / 100);
     $grand_total = ($total_subtotal + $total_vat) - $total_wht;
     $total_after_wht = $grand_total; // เพิ่มการคำนวณค่านี้
+
+    if (pr_quote_is_required($grand_total) && !$quote_data['enabled']) {
+        mysqli_rollback($conn);
+        pr_quotes_fail('ยอดสุทธิเกิน ' . number_format(PR_QUOTE_REQUIRED_ABOVE) . ' บาท ต้องแนบใบเทียบราคาอย่างน้อย ' . PR_QUOTE_MIN_STORES . ' ร้าน');
+    }
 
     // ตรวจงบ/โครงการ: ยอด PR ต้องไม่เกินงบคงเหลือ (ล็อกแถวงบไว้จนจบ transaction)
     $budget_error = budget_pr_check($conn, $budget_type_id, $budget_project_id, $grand_total);
@@ -165,6 +186,13 @@ try {
         $stmt_item->bind_param("isdsddd", $pr_id, $desc, $q, $u, $p, $d, $t);
         $stmt_item->execute();
     }
+    try {
+        pr_quotes_save($conn, $pr_id, $quote_data);
+    } catch (DomainException $exception) {
+        mysqli_rollback($conn);
+        pr_quotes_fail($exception->getMessage());
+    }
+
     // --- บันทึกกำหนดการผ่อนชำระ ---
     if ($installment_period > 0) {
         $dueDates = $_POST['installment_due_date'] ?? [];
@@ -180,7 +208,8 @@ try {
     }
 
     mysqli_commit($conn);
-    
+    pr_log_activity($conn, $pr_id, 'created', $user_id, $quote_data['enabled'] ? 'แนบใบเทียบราคา ' . count($quote_data['quotes']) . ' ร้าน' : null);
+
     // --- LINE NOTIFICATION ---
     try {
         require_once 'line_notify.php';

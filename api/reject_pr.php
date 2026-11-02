@@ -3,6 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
 require_once '../pr_approval_authorization.php';
+require_once '../pr_timeline_lib.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -83,6 +84,8 @@ $stmt_update = $conn->prepare($sql);
 $stmt_update->bind_param("siii", $reason, $user_id, $allow_resubmit, $pr_id);
 
 if ($stmt_update->execute()) {
+    // ยังไม่ผ่านหัวหน้า = หัวหน้าเป็นคนปฏิเสธ
+    pr_log_activity($conn, $pr_id, 'rejected', (int)$user_id, $reason, empty($pr['approved_by_0']) ? 'approved_by_0' : null);
     // --- LINE NOTIFY แจ้งผู้สร้าง PR ว่าถูกปฏิเสธ ---
     try {
         require_once 'notify_helper.php';

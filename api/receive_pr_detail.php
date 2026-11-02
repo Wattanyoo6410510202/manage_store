@@ -63,6 +63,8 @@ try {
     $stmt_upd->close();
 
     $conn->commit();
+    require_once '../pr_timeline_lib.php';
+    pr_log_activity($conn, $pr_id, $received_status === 'received' ? 'received' : 'partial_received', (int)$user_id, $note !== '' ? $note : null);
 
     echo json_encode([
         'status' => 'success',

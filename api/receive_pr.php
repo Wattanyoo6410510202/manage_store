@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once '../pr_timeline_lib.php';
 header('Content-Type: application/json');
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -53,6 +54,7 @@ try {
     $stmt->bind_param("sii", $action, $user_id, $id);
 
     if ($stmt->execute()) {
+        pr_log_activity($conn, (int)$id, $action === 'received' ? 'received' : 'partial_received', (int)$user_id);
         echo json_encode([
             'status' => 'success',
             'message' => $action === 'received' ? 'บันทึกการรับของเรียบร้อยแล้ว' : 'บันทึกการรับของบางส่วนแล้ว',

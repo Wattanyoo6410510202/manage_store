@@ -211,6 +211,13 @@ function ReadNumber($number) {
     <div class="tool-group main-tools">
         <button onclick="window.print()" class="btn-tool btn-print" title="พิมพ์เอกสาร"><i class="fas fa-print"></i> <span>Print</span></button>
         <button onclick="toggleSignature()" class="btn-tool btn-sig" id="sigBtn" title="เปิด/ปิด ลายเซ็น"><i class="fas fa-pen-nib"></i> <span>Sign</span></button>
+        <?php
+        $prq_count = (int)(mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM pr_quotes WHERE pr_id = " . (int)$data['id']))[0] ?? 0);
+        if ($prq_count > 0): ?>
+        <a href="print_pr_quotes.php?id=<?= (int)$data['id'] ?>" target="_blank" class="btn-tool" style="background:#4f46e5;color:#fff;text-decoration:none;" title="เปิด/พิมพ์ใบเทียบราคา (A4 แนวนอน)">
+            <i class="fas fa-balance-scale"></i> <span>พิมพ์ใบเทียบราคา (<?= $prq_count ?>)</span>
+        </a>
+        <?php endif; ?>
         <?php if ($data['status'] === 'approved' && $data['received_status'] !== 'received'): ?>
         <button onclick="receivePR(<?= $data['id'] ?>)" class="btn-tool bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400" title="ยืนยันรับของ">
             <i class="fas fa-check-double"></i> <span>รับของแล้ว</span>
@@ -412,6 +419,8 @@ function ReadNumber($number) {
         </div>
     </div>
 </div>
+
+<?php include 'pr_quotes_view.php'; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>

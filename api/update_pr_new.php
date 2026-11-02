@@ -4,6 +4,8 @@ error_reporting(E_ALL);
 
 require_once '../config.php';
 require_once '../budget_projects_lib.php';
+require_once '../pr_quotes_lib.php';
+require_once '../pr_timeline_lib.php';
 date_default_timezone_set('Asia/Bangkok');
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
@@ -52,6 +54,22 @@ if ($store_id === 0) $store_id = null;
 
     $is_internal = ($customer_id === 0) ? 1 : 0;
 
+    // ใบเทียบราคา: ใช้ราคา/ร้านของร้านที่เลือกเป็นราคาของ PR
+    $item_keys = array_keys(array_filter((array)$item_descs, fn($d) => trim((string)$d) !== ''));
+    try {
+        $quote_data = pr_quotes_parse($_POST, $item_keys, $item_qtys, $item_discounts, $vat_percent, $wht_percent);
+    } catch (DomainException $exception) {
+        pr_quotes_fail($exception->getMessage());
+    }
+    $quote_prices = pr_quotes_selected_prices($quote_data);
+    if ($quote_prices !== null) {
+        foreach ($quote_prices as $key => $price) {
+            $item_prices[$key] = $price;
+        }
+        $store_id = pr_quotes_selected_store_id($quote_data);
+    }
+    $quote_obsolete_files = [];
+
     // File Management
     function uploadPRFile($file_key) {
         if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
@@ -64,7 +82,7 @@ if ($store_id === 0) $store_id = null;
         return null;
     }
 
-    $res_old = mysqli_query($conn, "SELECT attachment_1, attachment_2 FROM pr WHERE id = $pr_id");
+    $res_old = mysqli_query($conn, "SELECT attachment_1, attachment_2, payment_slip, status, allow_resubmit FROM pr WHERE id = $pr_id");
     $old_data = mysqli_fetch_assoc($res_old);
 
     // ลบไฟล์เก่าหากมีการสั่งลบจากหน้าบ้าน
@@ -123,6 +141,11 @@ if ($store_id === 0) $store_id = null;
         $new_wht_amount = $new_subtotal * ($wht_percent / 100);
         $net_grand_total = ($new_subtotal + $new_vat) - $new_wht_amount;
 
+        if (pr_quote_is_required($net_grand_total) && !$quote_data['enabled']) {
+            mysqli_rollback($conn);
+            pr_quotes_fail('ยอดสุทธิเกิน ' . number_format(PR_QUOTE_REQUIRED_ABOVE) . ' บาท ต้องแนบใบเทียบราคาอย่างน้อย ' . PR_QUOTE_MIN_STORES . ' ร้าน');
+        }
+
         // ตรวจงบ/โครงการ (ไม่นับยอดเดิมของ PR ใบนี้)
         $budget_error = budget_pr_check($conn, $budget_type_id, $budget_project_id, $net_grand_total, $pr_id);
         if ($budget_error !== null) {
@@ -167,6 +190,13 @@ if ($store_id === 0) $store_id = null;
             $stmt_item->execute();
         }
 
+        try {
+            $quote_obsolete_files = pr_quotes_save($conn, $pr_id, $quote_data);
+        } catch (DomainException $exception) {
+            mysqli_rollback($conn);
+            pr_quotes_fail($exception->getMessage());
+        }
+
         // --- บันทึกกำหนดการผ่อนชำระ ---
         mysqli_query($conn, "DELETE FROM installment_schedule WHERE pr_id = $pr_id");
         if ($installment_period > 0) {
@@ -185,6 +215,9 @@ if ($store_id === 0) $store_id = null;
         }
 
         mysqli_commit($conn);
+        pr_quotes_cleanup_files($quote_obsolete_files);
+        $was_rejected = ($old_data['status'] ?? '') === 'rejected' && (int)($old_data['allow_resubmit'] ?? 0) === 1;
+        pr_log_activity($conn, $pr_id, $was_rejected ? 'resubmitted' : 'edited', (int)($_SESSION['user_id'] ?? 0) ?: null);
           $_SESSION['flash_msg'] = 'update_success';
         header("Location: ../request_buy_history.php");
     } catch (Exception $e) {

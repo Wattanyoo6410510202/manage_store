@@ -7,6 +7,107 @@ include('assets/alert.php');
 
 <div class="container-fluid p-0">
 
+    <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+        <?php
+        require_once 'db_migrations_lib.php';
+        if (empty($_SESSION['db_migrate_token'])) {
+            $_SESSION['db_migrate_token'] = bin2hex(random_bytes(16));
+        }
+        $db_migrations = db_migrations_status($conn);
+        $db_pending = count(array_filter($db_migrations, fn($m) => in_array($m['state'], ['pending', 'changed'], true)));
+        $db_state_ui = [
+            'applied' => ['อัปเดตแล้ว', 'bg-emerald-50 text-emerald-700 border-emerald-100'],
+            'pending' => ['รออัปเดต', 'bg-amber-50 text-amber-700 border-amber-100'],
+            'changed' => ['ไฟล์ถูกแก้ไข', 'bg-sky-50 text-sky-700 border-sky-100'],
+            'missing' => ['ไม่พบไฟล์', 'bg-red-50 text-red-700 border-red-100'],
+        ];
+        ?>
+        <div id="dbUpdateCard" class="bg-white rounded-3xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center <?= $db_pending ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600' ?>">
+                        <i class="fas fa-database text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-800">ฐานข้อมูล</h3>
+                        <p class="text-sm text-slate-500" id="dbUpdateSummary">
+                            <?= $db_pending ? "มี <b class=\"text-amber-600\">{$db_pending}</b> รายการรออัปเดต" : 'เป็นเวอร์ชันล่าสุดแล้ว' ?>
+                            · ทั้งหมด <?= count($db_migrations) ?> รายการ
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="document.getElementById('dbUpdateList').classList.toggle('hidden')"
+                        class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50">
+                        <i class="fas fa-list mr-1"></i> รายละเอียด
+                    </button>
+                    <button type="button" id="dbUpdateBtn" onclick="runDbUpdate('pending')"
+                        class="px-5 py-2.5 rounded-xl text-white text-sm font-black <?= $db_pending ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-400 hover:bg-slate-500' ?>">
+                        <i class="fas fa-sync-alt mr-1"></i> อัปเดตฐานข้อมูล
+                    </button>
+                </div>
+            </div>
+            <div id="dbUpdateList" class="hidden border-t border-slate-100">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-[12px] text-slate-600">
+                        <tr><th class="text-left px-5 py-2">#</th><th class="text-left px-2 py-2">รายการ</th><th class="text-left px-2 py-2 hidden md:table-cell">ไฟล์</th><th class="text-left px-2 py-2">สถานะ</th><th class="text-left px-5 py-2 hidden md:table-cell">อัปเดตล่าสุด</th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($db_migrations as $i => $m): [$txt, $cls] = $db_state_ui[$m['state']]; ?>
+                            <tr class="border-t border-slate-50">
+                                <td class="px-5 py-2 text-slate-400"><?= $i + 1 ?></td>
+                                <td class="px-2 py-2 font-bold text-slate-700"><?= htmlspecialchars($m['label'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td class="px-2 py-2 font-mono text-[12px] text-slate-500 hidden md:table-cell"><?= htmlspecialchars($m['file'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td class="px-2 py-2"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full border <?= $cls ?>"><?= $txt ?></span></td>
+                                <td class="px-5 py-2 text-[12px] text-slate-500 hidden md:table-cell"><?= $m['applied_at'] ? date('d/m/Y H:i', strtotime($m['applied_at'])) : '-' ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div class="px-5 py-3 bg-slate-50 text-[12px] text-slate-500 flex flex-wrap justify-between gap-2">
+                    <span>ทุกไฟล์รันซ้ำได้อย่างปลอดภัย (ไม่ลบหรือแก้ข้อมูลเดิม) · ควรสำรองฐานข้อมูลก่อนอัปเดตบนเครื่องจริง</span>
+                    <button type="button" onclick="runDbUpdate('all')" class="font-bold text-indigo-600 hover:underline">รันใหม่ทั้งหมด</button>
+                </div>
+            </div>
+        </div>
+        <script>
+            async function runDbUpdate(mode) {
+                const confirmText = mode === 'all'
+                    ? 'รันไฟล์อัปเดตฐานข้อมูลใหม่ทั้งหมด?'
+                    : 'อัปเดตฐานข้อมูลให้เป็นเวอร์ชันล่าสุด?';
+                const ok = await Swal.fire({
+                    icon: 'question', title: confirmText, text: 'แนะนำให้สำรองฐานข้อมูลก่อน',
+                    showCancelButton: true, confirmButtonText: 'อัปเดต', cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#4f46e5', heightAuto: false
+                });
+                if (!ok.isConfirmed) return;
+
+                Swal.fire({ title: 'กำลังอัปเดตฐานข้อมูล...', allowOutsideClick: false, showConfirmButton: false, heightAuto: false, didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('token', <?= json_encode($_SESSION['db_migrate_token']) ?>);
+                fd.append('mode', mode);
+                try {
+                    const res = await fetch('api/db_migrate.php', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                    const rows = (data.results || []).map((r) =>
+                        `<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:13px">
+                            <span style="color:${r.ok ? '#059669' : '#dc2626'}">${r.ok ? '✔' : '✖'}</span>
+                            <span><b>${esc(r.label)}</b><br><span style="color:#64748b;font-size:11px">${esc(r.file)}</span>
+                            ${r.error ? `<br><span style="color:#dc2626;font-size:12px">${esc(r.error)}</span>` : ''}</span></div>`).join('');
+                    await Swal.fire({
+                        icon: data.status === 'success' ? 'success' : 'error',
+                        title: esc(data.message),
+                        html: rows ? `<div style="text-align:left;max-height:50vh;overflow:auto">${rows}</div>` : '',
+                        confirmButtonText: 'ตกลง', heightAuto: false
+                    });
+                    location.reload();
+                } catch (err) {
+                    Swal.fire({ icon: 'error', title: 'อัปเดตไม่สำเร็จ', text: err.message, heightAuto: false });
+                }
+            }
+        </script>
+    <?php endif; ?>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div class="lg:col-span-4">

@@ -3,6 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 require_once '../config.php';
 require_once '../pr_approval_authorization.php';
+require_once '../pr_timeline_lib.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -146,6 +147,7 @@ $update_stmt = $conn->prepare($sql_update);
 $update_stmt->bind_param("ii", $user_id, $pr_id);
 
 if ($update_stmt->execute()) {
+    pr_log_activity($conn, $pr_id, 'approved', $user_id, null, $update_col);
     // Re-fetch to check overall status
     $stmt->execute();
     $pr = $stmt->get_result()->fetch_assoc();
@@ -242,6 +244,7 @@ if ($update_stmt->execute()) {
         $finish_stmt = $conn->prepare("UPDATE pr SET status = 'approved' WHERE id = ?");
         $finish_stmt->bind_param("i", $pr_id);
         $finish_stmt->execute();
+        pr_log_activity($conn, $pr_id, 'fully_approved', $user_id);
 
         // --- AUTO CREATE PO ---
         try {
@@ -293,6 +296,7 @@ if ($update_stmt->execute()) {
                 $date_prefix = (date('y') + 43) . date('m');
                 $new_doc_no = "PO-" . $date_prefix . str_pad($new_po_id, 4, '0', STR_PAD_LEFT);
                 $conn->query("UPDATE po SET doc_no = '$new_doc_no' WHERE id = $new_po_id");
+                pr_log_activity($conn, $pr_id, 'po_created', $user_id, 'เลขที่ ' . $new_doc_no);
 
                 // 4. คัดลอกรายการสินค้าจาก pr_items ไป po_items
                 $items_query = $conn->prepare("SELECT * FROM pr_items WHERE pr_id = ?");
