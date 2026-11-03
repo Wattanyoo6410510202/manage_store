@@ -404,3 +404,57 @@ function dash_fetch_budgets(mysqli $conn, int $year, int $supId): array
     }
     return $rows;
 }
+
+function dash_fetch_companies(mysqli $conn): array
+{
+    return $conn->query('SELECT id, company_name FROM suppliers ORDER BY company_name')->fetch_all(MYSQLI_ASSOC);
+}
+
+function dash_company_label(array $companies, int $supId): string
+{
+    foreach ($companies as $company) {
+        if ((int)$company['id'] === $supId) {
+            return supplier_display_name($company['company_name']);
+        }
+    }
+    return 'ทุกบริษัท/หน่วยงาน';
+}
+
+/** ข้อมูลทั้งหมดของแดชบอร์ด ใช้ร่วมกันระหว่าง dashboard.php และ api/dashboard_data.php */
+function dash_build_payload(mysqli $conn, array $range, int $supId, string $companyLabel): array
+{
+    // ดึงตามช่วงกราฟแนวโน้ม (รายวันย้อน 14 วัน) แล้วตัดเฉพาะช่วงที่เลือกไว้สรุป เพื่อให้คลิกแท่งกราฟวันอื่นได้
+    $prTrendRows = dash_fetch_pr_rows($conn, $range['trend_start'], $range['end'], $supId);
+    $poTrendRows = dash_fetch_po_rows($conn, $range['trend_start'], $range['end'], $supId);
+    $inPeriod = fn ($row) => $row['created_at'] >= $range['start'];
+    $prRows = array_values(array_filter($prTrendRows, $inPeriod));
+    $poRows = array_values(array_filter($poTrendRows, $inPeriod));
+    $itemRows = dash_fetch_item_rows($conn, $range['start'], $range['end'], $supId);
+
+    $activePr = array_values(array_filter($prRows, fn ($r) => $r['status'] !== 'cancelled'));
+    $approvedPr = array_values(array_filter($prRows, fn ($r) => $r['status'] === 'approved'));
+    $activePo = array_values(array_filter($poRows, fn ($r) => $r['status'] !== 'cancelled'));
+
+    return [
+        'range' => $range + ['company' => $companyLabel],
+        'summary' => dash_summarize($prRows, $poRows),
+        'prev' => dash_summarize(
+            dash_fetch_pr_rows($conn, $range['prev_start'], $range['prev_end'], $supId),
+            dash_fetch_po_rows($conn, $range['prev_start'], $range['prev_end'], $supId)
+        ),
+        'prRows' => $prTrendRows,
+        'poRows' => $poTrendRows,
+        'items' => $itemRows,
+        'trend' => dash_fetch_trend($conn, $range, $supId),
+        'backlog' => dash_fetch_backlog($conn, $supId),
+        'budgets' => dash_fetch_budgets($conn, $range['year'], $supId),
+        'groups' => [
+            'status' => dash_group($activePr, 'status_label'),
+            'category' => dash_group($approvedPr, 'category'),
+            'company' => dash_group($approvedPr, 'company'),
+            'vendor' => dash_group($activePo, 'vendor'),
+            'items' => dash_group($itemRows, 'item_desc', 'amount'),
+        ],
+        'generatedAt' => date('d/m/Y H:i'),
+    ];
+}

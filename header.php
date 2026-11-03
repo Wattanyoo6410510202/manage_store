@@ -707,6 +707,11 @@ if (!empty($_SESSION['sup_id'])) {
                         <i class="fas fa-exchange-alt w-5 text-indigo-400"></i>
                         <span class="font-medium">เปรียบเทียบราคา</span>
                     </a>
+                    <a href="price_compare_form.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page == 'price_compare_form.php' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-file-invoice-dollar w-5 text-indigo-400"></i>
+                        <span class="font-medium">ทำใบเปรียบราคา</span>
+                    </a>
                 <?php endif; ?>
             <?php endif; ?>
 
