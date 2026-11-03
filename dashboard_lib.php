@@ -215,7 +215,11 @@ function dash_fetch_pr_rows(mysqli $conn, string $start, string $end, int $supId
 {
     [$scope, $types, $params] = dash_scope($start, $end, $supId);
     $rows = dash_fetch_all($conn,
-        "SELECT t.id, t.doc_no, t.created_at, t.approved_at, t.rejected_at, t.reject_reason,
+        "SELECT t.id, t.doc_no, t.created_at, t.approved_at, t.rejected_at, t.reject_reason, t.received_at, t.due_date,
+                (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = t.id) quote_count,
+                (SELECT MAX(q.grand_total) FROM pr_quotes q WHERE q.pr_id = t.id) quote_max,
+                (SELECT MIN(q.grand_total) FROM pr_quotes q WHERE q.pr_id = t.id) quote_min,
+                (SELECT q.grand_total FROM pr_quotes q WHERE q.pr_id = t.id AND q.is_selected = 1 LIMIT 1) quote_selected,
                 COALESCE(t.status, '') status, COALESCE(t.received_status, 'pending') received_status,
                 COALESCE(t.grand_total, 0) grand_total, t.requested_by,
                 s.company_name company, c.customer_name vendor, ec.name category, bt.name budget, u.name creator,
@@ -235,6 +239,10 @@ function dash_fetch_pr_rows(mysqli $conn, string $start, string $end, int $supId
         $row['status_label'] = dash_pr_status_label($row['status']);
         $row['received_label'] = dash_received_label($row['received_status']);
         $row['grand_total'] = (float)$row['grand_total'];
+        $row['quote_count'] = (int)$row['quote_count'];
+        foreach (['quote_max', 'quote_min', 'quote_selected'] as $k) {
+            $row[$k] = $row[$k] === null ? null : (float)$row[$k];
+        }
     }
     return $rows;
 }
