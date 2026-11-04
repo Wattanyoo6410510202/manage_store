@@ -71,7 +71,9 @@ try {
                 p.attachment_1, p.attachment_2, p.quote_selection_reason,
                 (SELECT item_desc FROM pr_items WHERE pr_id = p.id ORDER BY id ASC LIMIT 1) first_item_desc,
                 (SELECT COUNT(*) FROM pr_items WHERE pr_id = p.id) item_count,
-                (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) quote_count
+                (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) quote_count,
+                (SELECT CONCAT(o.id, '|', o.doc_no, '|', COALESCE(o.status, '')) FROM po o
+                 WHERE o.reference_no = p.doc_no AND o.deleted_at IS NULL ORDER BY o.id LIMIT 1) po_ref
          FROM pr p
          LEFT JOIN suppliers s ON p.supplier_id = s.id
          LEFT JOIN stores st ON p.store_id = st.id
@@ -158,6 +160,11 @@ try {
                 'at' => $r['rejected_at'],
             ] : null,
             'quote_count' => (int)$r['quote_count'],
+            // ใบสั่งซื้อ (PO) ใบแรกที่ออกจากใบขอซื้อนี้ — null = ยังไม่ออก PO
+            'po' => $r['po_ref'] ? (static function (string $v): array {
+                [$id, $no, $st] = explode('|', $v, 3);
+                return ['id' => (int)$id, 'doc_no' => $no, 'status' => $st];
+            })($r['po_ref']) : null,
             'not_cheapest_reason' => trim((string)$r['quote_selection_reason']) !== '' ? $r['quote_selection_reason'] : null,
             'attachments' => array_values(array_map(
                 fn ($f) => 'uploads/pr/' . $f,
