@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'pr_approval_authorization.php';
+require_once 'pr_quotes_admin_lib.php';
 include 'header.php';
 include('assets/alert.php');
 
@@ -33,7 +34,8 @@ if ($pending_view === 'pr' && $can_pr_approval) {
             (SELECT item_desc FROM pr_items
              WHERE pr_id = p.id
              ORDER BY id ASC LIMIT 1) as first_item_desc,
-            (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) as quote_count
+            (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) as quote_count,
+            EXISTS(SELECT 1 FROM po WHERE po.reference_no = p.doc_no AND po.deleted_at IS NULL) as has_po
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
         LEFT JOIN stores st ON p.store_id = st.id
@@ -55,6 +57,7 @@ if ($pending_view === 'pr' && $can_pr_approval) {
         $row['sup_status'] = trim((string)($row['reject_reason'] ?? '')) !== ''
             ? 'rejected'
             : (!empty($row['approved_by_0']) ? 'approved' : 'pending');
+        $row['can_edit_quotes'] = pr_quotes_admin_block_reason($user_role_sup, $row, (bool)$row['has_po']) === null;
         $pr_list[] = $row;
     }
 
@@ -364,6 +367,9 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                                         <?php if (strpos($user_role_sup, 'procure') === 0 && $row['status'] === 'pending'): ?>
                                             <a href="edit_pr_new.php?id=<?= $row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-amber-500 text-white rounded-lg shadow-sm" title="แก้ไข"><i class="fas fa-edit text-xs"></i></a>
                                         <?php endif; ?>
+                                        <?php if ($row['can_edit_quotes']): ?>
+                                            <a href="edit_pr_quotes.php?id=<?= (int)$row['id'] ?>" class="w-8 h-8 flex items-center justify-center bg-amber-500 text-white rounded-lg shadow-sm" title="แก้ไขใบเทียบราคา" aria-label="แก้ไขใบเทียบราคา"><i class="fas fa-edit text-xs"></i></a>
+                                        <?php endif; ?>
                                         <?php
                                         $canApproveDesktop = false;
                                         if ($row['status'] === 'pending' || $row['allow_resubmit'] == 3) {
@@ -638,6 +644,7 @@ $inspection_actionable_count = inspection_count_actionable_tasks($inspection_tas
                     <div class="flex gap-2">
                         <a href="view_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200"><i class="fas fa-eye text-xs"></i></a>
                         ${USER_ROLE === 'procure' && row.status === 'pending' ? `<a href="edit_pr_new.php?id=${row.id}" class="w-9 h-9 flex items-center justify-center bg-amber-500 text-white rounded-xl shadow-md shadow-amber-200"><i class="fas fa-edit text-xs"></i></a>` : ''}
+                        ${row.can_edit_quotes ? `<a href="edit_pr_quotes.php?id=${Number(row.id)}" class="w-9 h-9 flex items-center justify-center bg-amber-500 text-white rounded-xl shadow-md shadow-amber-200" title="แก้ไขใบเทียบราคา" aria-label="แก้ไขใบเทียบราคา"><i class="fas fa-edit text-xs"></i></a>` : ''}
                     </div>
                 </div>
                 ${canApprove ? `

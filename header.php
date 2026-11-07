@@ -225,7 +225,7 @@ if ($current_page == 'pending_budget.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'edit_pr_quotes.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php', 'program_settings.php'];
 $cat_budget = ['my_budget.php', 'pending_budget.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];

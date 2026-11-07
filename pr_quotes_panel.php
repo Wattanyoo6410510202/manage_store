@@ -29,7 +29,8 @@ $pr_quote_config = [
     ], $pr_quote_existing),
     'refPrices' => (object)($pr_quote_ref_prices ?? []),
 ];
-$pr_quote_enabled = !empty($pr_quote_existing);
+$pr_quote_force_enabled = $pr_quote_force_enabled ?? false; // true = ปิดใบเทียบราคาไม่ได้ (ซ่อนสวิตช์)
+$pr_quote_enabled = !empty($pr_quote_existing) || $pr_quote_force_enabled;
 ?>
 <style>
     #prQuotePanel .prq-slot { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #f8fafc; }
@@ -68,7 +69,7 @@ $pr_quote_enabled = !empty($pr_quote_existing);
                 </span>
             </p>
         </div>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
+        <label class="<?= $pr_quote_force_enabled ? 'hidden' : 'flex' ?> items-center gap-2 cursor-pointer select-none">
             <input type="checkbox" id="prQuoteToggle" name="quote_enabled" value="1" class="w-5 h-5 rounded text-indigo-600"
                 <?= $pr_quote_enabled ? 'checked' : '' ?>>
             <span class="text-sm font-bold text-slate-700">เปิดใช้ใบเทียบราคา</span>

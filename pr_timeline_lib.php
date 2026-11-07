@@ -57,6 +57,7 @@ function pr_timeline_action_meta(string $action, ?string $stage): array
         'created' => ['สร้างใบขอซื้อ', 'fa-file-circle-plus', 'indigo'],
         'edited' => ['แก้ไขใบขอซื้อ', 'fa-pen', 'amber'],
         'resubmitted' => ['แก้ไขและส่งใหม่', 'fa-rotate-right', 'amber'],
+        'quotes_edited' => ['แก้ไขใบเทียบราคา', 'fa-scale-balanced', 'amber'],
         'approved' => ['อนุมัติโดย' . $stage_label, 'fa-check', 'emerald'],
         'fully_approved' => ['อนุมัติครบทุกขั้นตอน', 'fa-circle-check', 'emerald'],
         'po_created' => ['ออกใบสั่งซื้อ (PO)', 'fa-file-invoice', 'sky'],
