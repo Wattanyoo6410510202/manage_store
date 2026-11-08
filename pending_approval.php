@@ -34,8 +34,7 @@ if ($pending_view === 'pr' && $can_pr_approval) {
             (SELECT item_desc FROM pr_items
              WHERE pr_id = p.id
              ORDER BY id ASC LIMIT 1) as first_item_desc,
-            (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) as quote_count,
-            EXISTS(SELECT 1 FROM po WHERE po.reference_no = p.doc_no AND po.deleted_at IS NULL) as has_po
+            (SELECT COUNT(*) FROM pr_quotes q WHERE q.pr_id = p.id) as quote_count
         FROM pr p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
         LEFT JOIN stores st ON p.store_id = st.id
@@ -57,7 +56,7 @@ if ($pending_view === 'pr' && $can_pr_approval) {
         $row['sup_status'] = trim((string)($row['reject_reason'] ?? '')) !== ''
             ? 'rejected'
             : (!empty($row['approved_by_0']) ? 'approved' : 'pending');
-        $row['can_edit_quotes'] = pr_quotes_admin_block_reason($user_role_sup, $row, (bool)$row['has_po']) === null;
+        $row['can_edit_quotes'] = pr_quotes_admin_block_reason($user_role_sup, $row) === null;
         $pr_list[] = $row;
     }
 

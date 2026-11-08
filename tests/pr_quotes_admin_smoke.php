@@ -23,15 +23,15 @@ function prqa_expect_error(callable $fn, string $needle, string $label): void
 
 // สิทธิ์
 $pending = ['status' => 'pending', 'deleted_at' => null];
-prqa_assert(pr_quotes_admin_block_reason('admin', $pending, false) === null, 'admin can edit pending PR');
-prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'rejected'], false) === null, 'admin can edit rejected PR');
+prqa_assert(pr_quotes_admin_block_reason('admin', $pending) === null, 'admin can edit pending PR');
+prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'rejected']) === null, 'admin can edit rejected PR');
+prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'approved']) === null, 'admin can edit approved PR');
 foreach (['procure', 'gmhok', 'gmacc', 'mgr', 'mgr2', 'viewer', ''] as $role) {
-    prqa_assert(pr_quotes_admin_block_reason($role, $pending, false) !== null, "$role cannot edit");
+    prqa_assert(pr_quotes_admin_block_reason($role, $pending) !== null, "$role cannot edit");
+    prqa_assert(pr_quotes_admin_block_reason($role, ['status' => 'approved']) !== null, "$role cannot edit approved PR");
 }
-prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'approved'], false) !== null, 'approved PR locked');
-prqa_assert(pr_quotes_admin_block_reason('admin', $pending, true) !== null, 'PR with PO locked');
-prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'pending', 'deleted_at' => '2026-01-01'], false) !== null, 'deleted PR locked');
-prqa_assert(pr_quotes_admin_block_reason('admin', null, false) !== null, 'missing PR locked');
+prqa_assert(pr_quotes_admin_block_reason('admin', ['status' => 'pending', 'deleted_at' => '2026-01-01']) !== null, 'deleted PR locked');
+prqa_assert(pr_quotes_admin_block_reason('admin', null) !== null, 'missing PR locked');
 
 // ประเภทวงเงิน
 prqa_assert(pr_quotes_admin_limit_type(10000) === 'low', 'limit low');
@@ -87,9 +87,53 @@ try {
     prqa_assert(pr_quotes_load($conn, $pr_id)[1]['quote_no'] === 'Q-2', 'same total allowed with installments');
     $conn->query("UPDATE pr SET installment_period = 0 WHERE id = $pr_id");
 
-    // อนุมัติครบแล้ว = ล็อก
+    // อนุมัติครบและมี PO: แก้ได้ และ PO เปลี่ยนตาม โดยคง po_items.id เดิม
     $conn->query("UPDATE pr SET status = 'approved' WHERE id = $pr_id");
-    prqa_expect_error(fn() => pr_quotes_admin_apply($conn, 'admin', $pr_id, $post), 'แก้ไขใบเทียบราคาไม่ได้', 'approved PR locked by apply');
+    $supplier_id = (int)$conn->query("SELECT id FROM suppliers ORDER BY id LIMIT 1")->fetch_row()[0];
+    $customer_id = (int)($conn->query("SELECT id FROM customers ORDER BY id LIMIT 1")->fetch_row()[0] ?? 0);
+    $conn->query("INSERT INTO po (doc_no, reference_no, customer_id, supplier_id, status, created_by, vat_percent, wht_percent, subtotal, vat_amount, wht_amount, grand_total)
+        VALUES ('TEST-PRQA-PO', 'TEST-PRQA', $customer_id, $supplier_id, 'pending', 1, 7, 3, 19900, 1393, 597, 20696)");
+    $po_id = (int)$conn->insert_id;
+    $conn->query("INSERT INTO po_items (po_id, item_desc, item_qty, item_unit, item_price, item_discount, total_price)
+        SELECT $po_id, item_desc, item_qty, item_unit, item_price, item_discount, item_total FROM pr_items WHERE pr_id = $pr_id ORDER BY id");
+    $po_item_ids = array_column($conn->query("SELECT id FROM po_items WHERE po_id = $po_id ORDER BY id")->fetch_all(MYSQLI_ASSOC), 'id');
+
+    // แก้ข้อมูลอื่นที่ราคาเท่าเดิม ไม่แตะ PO
+    $conn->query("UPDATE po SET notes = 'keep' WHERE id = $po_id");
+    $samePrice = pr_quotes_admin_apply($conn, 'admin', $pr_id, $sameTotal);
+    prqa_assert($samePrice['po_doc_no'] === null, 'unchanged prices do not touch PO');
+
+    $lower = pr_quotes_admin_apply($conn, 'admin', $pr_id, $changed);
+    prqa_assert($lower['po_doc_no'] === 'TEST-PRQA-PO', 'PO reported as synced');
+    $po = $conn->query("SELECT * FROM po WHERE id = $po_id")->fetch_assoc();
+    $po_rows = $conn->query("SELECT id, item_desc, item_qty, item_price, total_price FROM po_items WHERE po_id = $po_id ORDER BY id")->fetch_all(MYSQLI_ASSOC);
+    // 2*4000 + 1*10000 - 100 = 17900, VAT 1253, WHT 537 => 18616
+    prqa_assert((float)$po['subtotal'] === 17900.0 && (float)$po['vat_amount'] === 1253.0, 'PO subtotal/VAT follow PR');
+    prqa_assert((float)$po['wht_amount'] === 537.0 && (float)$po['grand_total'] === 18616.0, 'PO WHT/grand total follow PR');
+    prqa_assert($po['notes'] === 'keep' && $po['status'] === 'pending', 'other PO fields untouched');
+    prqa_assert(array_column($po_rows, 'id') === $po_item_ids, 'po_items ids preserved for receiving links');
+    prqa_assert((float)$po_rows[0]['item_price'] === 4000.0 && (float)$po_rows[0]['total_price'] === 8000.0, 'PO line follows PR');
+    prqa_assert($po_rows[0]['item_desc'] === 'ก' && (float)$po_rows[0]['item_qty'] === 2.0, 'PO desc/qty untouched');
+    $approved = $conn->query("SELECT status, budget_limit_type FROM pr WHERE id = $pr_id")->fetch_assoc();
+    prqa_assert($approved['status'] === 'approved', 'approval status kept');
+
+    // PR ที่อนุมัติแล้วคงประเภทวงเงินเดิม แม้ยอดข้ามเกณฑ์
+    $higher = $changed;
+    $higher['quote_price'][0] = ['60000', '10000'];
+    $higher['quote_selection_reason'] = 'ทดสอบ';
+    pr_quotes_admin_apply($conn, 'admin', $pr_id, $higher);
+    $approved = $conn->query("SELECT grand_total, budget_limit_type FROM pr WHERE id = $pr_id")->fetch_assoc();
+    prqa_assert((float)$approved['grand_total'] > 99999 && $approved['budget_limit_type'] === 'mid', 'approved PR keeps limit type');
+
+    // PO ถูกแก้จนไม่ตรงกับ PR: ไม่ปรับให้เอง และ PR ต้องไม่ถูกแก้
+    $conn->query("UPDATE po_items SET item_qty = 5 WHERE id = {$po_item_ids[0]}");
+    prqa_expect_error(fn() => pr_quotes_admin_apply($conn, 'admin', $pr_id, $changed), 'ไม่ตรงกับใบขอซื้อ', 'mismatched PO rejected');
+    prqa_assert((float)$conn->query("SELECT item_price FROM pr_items WHERE pr_id = $pr_id ORDER BY id LIMIT 1")->fetch_row()[0] === 60000.0, 'PR untouched when PO mismatched');
+    $conn->query("UPDATE po_items SET item_qty = 2 WHERE id = {$po_item_ids[0]}");
+
+    // มี PO มากกว่า 1 ใบ: ไม่เดาว่าใบไหน
+    $conn->query("INSERT INTO po (doc_no, reference_no, customer_id, supplier_id, status, created_by) VALUES ('TEST-PRQA-PO2', 'TEST-PRQA', $customer_id, $supplier_id, 'pending', 1)");
+    prqa_expect_error(fn() => pr_quotes_admin_apply($conn, 'admin', $pr_id, $changed), 'มากกว่า 1 ใบ', 'multiple POs rejected');
 } finally {
     $conn->rollback();
 }

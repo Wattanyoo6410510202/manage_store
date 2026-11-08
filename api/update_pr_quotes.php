@@ -16,7 +16,7 @@ $stmt->bind_param('i', $user_id);
 $stmt->execute();
 $role = (string)($stmt->get_result()->fetch_row()[0] ?? ''); // ใช้ role ปัจจุบันจาก DB ไม่ใช่จาก session
 
-if (pr_quotes_admin_block_reason($role, [], false) !== null) {
+if (pr_quotes_admin_block_reason($role, []) !== null) {
     http_response_code(403);
     pr_quotes_fail('เฉพาะผู้ดูแลระบบ (admin) เท่านั้นที่แก้ไขใบเทียบราคาได้');
 }
@@ -41,7 +41,8 @@ try {
 
 pr_quotes_cleanup_files($result['obsolete_files']);
 $note = 'ยอดสุทธิ ' . number_format($result['old_total'], 2) . ' → ' . number_format($result['new_total'], 2) . ' บาท'
-    . ($result['store_changed'] ? ' · เปลี่ยนร้านที่เลือก' : '');
+    . ($result['store_changed'] ? ' · เปลี่ยนร้านที่เลือก' : '')
+    . ($result['po_doc_no'] !== null ? ' · ปรับราคาใน PO ' . $result['po_doc_no'] : '');
 pr_log_activity($conn, $pr_id, 'quotes_edited', $user_id, $note);
 
 $_SESSION['flash_msg'] = 'update_success';

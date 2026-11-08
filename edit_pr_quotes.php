@@ -17,7 +17,7 @@ $stmt->bind_param('i', $pr_id);
 $stmt->execute();
 $pr = $stmt->get_result()->fetch_assoc() ?: null;
 
-$block = pr_quotes_admin_block_reason($actor_role, $pr, $pr !== null && pr_quotes_admin_has_po($conn, (string)$pr['doc_no']));
+$block = pr_quotes_admin_block_reason($actor_role, $pr);
 if ($block !== null) {
     echo "<script>alert(" . json_encode($block, JSON_UNESCAPED_UNICODE) . "); window.location.href='pending_approval.php?type=pr';</script>";
     exit;
@@ -56,7 +56,9 @@ $money = fn($v) => number_format((float)$v, 2);
 
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
         <p class="font-bold"><i class="fas fa-circle-info mr-1" aria-hidden="true"></i>แก้ได้เฉพาะใบเทียบราคา ราคาและร้านค้าของใบขอซื้อจะเปลี่ยนตามร้านที่เลือก</p>
-        <?php if ($has_approvals): ?>
+        <?php if ($pr['status'] === 'approved'): ?>
+            <p class="mt-1">ใบนี้อนุมัติครบแล้ว การอนุมัติเดิมจะยังอยู่ และถ้าราคาเปลี่ยน ราคาในใบสั่งซื้อ (PO) ของใบนี้จะเปลี่ยนตามทันที</p>
+        <?php elseif ($has_approvals): ?>
             <p class="mt-1">ใบนี้ผ่านการอนุมัติบางขั้นแล้ว การอนุมัติเดิมจะยังอยู่ แม้ยอดหรือร้านจะเปลี่ยน</p>
         <?php endif; ?>
     </div>
