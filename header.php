@@ -75,6 +75,7 @@ $permissions = [
     'staff_nijuni' => ['dashboard', 'compare', 'inventory'],
     'gmacc' => ['dashboard', 'compare', 'inventory'],
     'gm_sale' => ['dashboard', 'compare', 'inventory'],
+    'gm_hotel' => ['dashboard', 'compare', 'inventory'],
     'sale' => ['dashboard', 'compare', 'inventory'],
     'marketing' => ['dashboard', 'compare', 'inventory']
 ];
