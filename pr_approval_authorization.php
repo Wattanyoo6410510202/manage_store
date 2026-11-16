@@ -52,6 +52,7 @@ function pr_approval_subordinate_roles(string $gmRole): array
         'gmshotel' => ['staff_shotel', 'maid_shotel', 'tech_shotel', 'cater_shotel'],
         'gmmanonta' => ['staff_manonta'],
         'gmnijuni' => ['staff_nijuni'],
+        'gm_hotel' => ['staff_shotel', 'staff_manonta', 'sale'],
     ];
 
     return $roleMap[strtolower(trim($gmRole))] ?? [];

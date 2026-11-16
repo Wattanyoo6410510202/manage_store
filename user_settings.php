@@ -58,6 +58,7 @@ include('assets/alert.php');
                             <option value="gmshotel">GM SHotel</option>
                             <option value="gmmanonta">GM Manonta</option>
                             <option value="gmnijuni">GM Nijuni</option>
+                            <option value="gm_hotel">GM Hotel (SHotel + Manonta + Sale)</option>
                             <option value="hok">HOK</option>
                             <option value="maid_shotel">แม่บ้าน SHotel</option>
                             <option value="tech_shotel">ช่าง SHotel</option>
@@ -164,6 +165,7 @@ include('assets/alert.php');
                                         'hok' => 'bg-emerald-100 text-emerald-600', // HOK (สีเขียวมรกต) - แยกออกมาให้ดูเป็นฝ่ายปฏิบัติการพิเศษ
                                         'viewer' => 'bg-slate-100 text-slate-500',     // ผู้ชม (สีเทา) - เหมือนเดิม (เน้นเรียบๆ เพราะแค่อ่านอย่างเดียว)
                                         'gm_sale' => 'bg-orange-100 text-orange-600',  // GM Sale (สีส้ม)
+                                        'gm_hotel' => 'bg-teal-100 text-teal-600',     // GM Hotel (สีเขียวอมฟ้า)
                                         'sale' => 'bg-sky-100 text-sky-600',           // Sale (สีฟ้าอ่อน)
                                         'marketing' => 'bg-violet-100 text-violet-600', // Marketing (สีม่วงอ่อน)
                                     ];
