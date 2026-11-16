@@ -18,6 +18,7 @@ const DB_MIGRATIONS = [
     'sql/add_users_central_id.sql' => 'รหัสพนักงานกลาง (SSO)',
     'sql/add_pr_quotes.sql' => 'ใบเทียบราคาใน PR',
     'sql/add_pr_activity_log.sql' => 'Timeline ประวัติใบขอซื้อ',
+    'sql/add_pr_signers.sql' => 'ลิงก์เซ็นอนุมัติใบขอซื้อ',
 ];
 
 function db_migrations_ensure_table(mysqli $conn): void

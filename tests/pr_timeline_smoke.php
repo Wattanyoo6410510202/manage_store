@@ -17,7 +17,8 @@ tl_assert(pr_required_stages('high') === ['approved_by_0', 'approved_by', 'appro
 $hooks = [
     'api/save_pr_new.php' => "'created'",
     'api/update_pr_new.php' => "'resubmitted' : 'edited'",
-    'api/update_pr_status_new.php' => "'approved'",
+    'pr_approval_lib.php' => "'approved'",
+    'pr_sign_lib.php' => "'rejected'",
     'api/reject_pr.php' => "'rejected'",
     'api/receive_pr.php' => "'received'",
     'api/receive_pr_detail.php' => "'received'",
@@ -26,7 +27,10 @@ foreach ($hooks as $file => $needle) {
     $src = file_get_contents(__DIR__ . '/../' . $file);
     tl_assert(strpos($src, 'pr_log_activity(') !== false && strpos($src, $needle) !== false, "$file logs $needle");
 }
-$statusApi = file_get_contents(__DIR__ . '/../api/update_pr_status_new.php');
+// อนุมัติในระบบและผ่านลิงก์เซ็น ใช้ pr_approval_apply_stage() ตัวเดียวกัน
+tl_assert(strpos(file_get_contents(__DIR__ . '/../api/update_pr_status_new.php'), 'pr_approval_apply_stage(') !== false, 'status API uses shared approval');
+tl_assert(strpos(file_get_contents(__DIR__ . '/../pr_sign_lib.php'), 'pr_approval_apply_stage(') !== false, 'sign link uses shared approval');
+$statusApi = file_get_contents(__DIR__ . '/../pr_approval_lib.php');
 tl_assert(strpos($statusApi, "'fully_approved'") !== false && strpos($statusApi, "'po_created'") !== false, 'full approval + PO logged');
 
 $conn = @mysqli_connect('localhost', 'root', '', 'procurement_system');

@@ -65,6 +65,9 @@ function pr_timeline_action_meta(string $action, ?string $stage): array
         'received' => ['รับของครบแล้ว', 'fa-box-open', 'emerald'],
         'partial_received' => ['รับของบางส่วน', 'fa-box', 'amber'],
         'installment_paid' => ['ชำระเงินงวด', 'fa-money-bill-wave', 'sky'],
+        'sign_link_sent' => ['ส่งลิงก์ให้เซ็นอนุมัติ', 'fa-link', 'indigo'],
+        'sign_link_signed' => ['ลงนามผ่านลิงก์', 'fa-signature', 'emerald'],
+        'sign_link_cancelled' => ['ยกเลิกลิงก์เซ็น', 'fa-link-slash', 'slate'],
     ];
     [$title, $icon, $color] = $map[$action] ?? [$action, 'fa-circle', 'slate'];
     return ['title' => $title, 'icon' => $icon, 'color' => $color];
