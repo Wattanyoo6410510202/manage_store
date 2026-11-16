@@ -52,6 +52,7 @@ $permissions = [
     'maid_shotel' => ['dashboard', 'compare', 'inventory'],
     'tech_shotel' => ['dashboard', 'compare', 'inventory'],
     'cater_shotel' => ['dashboard', 'compare', 'inventory'],
+    'kitchen_shotel' => ['dashboard', 'compare', 'inventory'],
 
     // 6. Viewer: ดูได้ทุกอย่าง (ยกเว้นตั้งค่า) แต่จะไปคุมที่ปุ่มห้าม เพิ่ม/แก้ไข/ลบ
     'viewer' => ['dashboard', 'docs', 'projects', 'compare', 'inventory', 'trash'],

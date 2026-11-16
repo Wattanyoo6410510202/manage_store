@@ -58,11 +58,12 @@ include('assets/alert.php');
                             <option value="gmshotel">GM SHotel</option>
                             <option value="gmmanonta">GM Manonta</option>
                             <option value="gmnijuni">GM Nijuni</option>
-                            <option value="gm_hotel">GM Hotel (SHotel + Manonta + Sale)</option>
+                            <option value="gm_hotel">GM Hotel (SHotel + Manonta + Sale + แม่บ้าน/ช่าง/จัดเลี้ยง/ครัว)</option>
                             <option value="hok">HOK</option>
                             <option value="maid_shotel">แม่บ้าน SHotel</option>
                             <option value="tech_shotel">ช่าง SHotel</option>
                             <option value="cater_shotel">จัดเลี้ยง SHotel</option>
+                            <option value="kitchen_shotel">ครัว SHotel</option>
                             <option value="staff_shotel">Staff SHotel</option>
                             <option value="staff_manonta">Staff Manonta</option>
                             <option value="staff_nijuni">Staff Nijuni</option>

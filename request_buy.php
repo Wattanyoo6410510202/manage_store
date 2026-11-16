@@ -579,7 +579,7 @@ while ($st = mysqli_fetch_assoc($stores_query)) {
                         <!-- Card Header with Toggle -->
                         <?php
                         $user_role = $_SESSION['role'] ?? '';
-                        $is_staff = (strpos($user_role, 'staff') === 0 || in_array($user_role, ['maid_shotel', 'tech_shotel', 'cater_shotel', 'acc', 'hr', 'staff_hr']));
+                        $is_staff = (strpos($user_role, 'staff') === 0 || in_array($user_role, ['maid_shotel', 'tech_shotel', 'cater_shotel', 'kitchen_shotel', 'acc', 'hr', 'staff_hr']));
                         ?>
                         <div onclick="toggleExpenseCard()" class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all">
                             <span class="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">

@@ -44,10 +44,13 @@ assert_pr_approval_same(false, pr_approval_is_team_gm('gmhok'), 'GMHOK backup ac
 assert_pr_approval_same(false, pr_approval_is_team_gm('mgr'), 'non-GM approval roles must not receive the GM team scope');
 assert_pr_approval_same(['staff_hr'], pr_approval_subordinate_roles('gmhr'), 'GMHR must manage only HR staff roles');
 assert_pr_approval_same(['sale', 'marketing'], pr_approval_subordinate_roles('gm_sale'), 'sales GM must manage sales and marketing roles');
-assert_pr_approval_same(['staff_shotel', 'maid_shotel', 'tech_shotel', 'cater_shotel'], pr_approval_subordinate_roles('gmshotel'), 'Shotel GM must manage Shotel staff roles');
+assert_pr_approval_same(['staff_shotel', 'maid_shotel', 'tech_shotel', 'cater_shotel', 'kitchen_shotel'], pr_approval_subordinate_roles('gmshotel'), 'Shotel GM must manage Shotel staff roles');
 assert_pr_approval_same(['staff_manonta'], pr_approval_subordinate_roles('gmmanonta'), 'Manonta GM must manage Manonta staff');
 assert_pr_approval_same(['staff_nijuni'], pr_approval_subordinate_roles('gmnijuni'), 'Nijuni GM must manage Nijuni staff');
-assert_pr_approval_same(['staff_shotel', 'staff_manonta', 'sale'], pr_approval_subordinate_roles('gm_hotel'), 'Hotel GM must manage SHotel staff, Manonta staff and sales');
+assert_pr_approval_same(['staff_shotel', 'staff_manonta', 'sale', 'maid_shotel', 'tech_shotel', 'cater_shotel', 'kitchen_shotel'], pr_approval_subordinate_roles('gm_hotel'), 'Hotel GM must manage SHotel staff, Manonta staff, sales, housekeeping, technicians, catering and kitchen');
+assert_pr_approval_same(true, pr_approval_can_approve_supervisor_step('gm_hotel', 14, 14, 'kitchen_shotel'), 'Hotel GM must approve kitchen staff in the same team');
+assert_pr_approval_same(true, pr_approval_can_approve_supervisor_step('gm_hotel', 14, 14, 'maid_shotel'), 'Hotel GM must approve housekeeping staff in the same team');
+assert_pr_approval_same(false, pr_approval_can_approve_supervisor_step('gm_hotel', 14, 15, 'cater_shotel'), 'Hotel GM must not approve catering staff from another team');
 assert_pr_approval_same(true, pr_approval_is_team_gm('gm_hotel'), 'Hotel GM must be treated as a team supervisor');
 assert_pr_approval_same(true, pr_approval_can_approve_supervisor_step('gm_hotel', 14, 14, 'staff_manonta'), 'Hotel GM must approve Manonta staff in the same team');
 assert_pr_approval_same(false, pr_approval_gm_manages_role('gm_hotel', 'marketing'), 'Hotel GM must not manage marketing');

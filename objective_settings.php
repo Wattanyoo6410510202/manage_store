@@ -122,7 +122,7 @@ include('header.php');
                         'gmhr' => 'GM HR', 'staff_hr' => 'Staff HR', 'gmacc' => 'GM ACC',
                         'gmshotel' => 'GM SHotel', 'gmmanonta' => 'GM Manonta',
                         'gmnijuni' => 'GM Nijuni', 'gm_hotel' => 'GM Hotel', 'hok' => 'HOK',
-                        'maid_shotel' => 'แม่บ้าน SHotel', 'tech_shotel' => 'ช่าง SHotel', 'cater_shotel' => 'จัดเลี้ยง SHotel',
+                        'maid_shotel' => 'แม่บ้าน SHotel', 'tech_shotel' => 'ช่าง SHotel', 'cater_shotel' => 'จัดเลี้ยง SHotel', 'kitchen_shotel' => 'ครัว SHotel',
                         'staff_shotel' => 'Staff SHotel', 'staff_manonta' => 'Staff Manonta', 'staff_nijuni' => 'Staff Nijuni',
                         'gm_sale' => 'GM Sale', 'sale' => 'Sale', 'marketing' => 'Marketing'
                     ];
