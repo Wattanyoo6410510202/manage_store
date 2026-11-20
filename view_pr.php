@@ -531,3 +531,4 @@ function ReadNumber($number)
 </script>
 
 <?php include('footer.php'); ?>
+<?php /* repair-workflow-native-panel */ require_once __DIR__.'/repair-integration/native-panel.php'; ?>

@@ -113,3 +113,4 @@ $prs_can_send = pr_sign_pr_closed_reason($data) === null
 <?php if ($prs_can_send) include __DIR__ . '/partials/pr_sign_modal.php'; ?>
 
 <?php include('footer.php'); ?>
+<?php /* repair-workflow-native-panel */ require_once __DIR__.'/repair-integration/native-panel.php'; ?>
