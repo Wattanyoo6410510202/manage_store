@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         $supId = (int)($_POST['sup_id'] ?? 0);
         $productId = (int)($_POST['product_id'] ?? 0);
         $conn->begin_transaction();
+        stock_update_product_identity(
+            $conn,
+            $productId,
+            $supId,
+            (string)($_POST['name'] ?? ''),
+            (string)($_POST['unit'] ?? '')
+        );
         stock_update_product_category($conn, $productId, $supId, (string)($_POST['category'] ?? ''), (int)$stock_actor['id']);
         stock_update_product_plan_settings(
             $conn,
@@ -30,6 +37,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
         );
         $conn->commit();
         stock_flash('success', 'บันทึกการตั้งค่าพัสดุแล้ว');
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        stock_flash('error', stock_error_message($exception));
+    }
+    stock_redirect('stock.php?sup_id=' . (int)($_POST['sup_id'] ?? 0));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_product') {
+    try {
+        stock_verify_csrf();
+        stock_require_manager($stock_actor);
+        $supId = (int)($_POST['sup_id'] ?? 0);
+        $minRaw = (string)($_POST['min_quantity'] ?? '0');
+        $initialRaw = trim((string)($_POST['initial_quantity'] ?? ''));
+        if ($initialRaw !== '' && !stock_can_approve_reconciliation((string)$stock_actor['role'])) {
+            $initialRaw = '';
+        }
+        if (($minRaw !== '' && !is_numeric($minRaw)) || ($initialRaw !== '' && (!is_numeric($initialRaw) || (float)$initialRaw < 0))) {
+            throw new DomainException('กรุณากรอกจำนวนให้ถูกต้อง');
+        }
+        $conn->begin_transaction();
+        $sku = stock_generate_internal_sku($supId);
+        $category = trim((string)($_POST['category'] ?? ''));
+        if ($category === '__new__') {
+            $category = trim((string)($_POST['new_category'] ?? ''));
+        }
+        if ($category === '') {
+            throw new DomainException('กรุณาระบุหมวดหมู่');
+        }
+        $productId = stock_create_product(
+            $conn,
+            $supId,
+            (int)$stock_actor['id'],
+            $sku,
+            (string)($_POST['name'] ?? ''),
+            (string)($_POST['unit'] ?? ''),
+            $category,
+            (float)$minRaw
+        );
+        if ($initialRaw !== '' && (float)$initialRaw > 0) {
+            stock_apply_manual_adjustment($conn, $supId, $productId, 0, (float)$initialRaw, (int)$stock_actor['id'], 'ยอดเริ่มต้นเมื่อเพิ่มพัสดุ');
+        }
+        $conn->commit();
+        stock_flash('success', 'เพิ่มพัสดุแล้ว');
+    } catch (Throwable $exception) {
+        $conn->rollback();
+        stock_flash('error', stock_error_message($exception));
+    }
+    stock_redirect('stock.php?sup_id=' . (int)($_POST['sup_id'] ?? 0));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_product') {
+    try {
+        stock_verify_csrf();
+        stock_require_manager($stock_actor);
+        $conn->begin_transaction();
+        $canWriteOff = stock_can_approve_reconciliation((string)$stock_actor['role']);
+        $expectedRaw = (string)($_POST['expected_quantity'] ?? '');
+        $deletedName = stock_deactivate_product(
+            $conn,
+            (int)($_POST['product_id'] ?? 0),
+            (int)($_POST['sup_id'] ?? 0),
+            $canWriteOff ? (int)$stock_actor['id'] : 0,
+            is_numeric($expectedRaw) ? (float)$expectedRaw : null
+        );
+        $conn->commit();
+        stock_flash('success', 'ลบพัสดุ ' . $deletedName . ' แล้ว');
     } catch (Throwable $exception) {
         $conn->rollback();
         stock_flash('error', stock_error_message($exception));
@@ -175,6 +249,11 @@ $qtyCell = static function (float $value, string $unit = ''): string {
                 </select>
             </form>
             <?php endif; ?>
+            <?php if ($canManage && $selectedSupId > 0): ?>
+            <button type="button" data-stock-add-product class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700">
+                <i class="fas fa-plus"></i>เพิ่มพัสดุ
+            </button>
+            <?php endif; ?>
             <?php if ($canAdjust): ?>
             <a href="stock_import.php<?= $selectedSupId > 0 ? '?sup_id=' . $selectedSupId : '' ?>" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
                 <i class="fas fa-file-import text-amber-600"></i>นำเข้ายอดนับ
@@ -265,9 +344,9 @@ $qtyCell = static function (float $value, string $unit = ''): string {
                             <?php if ($canManage): ?>
                             <td class="whitespace-nowrap px-2 py-2.5 text-right">
                                 <button type="button" data-stock-edit-product
-                                    data-id="<?= (int)$product['id'] ?>" data-name="<?= stock_e($product['name']) ?>" data-category="<?= stock_e($category) ?>"
+                                    data-id="<?= (int)$product['id'] ?>" data-name="<?= stock_e($product['name']) ?>" data-qty="<?= stock_e((string)$qty) ?>" data-category="<?= stock_e($category) ?>"
                                     data-class="<?= stock_e($product['abc_class']) ?>" data-lead="<?= (int)$product['lead_time_days'] ?>" data-min="<?= stock_e((string)(float)$product['min_quantity']) ?>" data-unit="<?= stock_e($unit) ?>"
-                                    class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" title="ตั้งค่าพัสดุ" aria-label="ตั้งค่า <?= stock_e($product['name']) ?>">
+                                    class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" title="แก้ไข / ตั้งค่าพัสดุ" aria-label="แก้ไข <?= stock_e($product['name']) ?>">
                                     <i class="fas fa-sliders"></i>
                                 </button>
                                 <?php if ($canAdjust): ?>
@@ -283,7 +362,7 @@ $qtyCell = static function (float $value, string $unit = ''): string {
                         </tr>
                     <?php endforeach; ?>
                         <tr data-stock-overview-empty class="hidden"><td colspan="<?= $canManage ? 9 : 8 ?>" class="px-4 py-14 text-center text-sm text-slate-500"><i class="fas fa-search mb-3 block text-2xl text-slate-300"></i>ไม่พบพัสดุที่ตรงกับตัวกรอง</td></tr>
-                        <?php if (!$products): ?><tr><td colspan="<?= $canManage ? 9 : 8 ?>" class="px-4 py-14 text-center text-sm text-slate-500"><i class="fas fa-box-open mb-3 block text-2xl text-slate-300"></i>ยังไม่มีพัสดุในบริษัทนี้ — พัสดุจะถูกสร้างเมื่อรับเข้าจาก PO</td></tr><?php endif; ?>
+                        <?php if (!$products): ?><tr><td colspan="<?= $canManage ? 9 : 8 ?>" class="px-4 py-14 text-center text-sm text-slate-500"><i class="fas fa-box-open mb-3 block text-2xl text-slate-300"></i>ยังไม่มีพัสดุในบริษัทนี้ — กด “เพิ่มพัสดุ” หรือรับเข้าจาก PO</td></tr><?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -310,10 +389,17 @@ $qtyCell = static function (float $value, string $unit = ''): string {
         <input type="hidden" name="sup_id" value="<?= $selectedSupId ?>">
         <input type="hidden" name="product_id" data-field="id">
         <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-            <div class="min-w-0"><p class="text-xs font-semibold text-slate-500">ตั้งค่าพัสดุ</p><h3 class="mt-0.5 truncate text-lg font-black text-slate-900" data-field="name"></h3></div>
+            <div class="min-w-0"><p class="text-xs font-semibold text-slate-500">แก้ไข / ตั้งค่าพัสดุ</p><h3 class="mt-0.5 truncate text-lg font-black text-slate-900" data-field="title"></h3></div>
             <button type="button" data-dialog-close class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="ปิด"><i class="fas fa-times"></i></button>
         </div>
-        <div class="space-y-5 px-5 py-5">
+        <div class="max-h-[70vh] space-y-5 overflow-y-auto px-5 py-5">
+            <label class="block text-sm font-semibold text-slate-700">ชื่อพัสดุ
+                <input type="text" name="name" data-field="name" required maxlength="255" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            </label>
+            <label class="block text-sm font-semibold text-slate-700">หน่วยนับ
+                <input type="text" name="unit" data-field="unit-input" required maxlength="50" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            </label>
+            <p class="-mt-3 text-xs text-amber-700">เปลี่ยนหน่วยนับไม่ได้แปลงยอดคงเหลือให้ ถ้าหน่วยใหม่ต่างจากเดิมให้ปรับยอดด้วย</p>
             <label class="block text-sm font-semibold text-slate-700">หมวดหมู่
                 <select name="category" required data-stock-category-select data-field="category" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
                     <option value="" disabled>เลือกหมวดหมู่</option>
@@ -351,22 +437,51 @@ $qtyCell = static function (float $value, string $unit = ''): string {
             </div>
             <p class="-mt-2 text-xs text-slate-500">Min ขั้นต่ำใช้แทนค่าที่คำนวณได้ เมื่อสูงกว่า · ใส่ 0 เพื่อใช้ค่าคำนวณ</p>
         </div>
-        <div class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
-            <button type="button" data-dialog-close class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">ยกเลิก</button>
-            <button class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700">บันทึก</button>
+        <div class="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <button type="submit" form="stockDeleteForm" data-field="delete" class="rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"><i class="fas fa-trash-can mr-1.5"></i>ลบพัสดุ</button>
+            <div class="flex gap-2">
+                <button type="button" data-dialog-close class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">ยกเลิก</button>
+                <button class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700">บันทึก</button>
+            </div>
         </div>
     </form>
 </dialog>
+<form method="post" id="stockDeleteForm" class="hidden">
+    <input type="hidden" name="csrf" value="<?= stock_e(stock_csrf_token()) ?>">
+    <input type="hidden" name="action" value="delete_product">
+    <input type="hidden" name="sup_id" value="<?= $selectedSupId ?>">
+    <input type="hidden" name="product_id" data-delete-product-id>
+    <input type="hidden" name="expected_quantity" data-delete-expected>
+</form>
 <script>
 (() => {
     const dialog = document.getElementById('stockProductDialog');
     if (!dialog || typeof dialog.showModal !== 'function') return;
     const field = (name) => dialog.querySelector(`[data-field="${name}"]`);
+    const deleteForm = document.getElementById('stockDeleteForm');
+    const canWriteOff = <?= $canAdjust ? 'true' : 'false' ?>;
+    deleteForm.addEventListener('submit', (event) => {
+        const qty = Number(deleteForm.querySelector('[data-delete-expected]').value);
+        const writeOff = Math.abs(qty) > 0.00001
+            ? `\n\nยอดคงเหลือ ${qty.toLocaleString('th-TH', { maximumFractionDigits: 2 })} ${deleteForm.dataset.unit} จะถูกตัดเป็น 0 และบันทึกในประวัติ`
+            : '';
+        if (!window.confirm(`ลบพัสดุ "${deleteForm.dataset.name}" ออกจาก Stock?${writeOff}\n\n(ประวัติการเคลื่อนไหวยังเก็บไว้)`)) event.preventDefault();
+    });
+    field('unit-input').addEventListener('input', () => { field('unit').textContent = field('unit-input').value; });
     document.querySelectorAll('[data-stock-edit-product]').forEach((button) => {
         button.addEventListener('click', () => {
             const d = button.dataset;
             field('id').value = d.id;
-            field('name').textContent = d.name;
+            field('title').textContent = d.name;
+            field('name').value = d.name;
+            field('unit-input').value = d.unit;
+            deleteForm.querySelector('[data-delete-product-id]').value = d.id;
+            deleteForm.dataset.name = d.name;
+            deleteForm.dataset.unit = d.unit;
+            deleteForm.querySelector('[data-delete-expected]').value = d.qty;
+            const blocked = !canWriteOff && Math.abs(Number(d.qty)) > 0.00001;
+            field('delete').disabled = blocked;
+            field('delete').title = blocked ? 'ลบได้เมื่อยอดคงเหลือเป็น 0 เท่านั้น (admin ลบพร้อมตัดยอดได้)' : '';
             field('lead').value = d.lead;
             field('min').value = d.min;
             field('unit').textContent = d.unit;
@@ -451,6 +566,74 @@ $qtyCell = static function (float $value, string $unit = ''): string {
         });
     });
     field('new').addEventListener('input', updateDiff);
+    dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+})();
+</script>
+<?php endif; ?>
+
+<?php if ($canManage && $selectedSupId > 0): ?>
+<dialog id="stockAddDialog" class="w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-slate-200 p-0 shadow-2xl backdrop:bg-slate-950/40">
+    <form method="post" class="flex flex-col">
+        <input type="hidden" name="csrf" value="<?= stock_e(stock_csrf_token()) ?>">
+        <input type="hidden" name="action" value="create_product">
+        <input type="hidden" name="sup_id" value="<?= $selectedSupId ?>">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+            <div class="min-w-0"><p class="text-xs font-semibold text-slate-500"><?= stock_e($selectedCompanyName) ?></p><h3 class="mt-0.5 text-lg font-black text-slate-900">เพิ่มพัสดุ</h3></div>
+            <button type="button" data-dialog-close class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="ปิด"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-5">
+            <label class="block text-sm font-semibold text-slate-700">ชื่อพัสดุ
+                <input type="text" name="name" required maxlength="255" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            </label>
+            <label class="block text-sm font-semibold text-slate-700">หน่วยนับ
+                <input type="text" name="unit" required maxlength="50" placeholder="เช่น ชิ้น, แพ็ค" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            </label>
+            <label class="block text-sm font-semibold text-slate-700">หมวดหมู่
+                <select name="category" required data-add-category class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                    <?php foreach (array_keys($knownCategories) as $category): ?><option value="<?= stock_e($category) ?>"><?= stock_e($category) ?></option><?php endforeach; ?>
+                    <option value="__new__" <?= !$knownCategories ? 'selected' : '' ?>>+ เพิ่มหมวดใหม่</option>
+                </select>
+            </label>
+            <label data-add-new-category class="<?= $knownCategories ? 'hidden ' : '' ?>block text-sm font-semibold text-slate-700">ชื่อหมวดใหม่
+                <input type="text" name="new_category" maxlength="120" placeholder="เช่น ของใช้ในห้องพัก" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="block text-sm font-semibold text-slate-700">Min ขั้นต่ำ
+                    <input type="number" name="min_quantity" min="0" step="0.01" value="0" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-right text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <?php if ($canAdjust): ?>
+                <label class="block text-sm font-semibold text-slate-700">ยอดเริ่มต้น
+                    <input type="number" name="initial_quantity" min="0" step="0.01" placeholder="0" class="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-right text-sm font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500">
+                </label>
+                <?php endif; ?>
+            </div>
+            <p class="text-xs text-slate-500"><?= $canAdjust ? 'ยอดเริ่มต้นจะบันทึกเป็นการปรับยอดในประวัติ' : 'พัสดุใหม่เริ่มที่ยอด 0 ยอดจะเพิ่มเมื่อรับเข้าจาก PO' ?></p>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <button type="button" data-dialog-close class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">ยกเลิก</button>
+            <button class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700">เพิ่มพัสดุ</button>
+        </div>
+    </form>
+</dialog>
+<script>
+(() => {
+    const dialog = document.getElementById('stockAddDialog');
+    if (!dialog || typeof dialog.showModal !== 'function') return;
+    const categorySelect = dialog.querySelector('[data-add-category]');
+    const newCategory = dialog.querySelector('[data-add-new-category]');
+    const syncCategory = () => {
+        const isNew = categorySelect.value === '__new__';
+        newCategory.classList.toggle('hidden', !isNew);
+        newCategory.querySelector('input').required = isNew;
+    };
+    categorySelect.addEventListener('change', syncCategory);
+    document.querySelectorAll('[data-stock-add-product]').forEach((button) => button.addEventListener('click', () => {
+        dialog.querySelector('form').reset();
+        syncCategory();
+        dialog.showModal();
+        dialog.querySelector('input[name="name"]').focus();
+    }));
     dialog.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
     dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
 })();
@@ -545,7 +728,7 @@ $qtyCell = static function (float $value, string $unit = ''): string {
         const p = data.product, s = data.summary;
         current.unit = p.unit;
         part('name').textContent = p.name;
-        part('meta').textContent = `SKU ${p.sku} · ${p.category || 'ไม่ระบุหมวด'}`;
+        part('meta').textContent = p.category || 'ไม่ระบุหมวด';
         const stats = part('stats'); stats.replaceChildren();
         [
             ['คงเหลือ', num(p.quantity), Number(p.quantity) <= 0 ? 'text-rose-600' : 'text-slate-900'],

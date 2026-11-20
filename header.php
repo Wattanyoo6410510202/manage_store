@@ -228,7 +228,12 @@ if ($current_page == 'pending_budget.php') {
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
 $cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'edit_pr_quotes.php', 'budget_settings.php'];
-$cat_stock = $stock_pages;
+// คลังพัสดุ (แท็บ/เมนูด้านข้าง) เฉพาะ admin และ procure — คนอื่นยังเบิกพัสดุได้จากเมนูหลัก
+$can_stock_nav = stock_can_manage((string)$user_role);
+$cat_stock = $can_stock_nav ? $stock_pages : [];
+if (!$can_stock_nav) {
+    $cat_main = array_merge($cat_main, ['stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php']);
+}
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php', 'program_settings.php'];
 $cat_budget = ['my_budget.php', 'pending_budget.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
@@ -905,7 +910,7 @@ if (!empty($_SESSION['sup_id'])) {
                     <select onchange="window.location.href=this.value" class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs rounded-lg block p-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold outline-none">
                         <option value="e_service.php" <?php echo $active_cat == 'main' ? 'selected' : ''; ?>>🏠 หน้าหลัก</option>
 
-                        <?php if (can('inventory')): ?>
+                        <?php if ($can_stock_nav): ?>
                         <option value="<?= $stock_home_page ?>" <?php echo $active_cat == 'stock' ? 'selected' : ''; ?>>📦 คลังพัสดุ<?= $stock_pending_count > 0 ? " ($stock_pending_count)" : '' ?></option>
                         <?php endif; ?>
                         
@@ -931,7 +936,7 @@ if (!empty($_SESSION['sup_id'])) {
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
 
-                    <?php if (can('inventory')): ?>
+                    <?php if ($can_stock_nav): ?>
                     <a id="nav-stock" href="<?= $stock_home_page ?>" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'stock' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-boxes-stacked mr-2"></i>คลังพัสดุ
                         <?php if ($stock_pending_count > 0): ?>

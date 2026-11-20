@@ -460,6 +460,66 @@ function stock_apply_manual_adjustment(
     );
 }
 
+function stock_update_product_identity(mysqli $conn, int $productId, int $supId, string $name, string $unit): void
+{
+    $name = trim($name);
+    $unit = trim($unit);
+    if ($name === '' || $unit === '' || mb_strlen($name) > 255 || mb_strlen($unit) > 50) {
+        throw new DomainException('กรุณากรอกชื่อและหน่วยนับให้ถูกต้อง');
+    }
+    $checkStmt = $conn->prepare('SELECT id FROM stock_products WHERE id = ? AND sup_id = ? AND is_active = 1 FOR UPDATE');
+    $checkStmt->bind_param('ii', $productId, $supId);
+    $checkStmt->execute();
+    $exists = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if (!$exists) {
+        throw new DomainException('ไม่พบพัสดุในบริษัทที่เลือก');
+    }
+    $stmt = $conn->prepare('UPDATE stock_products SET name = ?, unit = ? WHERE id = ? AND sup_id = ? AND is_active = 1');
+    $stmt->bind_param('ssii', $name, $unit, $productId, $supId);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/**
+ * Soft delete: the product disappears from Stock, history stays. Blocked while a withdrawal is open.
+ * A remaining balance is written off to 0 (recorded as an adjustment) only when $writeOffActorId > 0
+ * and the balance still equals $expectedBalance; otherwise the balance must already be 0.
+ */
+function stock_deactivate_product(mysqli $conn, int $productId, int $supId, int $writeOffActorId = 0, ?float $expectedBalance = null): string
+{
+    $stmt = $conn->prepare(
+        'SELECT p.name, COALESCE(b.quantity, 0) quantity
+         FROM stock_products p LEFT JOIN stock_balances b ON b.product_id = p.id
+         WHERE p.id = ? AND p.sup_id = ? AND p.is_active = 1 FOR UPDATE'
+    );
+    $stmt->bind_param('ii', $productId, $supId);
+    $stmt->execute();
+    $product = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$product) {
+        throw new DomainException('ไม่พบพัสดุในบริษัทที่เลือก');
+    }
+    if (stock_list_product_open_withdrawals($conn, $productId)) {
+        throw new DomainException('ลบไม่ได้: ' . $product['name'] . ' ยังมีใบเบิกที่ค้างอยู่');
+    }
+    $balance = (float)$product['quantity'];
+    if (abs($balance) > 0.00001) {
+        if ($writeOffActorId <= 0) {
+            throw new DomainException('ลบไม่ได้: ' . $product['name'] . ' ยังมียอดคงเหลือ ' . stock_format_withdrawal_quantity($balance) . ' กรุณาปรับยอดเป็น 0 ก่อน');
+        }
+        if ($expectedBalance === null || abs($balance - $expectedBalance) > 0.00001) {
+            throw new DomainException('ยอด Stock ของ ' . $product['name'] . ' เปลี่ยนแปลงระหว่างที่แก้ไข กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง');
+        }
+        stock_apply_manual_adjustment($conn, $supId, $productId, $balance, 0, $writeOffActorId, 'ตัดยอดคงเหลือเพื่อลบพัสดุ');
+    }
+    $update = $conn->prepare('UPDATE stock_products SET is_active = 0 WHERE id = ? AND sup_id = ?');
+    $update->bind_param('ii', $productId, $supId);
+    $update->execute();
+    $update->close();
+    return (string)$product['name'];
+}
+
 function stock_import_normalize_key(string $value): string
 {
     return mb_strtolower(preg_replace('/\s+/u', '', $value) ?? '', 'UTF-8');

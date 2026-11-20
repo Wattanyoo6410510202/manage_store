@@ -218,9 +218,16 @@ if ($page === 'stock.php') {
         fwrite(STDERR, "FAIL: stock overview must focus on the complete product list\n");
         exit(1);
     }
-    foreach (['ใกล้ถึงจุดสั่งซื้อ', 'พัสดุหมด', 'เพิ่มพัสดุใหม่', 'value="create_product"'] as $removedOverviewSection) {
+    foreach (['ใกล้ถึงจุดสั่งซื้อ', 'พัสดุหมด'] as $removedOverviewSection) {
         if (strpos($html, $removedOverviewSection) !== false) {
             fwrite(STDERR, "FAIL: stock overview still renders unrelated section: {$removedOverviewSection}\n");
+            exit(1);
+        }
+    }
+    foreach (['value="create_product"', 'value="delete_product"', 'name="unit"'] as $managerControl) {
+        if (strpos($html, $managerControl) === false) {
+            fwrite(STDERR, "FAIL: stock overview must let managers add, rename and delete products: {$managerControl}
+");
             exit(1);
         }
     }
@@ -324,8 +331,8 @@ if ($page === 'stock_withdrawals.php') {
         fwrite(STDERR, "FAIL: regular withdrawal creation page must not render the withdrawal-history table\n");
         exit(1);
     }
-    if ($role !== 'procure' && $role !== 'admin' && (strpos($html, '>ภาพรวม Stock<') !== false || strpos($html, 'สถานะใบเบิกของฉัน') === false)) {
-        fwrite(STDERR, "FAIL: regular Stock navigation must replace overview with the requester status page\n");
+    if ($role !== 'procure' && $role !== 'admin' && (strpos($html, '>ภาพรวม Stock<') !== false || strpos($html, 'id="nav-stock"') !== false || strpos($html, 'href="stock_my_withdrawals.php"') === false)) {
+        fwrite(STDERR, "FAIL: regular users must not see the Stock tab, only their withdrawal pages\n");
         exit(1);
     }
 }
@@ -338,8 +345,8 @@ if ($page === 'stock_my_withdrawals.php') {
         fwrite(STDERR, "FAIL: requester status page leaked another user's data or restricted overview navigation\n");
         exit(1);
     }
-    if (strpos($html, 'id="stock-submenu"') === false || strpos($html, 'href="stock_my_withdrawals.php"') === false) {
-        fwrite(STDERR, "FAIL: requester status page must stay inside the Stock navigation group\n");
+    if (strpos($html, 'id="stock-submenu"') !== false || strpos($html, 'main-stock-requester-nav') === false || strpos($html, 'href="stock_my_withdrawals.php"') === false) {
+        fwrite(STDERR, "FAIL: requester status page must use the main withdrawal menu, not the Stock group\n");
         exit(1);
     }
     if (strpos($html, 'data-stock-status-card') === false || strpos($html, 'data-stock-status-card-header') === false || strpos($html, 'data-stock-status-card-body') === false || strpos($html, 'data-stock-status-card-metrics') === false) {
