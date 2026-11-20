@@ -96,6 +96,13 @@ function stock_render_flash(?array $flash): void
         . stock_e($flash['message']) . '</div>';
 }
 
+/** Quantity for display: thousands separators, no trailing ".00" on whole numbers. */
+function stock_format_qty(float $quantity, int $decimals = 2): string
+{
+    $formatted = number_format($quantity, $decimals);
+    return strpos($formatted, '.') === false ? $formatted : rtrim(rtrim($formatted, '0'), '.');
+}
+
 function stock_withdrawal_status_badge_class(string $status): string
 {
     return match ($status) {

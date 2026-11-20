@@ -279,7 +279,7 @@ include __DIR__ . '/header.php';
     <?php stock_render_flash($flash); ?>
     <form method="get" class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:grid-cols-2">
         <div><div class="text-sm font-semibold text-slate-700">บริษัทปลายทาง</div><div class="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700"><?= $poData ? stock_e(supplier_display_name($poData['company_name'])) : 'ระบบกำหนดจากบริษัทเจ้าของ PO' ?></div></div>
-        <label class="text-sm font-semibold text-slate-700">PO ที่อนุมัติแล้วและยังรับไม่ครบ<select name="po_id" required onchange="this.form.submit()" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><option value="">เลือก PO</option><?php foreach ($poList as $po): ?><option value="<?= (int)$po['id'] ?>" <?= $selectedPoId === (int)$po['id'] ? 'selected' : '' ?>><?= stock_e($po['doc_no']) ?> · <?= stock_e(supplier_display_name($po['company_name'])) ?> · ค้าง <?= (int)$po['remaining_item_count'] ?> รายการ</option><?php endforeach; ?></select></label>
+        <div class="text-sm font-semibold text-slate-700"><label for="po-select">PO ที่อนุมัติแล้วและยังรับไม่ครบ</label><input type="search" id="po-search" placeholder="ค้นหาเลขที่ PO หรือชื่อบริษัท..." autocomplete="off" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-normal shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><div id="po-search-empty" class="mt-1 hidden text-xs font-normal text-rose-600">ไม่พบ PO ที่ตรงกับคำค้นหา</div><select id="po-select" name="po_id" required onchange="this.form.submit()" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"><option value="">เลือก PO</option><?php foreach ($poList as $po): ?><option value="<?= (int)$po['id'] ?>" <?= $selectedPoId === (int)$po['id'] ? 'selected' : '' ?>><?= stock_e($po['doc_no']) ?> · <?= stock_e(supplier_display_name($po['company_name'])) ?> · ค้าง <?= (int)$po['remaining_item_count'] ?> รายการ</option><?php endforeach; ?></select></div>
         <div class="text-right md:col-span-2"><button class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50">แสดงรายการ</button></div>
     </form>
 
@@ -332,6 +332,42 @@ include __DIR__ . '/header.php';
     <?php endif; ?>
 </div>
 <script src="assets/js/stock-product-autocomplete.js"></script>
+<script>
+(() => {
+    const search = document.getElementById('po-search');
+    const select = document.getElementById('po-select');
+    const empty = document.getElementById('po-search-empty');
+    if (!search || !select) return;
+    const allOptions = Array.from(select.options).map((option) => option.cloneNode(true));
+    const placeholder = allOptions.find((option) => option.value === '');
+    const items = allOptions.filter((option) => option.value !== '');
+    const normalize = (text) => text.toLowerCase().replace(/\s+/g, ' ').trim();
+
+    search.addEventListener('input', () => {
+        const terms = normalize(search.value).split(' ').filter(Boolean);
+        const current = select.value;
+        const matches = items.filter((option) => {
+            const text = normalize(option.textContent);
+            return terms.every((term) => text.includes(term));
+        });
+        select.replaceChildren(...(placeholder ? [placeholder.cloneNode(true)] : []), ...matches.map((option) => option.cloneNode(true)));
+        select.value = matches.some((option) => option.value === current) ? current : '';
+        empty.classList.toggle('hidden', terms.length === 0 || matches.length > 0);
+    });
+
+    search.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const first = Array.from(select.options).find((option) => option.value !== '');
+        if (first && select.options.length === 2) {
+            select.value = first.value;
+            select.form.submit();
+        } else {
+            select.focus();
+        }
+    });
+})();
+</script>
 <script>
 (() => {
     const products = <?= json_encode($stockProducts, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;

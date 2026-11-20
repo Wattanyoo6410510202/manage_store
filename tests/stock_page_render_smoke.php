@@ -338,7 +338,7 @@ if ($page === 'stock_my_withdrawals.php') {
         exit(1);
     }
     if (strpos($html, 'id="stock-submenu"') === false || strpos($html, 'href="stock_my_withdrawals.php"') === false) {
-        fwrite(STDERR, "FAIL: requester status page must stay inside the Main Stock navigation group\n");
+        fwrite(STDERR, "FAIL: requester status page must stay inside the Stock navigation group\n");
         exit(1);
     }
     if (strpos($html, 'data-stock-status-card') === false || strpos($html, 'data-stock-status-card-header') === false || strpos($html, 'data-stock-status-card-body') === false || strpos($html, 'data-stock-status-card-metrics') === false) {

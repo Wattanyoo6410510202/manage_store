@@ -404,6 +404,178 @@ function stock_apply_reconciliation_adjustment(
     );
 }
 
+function stock_apply_manual_adjustment(
+    mysqli $conn,
+    int $supId,
+    int $productId,
+    float $expectedBalance,
+    float $newBalance,
+    int $actorId,
+    string $reason
+): float {
+    $reason = trim($reason);
+    if ($reason === '') {
+        throw new DomainException('กรุณาระบุเหตุผลการปรับยอด');
+    }
+    if ($newBalance < 0) {
+        throw new DomainException('ยอดคงเหลือใหม่ต้องไม่ติดลบ');
+    }
+    $lockStmt = $conn->prepare(
+        'SELECT b.quantity, p.sup_id
+         FROM stock_balances b INNER JOIN stock_products p ON p.id = b.product_id
+         WHERE b.product_id = ? FOR UPDATE'
+    );
+    $lockStmt->bind_param('i', $productId);
+    $lockStmt->execute();
+    $row = $lockStmt->get_result()->fetch_assoc();
+    $lockStmt->close();
+    if (!$row || (int)$row['sup_id'] !== $supId) {
+        throw new DomainException('พัสดุไม่อยู่ในบริษัทที่เลือก');
+    }
+    if (abs((float)$row['quantity'] - $expectedBalance) > 0.00001) {
+        throw new DomainException('ยอด Stock เปลี่ยนแปลงระหว่างที่แก้ไข กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง');
+    }
+    $difference = round($newBalance - (float)$row['quantity'], 2);
+    if (abs($difference) < 0.00001) {
+        throw new DomainException('ยอดคงเหลือใหม่เท่ากับยอดเดิม');
+    }
+    $refStmt = $conn->prepare(
+        "SELECT COALESCE(MAX(reference_id), 0) + 1 next_id FROM stock_movements
+         WHERE reference_type = 'manual_adjustment' FOR UPDATE"
+    );
+    $refStmt->execute();
+    $referenceId = (int)$refStmt->get_result()->fetch_assoc()['next_id'];
+    $refStmt->close();
+
+    return stock_apply_movement(
+        $conn,
+        $supId,
+        $productId,
+        'adjustment',
+        $difference,
+        'manual_adjustment',
+        $referenceId,
+        $actorId,
+        $reason
+    );
+}
+
+function stock_get_product_detail(mysqli $conn, int $productId): ?array
+{
+    $stmt = $conn->prepare(
+        'SELECT p.id, p.sup_id, p.sku, p.name, p.category, p.unit, p.abc_class, p.lead_time_days, p.min_quantity,
+                p.created_at, COALESCE(b.quantity, 0) quantity, u.name created_by_name
+         FROM stock_products p
+         LEFT JOIN stock_balances b ON b.product_id = p.id
+         LEFT JOIN users u ON u.id = p.created_by
+         WHERE p.id = ? AND p.is_active = 1'
+    );
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $product = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $product ?: null;
+}
+
+function stock_product_movement_summary(mysqli $conn, int $productId): array
+{
+    $stmt = $conn->prepare(
+        "SELECT
+            COALESCE(SUM(CASE WHEN movement_type = 'in_po' THEN quantity END), 0) total_in,
+            COALESCE(-SUM(CASE WHEN movement_type = 'out_withdrawal' THEN quantity END), 0) total_out,
+            COALESCE(SUM(CASE WHEN movement_type = 'return' THEN quantity END), 0) total_return,
+            COALESCE(SUM(CASE WHEN movement_type = 'adjustment' THEN quantity END), 0) total_adjustment,
+            COUNT(*) movement_count,
+            MAX(created_at) last_movement_at
+         FROM stock_movements WHERE product_id = ?"
+    );
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return [
+        'total_in' => (float)$row['total_in'],
+        'total_out' => (float)$row['total_out'],
+        'total_return' => (float)$row['total_return'],
+        'total_adjustment' => (float)$row['total_adjustment'],
+        'movement_count' => (int)$row['movement_count'],
+        'last_movement_at' => $row['last_movement_at'],
+    ];
+}
+
+function stock_list_product_movements(mysqli $conn, int $productId, int $limit, int $offset): array
+{
+    $limit = max(1, min(200, $limit));
+    $offset = max(0, $offset);
+    $stmt = $conn->prepare(
+        "SELECT m.id, m.movement_type, m.quantity, m.balance_before, m.balance_after, m.reference_type,
+                m.note, m.created_at, actor.name actor_name,
+                r.doc_no receipt_doc_no, po.id po_id, po.doc_no po_doc_no,
+                w.id withdrawal_id, w.doc_no withdrawal_doc_no, w.purpose withdrawal_purpose, requester.name requester_name,
+                rc.id reconciliation_id, rc.doc_no reconciliation_doc_no
+         FROM stock_movements m
+         LEFT JOIN users actor ON actor.id = m.actor_id
+         LEFT JOIN stock_receipt_items ri ON m.reference_type = 'stock_receipt_item' AND ri.id = m.reference_id
+         LEFT JOIN stock_receipts r ON r.id = ri.receipt_id
+         LEFT JOIN po ON po.id = r.po_id
+         LEFT JOIN stock_withdrawal_issues wi ON m.reference_type = 'withdrawal_issue' AND wi.id = m.reference_id
+         LEFT JOIN stock_withdrawal_items wit ON wit.id = wi.withdrawal_item_id
+         LEFT JOIN stock_withdrawals w ON w.id = wit.withdrawal_id
+         LEFT JOIN users requester ON requester.id = w.requester_id
+         LEFT JOIN stock_reconciliation_items rci ON m.reference_type = 'reconciliation_item' AND rci.id = m.reference_id
+         LEFT JOIN stock_reconciliations rc ON rc.id = rci.reconciliation_id
+         WHERE m.product_id = ?
+         ORDER BY m.created_at DESC, m.id DESC
+         LIMIT ? OFFSET ?"
+    );
+    $fetch = $limit + 1;
+    $stmt->bind_param('iii', $productId, $fetch, $offset);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    $hasMore = count($rows) > $limit;
+    return ['rows' => array_slice($rows, 0, $limit), 'has_more' => $hasMore];
+}
+
+function stock_list_product_open_withdrawals(mysqli $conn, int $productId): array
+{
+    $stmt = $conn->prepare(
+        "SELECT w.id, w.doc_no, w.status, w.created_at, u.name requester_name,
+                wit.requested_quantity, wit.issued_quantity, wit.cancelled_quantity,
+                GREATEST(wit.requested_quantity - wit.issued_quantity - wit.cancelled_quantity, 0) remaining_quantity
+         FROM stock_withdrawal_items wit
+         INNER JOIN stock_withdrawals w ON w.id = wit.withdrawal_id
+         LEFT JOIN users u ON u.id = w.requester_id
+         WHERE wit.product_id = ? AND w.status NOT IN ('completed', 'cancelled')
+         ORDER BY w.created_at ASC"
+    );
+    $stmt->bind_param('i', $productId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $rows;
+}
+
+function stock_list_product_top_requesters(mysqli $conn, int $productId, int $months = 6): array
+{
+    $stmt = $conn->prepare(
+        "SELECT u.name requester_name, COUNT(DISTINCT w.id) withdrawal_count, SUM(wi.issued_quantity) issued_quantity
+         FROM stock_withdrawal_issues wi
+         INNER JOIN stock_withdrawal_items wit ON wit.id = wi.withdrawal_item_id
+         INNER JOIN stock_withdrawals w ON w.id = wit.withdrawal_id
+         LEFT JOIN users u ON u.id = w.requester_id
+         WHERE wit.product_id = ? AND wi.issued_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
+         GROUP BY w.requester_id, u.name
+         ORDER BY issued_quantity DESC
+         LIMIT 5"
+    );
+    $stmt->bind_param('ii', $productId, $months);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $rows;
+}
+
 function stock_generate_doc_no(mysqli $conn, string $prefix, string $table): string
 {
     $allowedTables = ['stock_receipts', 'stock_withdrawals', 'stock_reconciliations'];

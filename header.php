@@ -227,7 +227,8 @@ if ($current_page == 'pending_budget.php') {
 // ==========================================
 // [เพิ่มใหม่] จัดกลุ่มหมวดหมู่ใหญ่
 // ==========================================
-$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'edit_pr_quotes.php', 'budget_settings.php', 'stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$cat_main = ['e_service.php', 'request_buy.php', 'request_buy_history.php', 'dashboard.php', 'pending_approval.php', 'view_pr_new.php', 'edit_pr_new.php', 'edit_pr_quotes.php', 'budget_settings.php'];
+$cat_stock = $stock_pages;
 $cat_settings = ['settings.php', 'store_settings.php', 'user_settings.php', 'settings_api.php', 'all_trash.php', 'expense_settings.php', 'budget_settings.php', 'objective_settings.php', 'program_settings.php'];
 $cat_budget = ['my_budget.php', 'pending_budget.php'];
 $cat_construction = ['projects.php', 'add_project.php', 'edit_project.php', 'detail_project.php', 'view_milstones.php', 'add_milestone.php', 'edit_milestone.php', 'upcoming_payments.php', 'project_timeline.php', 'big_projects.php', 'add_big_project.php', 'detail_big_project.php'];
@@ -238,6 +239,8 @@ if (in_array($current_page, $cat_main)) $active_cat = 'main';
 if (in_array($current_page, $cat_settings)) $active_cat = 'settings';
 if (in_array($current_page, $cat_construction)) $active_cat = 'construction';
 if (in_array($current_page, $cat_budget)) $active_cat = 'budget';
+if (in_array($current_page, $cat_stock)) $active_cat = 'stock';
+$stock_home_page = stock_can_view_overview($user_role) ? 'stock.php' : 'stock_withdrawals.php';
 
 // ดึงจำนวนรายการที่รออนุมัติเฉพาะส่วนของ Role และ User ตัวเอง
 $pending_count = 0;
@@ -324,6 +327,20 @@ if (in_array($user_role_for_count, ['procure', 'admin'], true)) {
     } catch (Throwable $exception) {
         // Keep the global navigation usable while the Stock schema is being installed.
         $stock_pending_count = 0;
+    }
+}
+
+// จำนวนใบเบิกของผู้ใช้เองที่จ่ายแล้ว รอผู้เบิกกดยืนยันรับ
+$stock_my_confirm_count = 0;
+if (can('inventory') && $user_id_for_count > 0) {
+    try {
+        $myConfirmStmt = $conn->prepare("SELECT COUNT(*) total FROM stock_withdrawals WHERE requester_id = ? AND status = 'waiting_confirmation'");
+        $myConfirmStmt->bind_param('i', $user_id_for_count);
+        $myConfirmStmt->execute();
+        $stock_my_confirm_count = (int)($myConfirmStmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $myConfirmStmt->close();
+    } catch (Throwable $exception) {
+        $stock_my_confirm_count = 0;
     }
 }
 
@@ -590,40 +607,33 @@ if (!empty($_SESSION['sup_id'])) {
                 </div>
 
                 <?php if (can('inventory')): ?>
-                <div class="space-y-1">
-                    <button onclick="toggleSubmenu('stock-submenu')"
-                        class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_stock_group ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
+                <?php $is_main_stock_group = in_array($current_page, ['stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true); ?>
+                <div class="space-y-1" id="main-stock-requester-nav">
+                    <button onclick="toggleSubmenu('main-stock-submenu')"
+                        class="flex items-center justify-between w-full p-3 rounded-xl transition-all <?php echo $is_main_stock_group ? 'bg-slate-800 text-white' : 'hover:bg-slate-800'; ?>">
                         <div class="flex items-center gap-3">
                             <i class="fas fa-boxes-stacked w-5 text-cyan-400"></i>
-                            <span class="font-medium">Stock<?php if ($stock_pending_count > 0): ?> <span data-stock-pending-count>(<?= (int)$stock_pending_count ?>)</span><?php endif; ?></span>
+                            <span class="font-medium">เบิกพัสดุ<?php if ($stock_my_confirm_count > 0): ?> (<?= $stock_my_confirm_count ?>)<?php endif; ?></span>
                         </div>
-                        <i id="arrow-stock-submenu"
-                            class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_stock_group ? 'rotate-180' : ''; ?>"></i>
+                        <i id="arrow-main-stock-submenu"
+                            class="fas fa-chevron-down text-[10px] transition-transform <?php echo $is_main_stock_group ? 'rotate-180' : ''; ?>"></i>
                     </button>
-                    <div id="stock-submenu"
-                        class="<?php echo $is_stock_group ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
-                        <?php if (stock_can_view_overview($user_role)): ?>
-                        <a href="stock.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-chart-pie text-[10px]"></i><span class="text-sm font-medium">ภาพรวม Stock</span>
-                        </a>
-                        <?php endif; ?>
-                        <?php if (in_array($user_role, ['procure', 'admin'], true)): ?>
-                        <a href="stock_receiving.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_receiving.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-dolly text-[10px]"></i><span class="text-sm font-medium">รับพัสดุเข้า</span>
-                        </a>
-                        <?php endif; ?>
+
+                    <div id="main-stock-submenu"
+                        class="<?php echo $is_main_stock_group ? '' : 'hidden'; ?> ml-6 mt-1 border-l-2 border-slate-800 space-y-1">
                         <a href="stock_withdrawals.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo $current_page === 'stock_withdrawals.php' || (stock_can_manage($user_role) && $current_page === 'stock_withdrawal_view.php') ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-cart-plus text-[10px]"></i><span class="text-sm font-medium"><?= stock_can_manage($user_role) ? 'ใบเบิกพัสดุ' : 'เบิกพัสดุ' ?></span>
+                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo $current_page == 'stock_withdrawals.php' ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <span class="absolute -left-[2px] w-[2px] h-6 bg-cyan-500 transition-opacity <?php echo $current_page == 'stock_withdrawals.php' ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            <i class="fas fa-plus-circle text-[10px]"></i>
+                            <span class="text-sm font-medium">สร้างใบเบิก</span>
                         </a>
-                        <?php if (!stock_can_manage($user_role)): ?>
                         <a href="stock_my_withdrawals.php"
-                            class="group relative flex items-center gap-3 py-2 px-4 <?php echo in_array($current_page, ['stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true) ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
-                            <i class="fas fa-clock-rotate-left text-[10px]"></i><span class="text-sm font-medium">สถานะใบเบิกของฉัน</span>
+                            class="group relative flex items-center gap-3 py-2 px-4 transition-all duration-200 <?php echo in_array($current_page, ['stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true) ? 'text-cyan-400 bg-cyan-500/5' : 'text-slate-500 hover:text-slate-200'; ?>">
+                            <span class="absolute -left-[2px] w-[2px] h-6 bg-cyan-500 transition-opacity <?php echo in_array($current_page, ['stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true) ? 'opacity-100' : 'opacity-0'; ?>"></span>
+                            <i class="fas fa-history text-[10px]"></i>
+                            <span class="text-sm font-medium">ประวัติใบเบิกของฉัน</span>
+                            <?php if ($stock_my_confirm_count > 0): ?><span class="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center" title="รอยืนยันรับพัสดุ"><?= $stock_my_confirm_count ?></span><?php endif; ?>
                         </a>
-                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -651,6 +661,37 @@ if (!empty($_SESSION['sup_id'])) {
                     <span class="font-medium">Dashboard</span>
                 </a>
                 <?php endif; ?>
+            <?php endif; ?>
+
+            <?php if ($active_cat == 'stock'): ?>
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[2px] mb-2">คลังพัสดุ</p>
+                <div id="stock-submenu" class="space-y-1">
+                    <?php if (stock_can_view_overview($user_role)): ?>
+                    <a href="stock.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page === 'stock.php' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-chart-pie w-5 <?php echo $current_page === 'stock.php' ? 'text-white' : 'text-cyan-400'; ?>"></i><span class="font-medium">ภาพรวม Stock</span>
+                    </a>
+                    <?php endif; ?>
+                    <?php if (in_array($user_role, ['procure', 'admin'], true)): ?>
+                    <a href="stock_receiving.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $current_page === 'stock_receiving.php' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-dolly w-5 <?php echo $current_page === 'stock_receiving.php' ? 'text-white' : 'text-cyan-400'; ?>"></i><span class="font-medium">รับพัสดุเข้า</span>
+                    </a>
+                    <?php endif; ?>
+                    <?php $stock_withdrawals_active = $current_page === 'stock_withdrawals.php' || (stock_can_manage($user_role) && $current_page === 'stock_withdrawal_view.php'); ?>
+                    <a href="stock_withdrawals.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $stock_withdrawals_active ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-cart-plus w-5 <?php echo $stock_withdrawals_active ? 'text-white' : 'text-cyan-400'; ?>"></i>
+                        <span class="font-medium"><?= stock_can_manage($user_role) ? 'ใบเบิกพัสดุ' : 'เบิกพัสดุ' ?><?php if ($stock_pending_count > 0): ?> <span data-stock-pending-count>(<?= (int)$stock_pending_count ?>)</span><?php endif; ?></span>
+                    </a>
+                    <?php if (!stock_can_manage($user_role)): ?>
+                    <?php $stock_my_active = in_array($current_page, ['stock_my_withdrawals.php', 'stock_withdrawal_view.php'], true); ?>
+                    <a href="stock_my_withdrawals.php"
+                        class="flex items-center gap-3 p-3 rounded-xl transition-all <?php echo $stock_my_active ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20' : 'hover:bg-slate-800'; ?>">
+                        <i class="fas fa-clock-rotate-left w-5 <?php echo $stock_my_active ? 'text-white' : 'text-cyan-400'; ?>"></i><span class="font-medium">สถานะใบเบิกของฉัน</span>
+                    </a>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
 
             <?php if ($active_cat == 'system'): ?>
@@ -863,6 +904,10 @@ if (!empty($_SESSION['sup_id'])) {
                 <div class="min-[769px]:hidden flex-1 min-w-0 max-w-[200px]">
                     <select onchange="window.location.href=this.value" class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-xs rounded-lg block p-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold outline-none">
                         <option value="e_service.php" <?php echo $active_cat == 'main' ? 'selected' : ''; ?>>🏠 หน้าหลัก</option>
+
+                        <?php if (can('inventory')): ?>
+                        <option value="<?= $stock_home_page ?>" <?php echo $active_cat == 'stock' ? 'selected' : ''; ?>>📦 คลังพัสดุ<?= $stock_pending_count > 0 ? " ($stock_pending_count)" : '' ?></option>
+                        <?php endif; ?>
                         
                         <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
                         <option value="index.php" <?php echo $active_cat == 'system' ? 'selected' : ''; ?>>📄 จัดการเอกสาร</option>
@@ -882,23 +927,32 @@ if (!empty($_SESSION['sup_id'])) {
 
                 <!-- Desktop Category Tabs -->
                 <div class="hidden min-[769px]:flex h-16 items-center min-w-0 overflow-x-auto [scrollbar-width:thin]">
-                    <a id="nav-home" href="e_service.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-home" href="e_service.php" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'main' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-home mr-2"></i>หน้าหลัก
                     </a>
+
+                    <?php if (can('inventory')): ?>
+                    <a id="nav-stock" href="<?= $stock_home_page ?>" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'stock' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                        <i class="fas fa-boxes-stacked mr-2"></i>คลังพัสดุ
+                        <?php if ($stock_pending_count > 0): ?>
+                        <span class="ml-2 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center"><?= (int)$stock_pending_count ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <?php endif; ?>
                     
                     <?php if ($user_role !== 'staff' && (can('docs') || $user_role == 'admin')): ?>
-                    <a id="nav-docs" href="index.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-docs" href="index.php" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'system' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-th-large mr-2"></i>จัดการเอกสาร
                     </a>
                     <?php endif; ?>
 
                     <?php if (can('projects')): ?>
-                    <a id="nav-construction" href="projects.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'construction' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-construction" href="projects.php" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'construction' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-hammer mr-2"></i>หมวดก่อสร้าง
                     </a>
                     <?php endif; ?>
                     
-                    <a id="nav-budget" href="my_budget.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'budget' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-budget" href="my_budget.php" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'budget' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-coins mr-2"></i>งบประมาณและโครงการ
                         <?php if ($budget_menu_count > 0): ?>
                         <span class="ml-2 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center"><?= $budget_menu_count ?></span>
@@ -906,7 +960,7 @@ if (!empty($_SESSION['sup_id'])) {
                     </a>
 
                     <?php if ($user_role !== 'staff' && can('setup')): ?>
-                    <a id="nav-settings" href="settings.php" class="h-full flex items-center px-8 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
+                    <a id="nav-settings" href="settings.php" class="h-full flex shrink-0 items-center whitespace-nowrap px-5 text-sm font-bold border-r border-slate-200 transition-all <?php echo $active_cat == 'settings' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'; ?>">
                         <i class="fas fa-cog mr-2"></i>ตั้งค่า
                     </a>
                     <?php endif; ?>
