@@ -460,6 +460,177 @@ function stock_apply_manual_adjustment(
     );
 }
 
+function stock_import_normalize_key(string $value): string
+{
+    return mb_strtolower(preg_replace('/\s+/u', '', $value) ?? '', 'UTF-8');
+}
+
+/**
+ * Match counted rows (from an uploaded count sheet) to the company's products: SKU = ItemCode first, then exact name.
+ * Returns the company's product list (for manual re-mapping) and a suggested product id per row index.
+ */
+function stock_import_match_rows(mysqli $conn, int $supId, array $rows): array
+{
+    $stmt = $conn->prepare(
+        'SELECT p.id, p.sku, p.name, p.unit, p.category, COALESCE(b.quantity, 0) quantity
+         FROM stock_products p LEFT JOIN stock_balances b ON b.product_id = p.id
+         WHERE p.sup_id = ? AND p.is_active = 1 ORDER BY p.name'
+    );
+    $stmt->bind_param('i', $supId);
+    $stmt->execute();
+    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $bySku = [];
+    $byName = [];
+    foreach ($products as $product) {
+        $bySku[stock_import_normalize_key((string)$product['sku'])] = (int)$product['id'];
+        $byName[stock_import_normalize_key((string)$product['name'])] ??= (int)$product['id'];
+    }
+    $matches = [];
+    foreach ($rows as $index => $row) {
+        $code = stock_import_normalize_key((string)($row['code'] ?? ''));
+        $name = stock_import_normalize_key((string)($row['name'] ?? ''));
+        if ($code !== '' && isset($bySku[$code])) {
+            $matches[$index] = ['product_id' => $bySku[$code], 'by' => 'sku'];
+        } elseif ($name !== '' && isset($byName[$name])) {
+            $matches[$index] = ['product_id' => $byName[$name], 'by' => 'name'];
+        } else {
+            $matches[$index] = ['product_id' => null, 'by' => null];
+        }
+    }
+
+    // Second pass: suggest a product whose name contains (or is contained in) the row name, only when unambiguous.
+    $taken = [];
+    foreach ($matches as $match) {
+        if ($match['product_id'] !== null) {
+            $taken[$match['product_id']] = true;
+        }
+    }
+    foreach ($rows as $index => $row) {
+        if ($matches[$index]['product_id'] !== null) {
+            continue;
+        }
+        $name = stock_import_normalize_key((string)($row['name'] ?? ''));
+        $candidates = [];
+        foreach ($products as $product) {
+            $productName = stock_import_normalize_key((string)$product['name']);
+            $shorter = mb_strlen($name) <= mb_strlen($productName) ? $name : $productName;
+            if (mb_strlen($shorter) < 4 || isset($taken[(int)$product['id']])) {
+                continue;
+            }
+            if (str_contains($productName, $name) || str_contains($name, $productName)) {
+                $candidates[] = (int)$product['id'];
+            }
+        }
+        if (count($candidates) === 1) {
+            $matches[$index] = ['product_id' => $candidates[0], 'by' => 'similar'];
+            $taken[$candidates[0]] = true;
+        }
+    }
+    return ['products' => $products, 'matches' => $matches];
+}
+
+/**
+ * Apply a physical count import. Each item: action = 'create' | 'skip' | product id (string/int),
+ * quantity (counted), expected (balance shown in preview, for existing products), code, name, unit, category, min.
+ */
+function stock_import_counts(mysqli $conn, int $supId, int $actorId, array $items, string $reason, bool $applyMin): array
+{
+    $reason = trim($reason);
+    if ($supId <= 0 || $reason === '') {
+        throw new DomainException('ข้อมูลการนำเข้าไม่ครบถ้วน');
+    }
+    $result = ['created' => 0, 'adjusted' => 0, 'unchanged' => 0, 'skipped' => 0];
+    $usedProducts = [];
+    foreach ($items as $position => $item) {
+        $rowLabel = 'แถว ' . ((int)$position + 1) . ' (' . trim((string)($item['name'] ?? '')) . ')';
+        $action = (string)($item['action'] ?? 'skip');
+        if ($action === 'skip') {
+            $result['skipped']++;
+            continue;
+        }
+        $quantityRaw = $item['quantity'] ?? null;
+        if (!is_numeric($quantityRaw) || (float)$quantityRaw < 0) {
+            throw new DomainException($rowLabel . ': ยอดนับต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');
+        }
+        $quantity = round((float)$quantityRaw, 2);
+        $minRaw = $item['min'] ?? null;
+        $min = is_numeric($minRaw) && (float)$minRaw >= 0 ? (float)$minRaw : null;
+
+        if ($action === 'create') {
+            $code = trim((string)($item['code'] ?? ''));
+            $sku = $code !== '' ? $code : stock_generate_internal_sku($supId);
+            $dupStmt = $conn->prepare('SELECT id FROM stock_products WHERE sup_id = ? AND sku = ?');
+            $dupStmt->bind_param('is', $supId, $sku);
+            $dupStmt->execute();
+            $duplicate = $dupStmt->get_result()->fetch_assoc();
+            $dupStmt->close();
+            if ($duplicate) {
+                throw new DomainException($rowLabel . ': รหัส ' . $sku . ' มีอยู่ในระบบแล้ว กรุณาเลือกจับคู่กับพัสดุเดิม');
+            }
+            $productId = stock_create_product(
+                $conn,
+                $supId,
+                $actorId,
+                $sku,
+                (string)($item['name'] ?? ''),
+                (string)($item['unit'] ?? ''),
+                (string)($item['category'] ?? ''),
+                $applyMin && $min !== null ? $min : 0
+            );
+            $result['created']++;
+            if ($quantity > 0) {
+                stock_apply_manual_adjustment($conn, $supId, $productId, 0, $quantity, $actorId, $reason);
+            }
+            continue;
+        }
+
+        if (!ctype_digit($action)) {
+            throw new DomainException($rowLabel . ': รูปแบบการจับคู่ไม่ถูกต้อง');
+        }
+        $productId = (int)$action;
+        if (isset($usedProducts[$productId])) {
+            throw new DomainException($rowLabel . ': จับคู่กับพัสดุเดียวกับ ' . $usedProducts[$productId] . ' กรุณาเลือกให้ไม่ซ้ำกัน');
+        }
+        $usedProducts[$productId] = $rowLabel;
+        if (!is_numeric($item['expected'] ?? null)) {
+            throw new DomainException($rowLabel . ': ไม่พบยอดในระบบที่ใช้เปรียบเทียบ กรุณาตรวจสอบใหม่');
+        }
+        $expected = (float)$item['expected'];
+        if ($applyMin && $min !== null) {
+            $minStmt = $conn->prepare('UPDATE stock_products SET min_quantity = ? WHERE id = ? AND sup_id = ?');
+            $minStmt->bind_param('dii', $min, $productId, $supId);
+            $minStmt->execute();
+            $minStmt->close();
+        }
+        if (abs($quantity - $expected) < 0.00001) {
+            // Still verify the product belongs to this company and the balance hasn't moved.
+            $current = stock_get_balance($conn, $productId);
+            $ownerStmt = $conn->prepare('SELECT sup_id FROM stock_products WHERE id = ?');
+            $ownerStmt->bind_param('i', $productId);
+            $ownerStmt->execute();
+            $owner = $ownerStmt->get_result()->fetch_assoc();
+            $ownerStmt->close();
+            if (!$owner || (int)$owner['sup_id'] !== $supId) {
+                throw new DomainException($rowLabel . ': พัสดุไม่อยู่ในบริษัทที่เลือก');
+            }
+            if (abs($current - $expected) > 0.00001) {
+                throw new DomainException($rowLabel . ': ยอด Stock เปลี่ยนแปลงระหว่างที่ตรวจสอบ กรุณาตรวจสอบไฟล์ใหม่อีกครั้ง');
+            }
+            $result['unchanged']++;
+            continue;
+        }
+        try {
+            stock_apply_manual_adjustment($conn, $supId, $productId, $expected, $quantity, $actorId, $reason);
+        } catch (DomainException $exception) {
+            throw new DomainException($rowLabel . ': ' . $exception->getMessage(), 0, $exception);
+        }
+        $result['adjusted']++;
+    }
+    return $result;
+}
+
 function stock_get_product_detail(mysqli $conn, int $productId): ?array
 {
     $stmt = $conn->prepare(

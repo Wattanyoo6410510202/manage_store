@@ -175,6 +175,11 @@ $qtyCell = static function (float $value, string $unit = ''): string {
                 </select>
             </form>
             <?php endif; ?>
+            <?php if ($canAdjust): ?>
+            <a href="stock_import.php<?= $selectedSupId > 0 ? '?sup_id=' . $selectedSupId : '' ?>" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
+                <i class="fas fa-file-import text-amber-600"></i>นำเข้ายอดนับ
+            </a>
+            <?php endif; ?>
             <?php if ($products): ?>
             <button type="button" id="stockExportExcel" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
                 <i class="fas fa-file-excel text-emerald-600"></i>Export Excel

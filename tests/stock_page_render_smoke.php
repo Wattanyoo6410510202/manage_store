@@ -6,10 +6,11 @@ require_once __DIR__ . '/../config.php';
 $page = basename((string)($argv[1] ?? ''));
 $role = (string)($argv[2] ?? '');
 $expected = (string)($argv[3] ?? '');
-$allowedPages = ['stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$allowedPages = ['stock.php', 'stock_import.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
 if ($page === '') {
     $cases = [
         ['stock.php', 'procure', 'ภาพรวม Stock'],
+        ['stock_import.php', 'admin', 'นำเข้ายอดนับ Stock จาก Excel'],
         ['stock_receiving.php', 'procure', 'หมวดหมู่พัสดุ'],
         ['stock_withdrawals.php', 'procure', 'ใบเบิกพัสดุ'],
         ['stock_withdrawals.php', 'gmhr', 'ใบเบิกพัสดุ'],

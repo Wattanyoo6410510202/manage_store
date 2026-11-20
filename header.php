@@ -147,7 +147,7 @@ $is_invoice_active = in_array($current_page, ['invoice_list.php', 'view_invoice.
 // 3. กลุ่ม "ขอซื้อ"
 $is_req_buy_group = in_array($current_page, ['request_buy.php', 'request_buy_history.php', 'view_pr_new.php', 'edit_pr_new.php']);
 
-$stock_pages = ['stock.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
+$stock_pages = ['stock.php', 'stock_import.php', 'stock_receiving.php', 'stock_withdrawals.php', 'stock_my_withdrawals.php', 'stock_withdrawal_view.php'];
 $is_stock_group = in_array($current_page, $stock_pages);
 
 // 4. กลุ่ม "ก่อสร้าง"
